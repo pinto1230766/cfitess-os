@@ -1,0 +1,6 @@
+{
+  "name": "C.Fitness OS",
+  "description": "Colonne vertébrale numérique souveraine des clubs C.Fitness Carré de Soie et Beynost : téléphonie hot desking 04/07, CRM prospects, planning RH IDCC 2511, académie BPJEPS, ATS onboarding 1 clic et passerelle Heitz System.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
