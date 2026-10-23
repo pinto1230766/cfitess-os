@@ -8,6 +8,7 @@ import {
   HardDrive,
   FileCheck2,
 } from 'lucide-react';
+import { BackupFailoverPanel } from '../BackupFailoverPanel';
 
 export function GovernanceView() {
   const { currentUser, goNoGoPhases, auditLogs, signGoNoGoPhase } = useCfos();
@@ -22,10 +23,10 @@ export function GovernanceView() {
           Sections §8, §9 &amp; §11 · Gouvernance par Phases (0 à 12), Sauvegardes 3-2-1 &amp; Audit Immuable
         </div>
         <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-1">
-          Jalons Go / No-Go Signés Direction &amp; Traçabilité Cryptographique
+          Jalons Go / No-Go Signés Direction, Sauvegarde Auto Multi-Appareils &amp; Traçabilité Cryptographique
         </h1>
         <p className="text-xs text-slate-600 mt-1">
-          Aucune phase ne peut être ouverte sans validation explicite · Sauvegardes chiffrées 3-2-1 (RPO ≤ 15 min, RTO ≤ 2h) · Journal d&apos;audit append-only
+          Aucune phase ne peut être ouverte sans validation explicite · Réplication automatique PC / Tablette / Téléphone en cas de coupure courant serveur · Journal d&apos;audit append-only
         </p>
       </div>
 
@@ -44,10 +45,10 @@ export function GovernanceView() {
         <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
           <div className="font-bold text-slate-900 flex items-center gap-2">
             <HardDrive className="w-4 h-4 text-blue-600" />
-            Sauvegardes 3-2-1 Chiffrées (AES-256)
+            Sauvegardes 3-2-1 &amp; Réplication 6 Appareils
           </div>
           <div className="text-slate-600">
-            Réplication NAS Beynost + Object Storage Souverain FR · Dernier test restauration : Validé (42 min)
+            Miroir temps réel sur 2 PC de secours, 2 Tablettes Kiosques et 2 Smartphones Direction + NAS Beynost
           </div>
         </div>
 
@@ -61,6 +62,9 @@ export function GovernanceView() {
           </div>
         </div>
       </div>
+
+      {/* Multi-Device Automatic Backup & Power Outage Failover Panel */}
+      <BackupFailoverPanel />
 
       {/* Phases 0 to 12 Go / No-Go Gates */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">

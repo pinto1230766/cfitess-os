@@ -10,6 +10,7 @@ import {
   UserX,
   Sparkles,
   Volume2,
+  Server,
 } from 'lucide-react';
 import { PhoneLine } from '../../types/cfos';
 
@@ -22,6 +23,8 @@ export function TelephonyView() {
     employees,
     callLogs,
     prospects,
+    sipTrunkProvider,
+    setSipTrunkProvider,
     takePhoneLineSession,
     releasePhoneLineSession,
     placeSimulatedCall,
@@ -59,9 +62,11 @@ export function TelephonyView() {
     });
     if (res.ok) {
       setLastDialedMessage(
-        `Appel sortant depuis ${line.label} présenté avec ${res.callerIdUsed} (Mode ${
+        `Appel sortant (${
+          sipTrunkProvider === 'ovhcloud_sip' ? 'Trunk SIP OVHcloud' : 'Trunk Freebox Pro'
+        }) depuis ${line.label} présenté avec ${res.callerIdUsed} (Mode ${
           mode === '04' ? 'Fixe Local 04' : 'Pool Mobile 07 anti-spam'
-        } · ${outcome})`
+        } · ${outcome} · Tracé CRM Art. 4)`
       );
     }
   };
@@ -102,13 +107,13 @@ export function TelephonyView() {
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-            Module M2 · Remplacement Intégral Ringover (Décisions D2, D3, D4, D5)
+            Module M2 (v1.2) · Softphone Obligatoire C.Fitness OS (Art. 5 Contrat CDI) &amp; Trunk SIP OVHcloud
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-1">
-            Centrale Téléphonique WebRTC (12 Lignes) &amp; Rotation Anti-Spam 04 / 07
+            Centrale Téléphonique WebRTC (12 Lignes : 4 Commerciaux + 2 Coachs / Club)
           </h1>
           <p className="text-xs text-slate-600 mt-1">
-            6 lignes Carré de Soie + 6 lignes Beynost (4 commerciaux + 2 coachs/club) · Hot-desking en 1 clic · Transcription IA Whisper locale
+            6 lignes Carré de Soie (`04 26 22 55 30`) + 6 lignes Beynost (`04 22 91 36 82`) + Pool Mobiles `07` anti-spam · Traçabilité CRM obligatoire de chaque appel (Clause Art. 4)
           </p>
         </div>
 
@@ -119,15 +124,56 @@ export function TelephonyView() {
         )}
       </div>
 
+      {/* v1.2 SIP Trunk Provider Selector: Freebox Pro Beynost vs OVHcloud SIP Trunk */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+            <Server className="w-4 h-4 text-orange-600" />
+            Architecture Trunk SIP Asterisk 20 LTS (Option Secours Garantie v1.2)
+          </div>
+          <p className="text-xs text-slate-600">
+            Bascule instantanée entre le Trunk SIP <span className="font-semibold">Freebox Pro Beynost</span> et l&apos;alternative validée{' '}
+            <span className="font-mono font-semibold text-slate-900">
+              Trunk SIP OVHcloud (https://www.ovhcloud.com/fr/phone/sip-trunk/)
+            </span>{' '}
+            supportant nativement les fixes <span className="font-mono">04</span> et le pool de mobiles <span className="font-mono">07</span> sur les 12 lignes.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            onClick={() => setSipTrunkProvider('freebox_pro')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+              sipTrunkProvider === 'freebox_pro'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            Trunk SIP Freebox Pro (Beynost)
+          </button>
+          <button
+            onClick={() => setSipTrunkProvider('ovhcloud_sip')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+              sipTrunkProvider === 'ovhcloud_sip'
+                ? 'bg-orange-600 text-white border-orange-600'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            Trunk SIP OVHcloud (sip.ovh.fr — Secours Garanti)
+          </button>
+        </div>
+      </div>
+
       {/* 12 Virtual Lines Matrix */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              Matrice Temps Réel des Postes ({filteredLines.length} lignes affichées)
+              Matrice Temps Réel des Postes ({filteredLines.length} lignes affichées · Trunk actif :{' '}
+              {sipTrunkProvider === 'ovhcloud_sip' ? 'OVHcloud SIP Trunk' : 'Freebox Pro Beynost'})
             </h2>
             <p className="text-xs text-slate-500">
-              Cliquez sur « Prendre mon poste » pour rattacher votre session ou basculez entre Fixe 04 et Mobile 07 avant d&apos;appeler.
+              Cliquez sur « Prendre mon poste » pour rattacher votre session (Hot-Desking) ou basculez entre Fixe 04 et Mobile 07 avant d&apos;appeler.
             </p>
           </div>
           <div className="text-xs text-slate-500">
@@ -307,10 +353,10 @@ export function TelephonyView() {
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Pool Numéros Sortants Certifiés STIR/SHAKEN (D5)
+              Pool Numéros Sortants Certifiés STIR/SHAKEN (D5 &amp; OVHcloud SIP)
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Conformité ARCEP Manifone/Onoff Business : rotation automatique au 2e essai consécutif pour éviter le marquage « Susceptible d&apos;être un spam ».
+              Support natif des numéros fixes 04 et rotation automatique du pool 07 au 2e essai consécutif pour éviter le marquage « Susceptible d&apos;être un spam ».
             </p>
             <div className="mt-3 divide-y divide-slate-100">
               {clubs.map((club) => (
@@ -379,10 +425,10 @@ export function TelephonyView() {
           <div className="pb-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-orange-600" />
-              Transcriptions IA Locales (faster-whisper GPU) &amp; Coaching
+              Transcriptions IA Locales (whisper-rs GPU) &amp; Preuve d&apos;Activité CRM (Art. 4)
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              100% traité en local sur le serveur C.Fitness · Zéro coût à la minute · Analyse automatique du script commercial
+              100% traité en local sur le serveur Linux Debian 12 (Carré de Soie) · Zéro coût à la minute · Traçabilité contractuelle automatique
             </p>
           </div>
 
@@ -447,7 +493,7 @@ export function TelephonyView() {
               {selectedCall.whisperTranscript && (
                 <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
                   <div className="font-semibold text-slate-900">
-                    Transcription locale (faster-whisper large-v3-turbo) :
+                    Transcription locale (whisper-rs large-v3-turbo sur Debian 12) :
                   </div>
                   <p className="text-slate-700 leading-relaxed italic">
                     « {selectedCall.whisperTranscript} »

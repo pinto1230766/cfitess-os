@@ -4,6 +4,7 @@ import { AdminShell } from './components/AdminShell';
 import { EmployeeMobileShell } from './components/shells/EmployeeMobileShell';
 import { KioskTabletShell } from './components/shells/KioskTabletShell';
 import { SoftphoneShell } from './components/shells/SoftphoneShell';
+import { LocalLoginGate } from './components/LocalLoginGate';
 
 function CfosRouter() {
   const { shellMode } = useCfos();
@@ -23,7 +24,9 @@ function CfosRouter() {
 export default function App() {
   return (
     <CfosProvider>
-      <CfosRouter />
+      <LocalLoginGate>
+        <CfosRouter />
+      </LocalLoginGate>
     </CfosProvider>
   );
 }

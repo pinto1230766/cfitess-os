@@ -1,0 +1,106 @@
+# ==============================================================================
+# C.FITNESS OS v1.2 — Stack de Production Linux (Debian 12 / Ubuntu Server LTS)
+# ==============================================================================
+# Architecture :
+# 1. cfitness-os-server : Serveur Rust (Axum) servant la PWA compilée (dist/)
+#    et dialoguant en local avec la VM Windows Heitz (Heitz-WS.exe).
+# 2. postgres : Base de données PostgreSQL 16 (CRM, RH IDCC 2511, Contrats CDI,
+#    Journal d'Audit append-only, Bilans InBody chiffrés AES-256).
+# 3. redis : Cache temps réel Redis 7 (Sessions WebRTC 12 lignes, FMI portillons,
+#    file de synchronisation Kiosque Tablette PIN).
+# ==============================================================================
+
+name: cfitness-os
+
+services:
+  cfitness-os-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cfitness-os-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Europe/Paris
+      PORT: "3000"
+      STATIC_DIR: /opt/cfitness-os/dist
+      DATABASE_URL: postgres://${POSTGRES_USER:-cfitness}:${POSTGRES_PASSWORD:-cfitness_secret_prod}@postgres:5432/${POSTGRES_DB:-cfitness_os}
+      REDIS_URL: redis://redis:6379
+      # Connexion directe sur le LAN ou l'hôte vers la VM Windows Heitz (Heitz-WS.exe)
+      HEITZ_WS_URL: ${HEITZ_WS_URL:-http://10.10.0.20:8080/api/heitz-ws}
+      HEITZ_WS_TOKEN: ${HEITZ_WS_TOKEN:-CFITNESS-LOCAL-HZ-TOKEN}
+      # Téléphonie Asterisk : Freebox Pro Beynost + Option Secours Trunk SIP OVHcloud
+      SIP_TRUNK_PROVIDER: ${SIP_TRUNK_PROVIDER:-ovhcloud_sip}
+      OVH_SIP_TRUNK_HOST: ${OVH_SIP_TRUNK_HOST:-sip.ovh.fr}
+      FREEBOX_PRO_SIP_HOST: ${FREEBOX_PRO_SIP_HOST:-10.20.0.1}
+      # Canal officiel recrutement ATS
+      ATS_INBOUND_EMAIL: recrutement@c.fitness
+      # Sauvegarde automatique multi-appareils (PC Secours, Tablettes Kiosques, Smartphones PWA)
+      BACKUP_REPLICA_DIR: /var/backups/cfitness-os
+      BACKUP_SECONDARY_NODES: "10.20.0.15,10.10.0.12,10.10.0.31,10.20.0.31"
+    volumes:
+      - cfitness_backups:/var/backups/cfitness-os
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "heitz-windows-vm.local:10.10.0.20"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cfitness_lan
+
+  postgres:
+    image: postgres:16-bookworm
+    container_name: cfitness-postgres-16
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      POSTGRES_USER: ${POSTGRES_USER:-cfitness}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cfitness_secret_prod}
+      POSTGRES_DB: ${POSTGRES_DB:-cfitness_os}
+    volumes:
+      - cfitness_pgdata:/var/lib/postgresql/data
+      - cfitness_backups:/var/backups/cfitness-os
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cfitness} -d ${POSTGRES_DB:-cfitness_os}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cfitness_lan
+
+  redis:
+    image: redis:7-bookworm
+    container_name: cfitness-redis-7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - cfitness_redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cfitness_lan
+
+volumes:
+  cfitness_pgdata:
+    name: cfitness_pgdata
+  cfitness_redisdata:
+    name: cfitness_redisdata
+  cfitness_backups:
+    name: cfitness_backups
+
+networks:
+  cfitness_lan:
+    name: cfitness_lan
+    driver: bridge
+

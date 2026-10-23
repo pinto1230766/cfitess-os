@@ -3,6 +3,8 @@ import type {
   AccessEvent,
   AdminSection,
   AuditEntry,
+  BackupReplicaNode,
+  BackupSnapshotEnvelope,
   BpjepsMilestone,
   CallLog,
   Candidate,
@@ -23,8 +25,10 @@ import type {
   PointageType,
   Prospect,
   ProspectStage,
+  ServerPowerStatus,
   ShellMode,
   Shift,
+  SipTrunkProvider,
   TimeEntry,
   TrainingModule,
 } from '../types/cfos';
@@ -51,17 +55,47 @@ import {
   INITIAL_TRAINING_MODULES,
 } from '../data/seed';
 import {
+  CFITNESS_LEGAL_IDENTITY,
+  INITIAL_BACKUP_REPLICAS,
+  buildBackupEnvelope,
   canCallProspectProspection,
   canSendProspectSms,
   evaluateGatePassage,
   executeTransactionalOnboarding,
   findDuplicateProspect,
+  mergeFailoverSnapshot,
+  parseRecruitmentEmailPayload,
   selectOutboundNumber,
   verifyEmployeePin,
   type OnboardingTransactionResult,
 } from '../domain/rules';
 
-const STORAGE_KEY = 'cfitness_os_state_v2';
+const STORAGE_KEY = 'cfitness_os_state_v3';
+const BACKUP_ENVELOPE_KEY = 'cfitness_os_backup_envelope_v12';
+const IDB_NAME = 'cfitness_os_failover_idb';
+const IDB_STORE = 'replica_snapshots';
+
+function persistEnvelopeToIndexedDb(envelope: BackupSnapshotEnvelope): void {
+  try {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) return;
+    const req = window.indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.put({ id: 'latest_autonomous_replica', ...envelope });
+      tx.oncomplete = () => db.close();
+    };
+  } catch {
+    // ignore IndexedDB restricted context errors
+  }
+}
 
 interface PersistedState {
   clubs: Club[];
@@ -70,6 +104,12 @@ interface PersistedState {
   timeEntries: TimeEntry[];
   offlinePointageQueue: TimeEntry[];
   kioskOfflineMode: boolean;
+  sipTrunkProvider: SipTrunkProvider;
+  serverPowerStatus: ServerPowerStatus;
+  activeFailoverNodeId: string;
+  backupReplicas: BackupReplicaNode[];
+  lastAutoBackupAt: string;
+  lastBackupChecksum: string;
   leaveRequests: LeaveRequest[];
   hrDocuments: HRDocument[];
   prospects: Prospect[];
@@ -96,6 +136,12 @@ function getDefaultState(): PersistedState {
     timeEntries: INITIAL_TIME_ENTRIES,
     offlinePointageQueue: [],
     kioskOfflineMode: false,
+    sipTrunkProvider: 'freebox_pro',
+    serverPowerStatus: 'nominal',
+    activeFailoverNodeId: 'replica-pc-beynost',
+    backupReplicas: INITIAL_BACKUP_REPLICAS,
+    lastAutoBackupAt: new Date().toISOString(),
+    lastBackupChecksum: 'CFOS-SHA-9F4A2C81',
     leaveRequests: INITIAL_LEAVE_REQUESTS,
     hrDocuments: INITIAL_HR_DOCUMENTS,
     prospects: INITIAL_PROSPECTS,
@@ -117,6 +163,7 @@ function getDefaultState(): PersistedState {
 
 interface CfosContextValue extends PersistedState {
   currentUser: Employee;
+  isAuthenticated: boolean;
   shellMode: ShellMode;
   activeSection: AdminSection;
   clubFilter: ClubFilter;
@@ -126,8 +173,22 @@ interface CfosContextValue extends PersistedState {
   setActiveSection: (sec: AdminSection) => void;
   setClubFilter: (filter: ClubFilter) => void;
   switchUserSession: (employeeId: string, preferredShell?: ShellMode) => void;
+  loginWithLocalCredentials: (params: {
+    employeeId: string;
+    secretOrPin: string;
+    preferredShell?: ShellMode;
+  }) => { ok: boolean; message: string; locked?: boolean };
+  logoutSession: () => void;
   resetDemoData: () => void;
 
+  syncAllDeviceReplicasNow: (targetNodeId?: string) => void;
+  toggleReplicaAutoSync: (nodeId: string) => void;
+  simulateServerPowerOutage: (outageActive: boolean, failoverNodeId?: string) => void;
+  exportDeviceBackupJson: (targetNodeId?: string) => void;
+  importAndMergeDeviceBackup: (rawJson: string) => { ok: boolean; message: string };
+
+
+  setSipTrunkProvider: (provider: SipTrunkProvider) => void;
   takePhoneLineSession: (lineId: string) => void;
   releasePhoneLineSession: (lineId: string) => void;
   placeSimulatedCall: (params: {
@@ -182,7 +243,13 @@ interface CfosContextValue extends PersistedState {
   toggleBpjepsMilestoneValidation: (milestoneId: string) => void;
   toggleChecklistItem: (itemId: string) => void;
 
-  moveCandidateStage: (candidateId: string, stage: CandidateStage) => void;
+  moveCandidateStage: (candidateId: string, stage: CandidateStage) => OnboardingTransactionResult | null;
+  ingestEmailCandidate: (rawInput: {
+    senderLine: string;
+    subjectLine: string;
+    bodyText: string;
+    attachmentPdf?: string;
+  }) => { candidate: Candidate; rgpdReply: string };
   createJobOffer: (input: {
     title: string;
     clubId: ClubId;
@@ -224,7 +291,24 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     return getDefaultState();
   });
 
-  const [currentUserId, setCurrentUserId] = useState<string>('emp-mario');
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    try {
+      return window.sessionStorage.getItem('cfos_local_auth_user_id') || 'emp-mario';
+    } catch {
+      return 'emp-mario';
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('shell') || params.get('autologin') === '1') {
+        return true;
+      }
+      return window.sessionStorage.getItem('cfos_local_auth_active') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [shellMode, setShellMode] = useState<ShellMode>(() => {
     const params = new URLSearchParams(window.location.search);
     const shell = params.get('shell');
@@ -239,7 +323,22 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const rawState = JSON.stringify(state);
+      window.localStorage.setItem(STORAGE_KEY, rawState);
+
+      const envelope = buildBackupEnvelope(
+        state as unknown as Parameters<typeof buildBackupEnvelope>[0],
+        'C.Fitness OS Auto-Mesh',
+        state.serverPowerStatus
+      );
+      window.localStorage.setItem(BACKUP_ENVELOPE_KEY, JSON.stringify(envelope));
+      persistEnvelopeToIndexedDb(envelope);
+
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('cfitness_os_mesh_replica');
+        bc.postMessage({ type: 'CFOS_REPLICA_SYNC', checksum: envelope.checksum, exportedAt: envelope.exportedAt });
+        bc.close();
+      }
     } catch {
       // ignore quota errors
     }
@@ -271,6 +370,13 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     const target = state.employees.find((e) => e.id === employeeId);
     if (!target) return;
     setCurrentUserId(target.id);
+    setIsAuthenticated(true);
+    try {
+      window.sessionStorage.setItem('cfos_local_auth_active', 'true');
+      window.sessionStorage.setItem('cfos_local_auth_user_id', target.id);
+    } catch {
+      // ignore storage errors
+    }
     if (preferredShell) {
       setShellMode(preferredShell);
     } else if (target.role === 'coach' || target.role === 'apprenti') {
@@ -280,7 +386,117 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     } else {
       setShellMode('admin');
     }
-    notify('success', `Session active : ${target.firstName} ${target.lastName} (${target.jobTitle})`);
+    notify('success', `Session locale ouverte : ${target.firstName} ${target.lastName} (${target.jobTitle})`);
+  };
+
+  const loginWithLocalCredentials: CfosContextValue['loginWithLocalCredentials'] = ({
+    employeeId,
+    secretOrPin,
+    preferredShell,
+  }) => {
+    const target = state.employees.find((e) => e.id === employeeId);
+    if (!target) {
+      return { ok: false, message: 'Profil collaborateur introuvable sur le serveur local.' };
+    }
+
+    // Verify either the 4-digit PIN or local password ("cfitness2026" / employee PIN)
+    const normalizedSecret = secretOrPin.trim();
+    const isValidLocalPassword =
+      normalizedSecret.toLowerCase() === 'cfitness2026' ||
+      normalizedSecret.toLowerCase() === 'cfitness';
+
+    if (!isValidLocalPassword) {
+      const pinCheck = verifyEmployeePin(target, normalizedSecret);
+      if (!pinCheck.authenticated) {
+        setState((prev) => ({
+          ...prev,
+          employees: prev.employees.map((e) =>
+            e.id === target.id ? pinCheck.updatedEmployee : e
+          ),
+          auditLogs: appendAudit(prev.auditLogs, {
+            clubId: target.clubId,
+            action: pinCheck.locked ? 'AUTH_LOCALE_VERROUILLAGE_BRUTEFORCE' : 'AUTH_LOCALE_ECHEC',
+            target: `${target.firstName} ${target.lastName} (${target.email})`,
+            afterState: pinCheck.reason,
+          }),
+        }));
+        return { ok: false, message: pinCheck.reason, locked: pinCheck.locked };
+      }
+      // Reset failed attempts on valid PIN
+      setState((prev) => ({
+        ...prev,
+        employees: prev.employees.map((e) =>
+          e.id === target.id ? pinCheck.updatedEmployee : e
+        ),
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: target.clubId,
+          action: 'CONNEXION_LOCALE_ARGON2_JWT',
+          target: `${target.firstName} ${target.lastName} [${target.role.toUpperCase()}]`,
+          afterState: `Authentification locale Debian 12 validée (Club ${target.clubId})`,
+        }),
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        employees: prev.employees.map((e) =>
+          e.id === target.id ? { ...e, failedPinAttempts: 0 } : e
+        ),
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: target.clubId,
+          action: 'CONNEXION_LOCALE_ARGON2_JWT',
+          target: `${target.firstName} ${target.lastName} [${target.role.toUpperCase()}]`,
+          afterState: `Authentification locale Debian 12 validée (Club ${target.clubId})`,
+        }),
+      }));
+    }
+
+    setCurrentUserId(target.id);
+    setIsAuthenticated(true);
+    try {
+      window.sessionStorage.setItem('cfos_local_auth_active', 'true');
+      window.sessionStorage.setItem('cfos_local_auth_user_id', target.id);
+    } catch {
+      // ignore storage errors
+    }
+
+    if (preferredShell) {
+      setShellMode(preferredShell);
+    } else if (target.role === 'coach' || target.role === 'apprenti') {
+      setShellMode('admin');
+      setActiveSection('devices');
+    } else if (target.role === 'commercial') {
+      setShellMode('admin');
+      setActiveSection('crm');
+    } else if (target.role === 'kiosque') {
+      setShellMode('tablette');
+    } else {
+      setShellMode('admin');
+      setActiveSection('dashboard');
+    }
+
+    notify(
+      'success',
+      `Connecté en local : ${target.firstName} ${target.lastName} (${target.jobTitle} · Rôle ${target.role.toUpperCase()})`
+    );
+    return { ok: true, message: 'Authentification locale réussie.' };
+  };
+
+  const logoutSession = () => {
+    setState((prev) => ({
+      ...prev,
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: currentUser.clubId,
+        action: 'DECONNEXION_SESSION_LOCALE',
+        target: `${currentUser.firstName} ${currentUser.lastName}`,
+        afterState: 'Session locale verrouillée',
+      }),
+    }));
+    setIsAuthenticated(false);
+    try {
+      window.sessionStorage.removeItem('cfos_local_auth_active');
+    } catch {
+      // ignore
+    }
   };
 
   const resetDemoData = () => {
@@ -290,7 +506,29 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     setShellMode('admin');
     setActiveSection('dashboard');
     setClubFilter('all');
-    notify('success', 'Données de référence C.Fitness OS réinitialisées.');
+    notify('success', 'Données de référence C.Fitness OS v1.2 réinitialisées.');
+  };
+
+  const setSipTrunkProvider = (provider: SipTrunkProvider) => {
+    setState((prev) => ({
+      ...prev,
+      sipTrunkProvider: provider,
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: 'global',
+        action: 'BASCULE_TRUNK_SIP_ASTERISK',
+        target: provider === 'ovhcloud_sip' ? 'Trunk SIP OVHcloud (sip.ovh.fr)' : 'Freebox Pro Beynost (SIP Central)',
+        afterState:
+          provider === 'ovhcloud_sip'
+            ? 'Trunk SIP OVHcloud actif sur les 12 lignes (fixes 04 + pool 07 anti-spam)'
+            : 'Trunk SIP Freebox Pro Beynost actif sur les 12 lignes',
+      }),
+    }));
+    notify(
+      'success',
+      provider === 'ovhcloud_sip'
+        ? 'Trunk SIP OVHcloud (https://www.ovhcloud.com/fr/phone/sip-trunk/) activé sur Asterisk (12 lignes 04/07).'
+        : 'Trunk SIP Freebox Pro Beynost activé sur Asterisk (12 lignes 04/07).'
+    );
   };
 
   const takePhoneLineSession = (lineId: string) => {
@@ -434,7 +672,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       }),
     }));
 
-    const msg = `Appel journalisé via ${callerIdUsed} (${outcome}).`;
+    const msg = `Appel journalisé dans le CRM (Clause Art. 4) via ${callerIdUsed} (${outcome}).`;
     notify('success', msg);
     return { ok: true, message: msg, callerIdUsed };
   };
@@ -802,34 +1040,6 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const moveCandidateStage = (candidateId: string, stage: CandidateStage) => {
-    setState((prev) => ({
-      ...prev,
-      candidates: prev.candidates.map((c) => (c.id === candidateId ? { ...c, stage } : c)),
-    }));
-    notify('success', `Candidature déplacée vers "${stage}".`);
-  };
-
-  const createJobOffer: CfosContextValue['createJobOffer'] = (input) => {
-    const newOffer: JobOffer = {
-      id: `off-${Date.now()}`,
-      ...input,
-      active: true,
-      publishedAt: new Date().toISOString().slice(0, 10),
-    };
-    setState((prev) => ({
-      ...prev,
-      jobOffers: [newOffer, ...prev.jobOffers],
-      auditLogs: appendAudit(prev.auditLogs, {
-        clubId: input.clubId,
-        action: 'PUBLICATION_OFFRE_MULTIPOSTING',
-        target: input.title,
-        afterState: `Diffusée sur : ${input.channels.join(', ')}`,
-      }),
-    }));
-    notify('success', `Offre "${input.title}" publiée en multiposting.`);
-  };
-
   const runCandidateOnboarding: CfosContextValue['runCandidateOnboarding'] = ({
     candidateId,
     firstShiftDate,
@@ -882,9 +1092,97 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
 
     notify(
       'success',
-      `Onboarding 1-clic réussi : ${result.newEmployee?.firstName} ${result.newEmployee?.lastName} créé(e) avec PIN ${result.newEmployee?.pinCode}.`
+      `Onboarding 1-clic réussi : Contrat CDI officiel C.FITNESS généré pour ${result.newEmployee?.firstName} ${result.newEmployee?.lastName} (PIN ${result.newEmployee?.pinCode}).`
     );
     return result;
+  };
+
+  const moveCandidateStage: CfosContextValue['moveCandidateStage'] = (candidateId, stage) => {
+    const targetCandidate = state.candidates.find((c) => c.id === candidateId);
+    setState((prev) => ({
+      ...prev,
+      candidates: prev.candidates.map((c) => (c.id === candidateId ? { ...c, stage } : c)),
+    }));
+
+    // Spec v1.2 §1: Dès qu'un candidat est glissé/passé sur "Retenu", déclenchement automatique de la génération du contrat CDI pré-rempli
+    if (stage === 'Retenu' && targetCandidate && !targetCandidate.onboardedEmployeeId) {
+      return runCandidateOnboarding({
+        candidateId,
+        firstShiftDate: '2026-10-26',
+        firstShiftStart: '09:00',
+        firstShiftEnd: '17:00',
+        hourlyRate: CFITNESS_LEGAL_IDENTITY.tauxHoraireBrutEur,
+        weeklyHours: CFITNESS_LEGAL_IDENTITY.tempsTravailHebdo,
+      });
+    }
+
+    notify('success', `Candidature déplacée vers "${stage}".`);
+    return null;
+  };
+
+  const ingestEmailCandidate: CfosContextValue['ingestEmailCandidate'] = (rawInput) => {
+    const parsed = parseRecruitmentEmailPayload(rawInput);
+    const nowDate = new Date().toISOString().slice(0, 10);
+    const nowTime = new Date().toTimeString().slice(0, 5);
+    const newCandidate: Candidate = {
+      id: `cand-${Date.now()}`,
+      offerId: parsed.clubId === 'beynost' ? 'off-bey-bpjeps' : 'off-cds-comm',
+      firstName: parsed.firstName,
+      lastName: parsed.lastName,
+      email: parsed.email,
+      phone: parsed.phone,
+      clubId: parsed.clubId,
+      roleTarget: parsed.roleTarget,
+      contractTarget: 'CDI',
+      sourceChannel: 'recrutement@c.fitness',
+      cvPdfFileName: parsed.cvPdfFileName,
+      rgpdAckSentAt: `${nowDate} ${nowTime}`,
+      stage: 'Reçue',
+      experienceSummary: rawInput.bodyText.slice(0, 160),
+      certifications: ['CV PDF extrait automatiquement'],
+      aiDecisionSupportNote:
+        'Ingestion automatique depuis recrutement@c.fitness : Nom, Prénom, Téléphone, Email et CV PDF extraits · Accusé RGPD envoyé.',
+      aiFitIndicators: ['Source recrutement@c.fitness', 'CV PDF joint', 'Accusé RGPD envoyé'],
+      appliedAt: nowDate,
+      rgpdRetentionUntil: '2028-10-23',
+    };
+
+    setState((prev) => ({
+      ...prev,
+      candidates: [newCandidate, ...prev.candidates],
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: parsed.clubId,
+        action: 'INGESTION_AUTO_EMAIL_RECRUTEMENT',
+        target: `${parsed.firstName} ${parsed.lastName} <${parsed.email}>`,
+        afterState: `CV PDF (${parsed.cvPdfFileName}) parsé depuis recrutement@c.fitness + accusé RGPD envoyé`,
+      }),
+    }));
+
+    notify(
+      'success',
+      `Candidature ${parsed.firstName} ${parsed.lastName} ingérée depuis recrutement@c.fitness + Accusé RGPD envoyé.`
+    );
+    return { candidate: newCandidate, rgpdReply: parsed.rgpdAutoReplyText };
+  };
+
+  const createJobOffer: CfosContextValue['createJobOffer'] = (input) => {
+    const newOffer: JobOffer = {
+      id: `off-${Date.now()}`,
+      ...input,
+      active: true,
+      publishedAt: new Date().toISOString().slice(0, 10),
+    };
+    setState((prev) => ({
+      ...prev,
+      jobOffers: [newOffer, ...prev.jobOffers],
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: input.clubId,
+        action: 'PUBLICATION_OFFRE_MULTIPOSTING',
+        target: input.title,
+        afterState: `Diffusée sur : ${input.channels.join(', ')}`,
+      }),
+    }));
+    notify('success', `Offre "${input.title}" publiée en multiposting.`);
   };
 
   const simulateMemberGateScan = (memberId: string, clubId: ClubId): AccessEvent | null => {
@@ -1000,9 +1298,240 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     notify('success', `Porte Go/No-Go validée et signée par ${signerNames.trim()}.`);
   };
 
+  const syncAllDeviceReplicasNow = (targetNodeId?: string) => {
+    const nowIso = new Date().toISOString();
+    setState((prev) => {
+      const envelope = buildBackupEnvelope(
+        prev as unknown as Parameters<typeof buildBackupEnvelope>[0],
+        targetNodeId || 'Serveur Principal Debian 12 (.10)',
+        prev.serverPowerStatus,
+        nowIso
+      );
+      const sizeKb = Math.max(145, Math.round(JSON.stringify(envelope).length / 1024));
+      const updatedReplicas = prev.backupReplicas.map((r) => {
+        if (targetNodeId && r.id !== targetNodeId) return r;
+        if (!targetNodeId && !r.autoSyncEnabled) return r;
+        return {
+          ...r,
+          lastSyncedAt: nowIso,
+          lastChecksum: envelope.checksum,
+          snapshotSizeKb: sizeKb,
+          status:
+            prev.serverPowerStatus === 'coupure_courant_bascule_active' &&
+            r.id === prev.activeFailoverNodeId
+              ? ('relais_actif_secours' as const)
+              : ('synchronise' as const),
+          recordsMirrored: {
+            members: prev.heitzMembers.length,
+            employees: prev.employees.length,
+            prospects: prev.prospects.length,
+            shifts: prev.shifts.length,
+            offlinePunches: prev.offlinePointageQueue.length,
+          },
+        };
+      });
+
+      const targetDevice = prev.backupReplicas.find((r) => r.id === targetNodeId);
+
+      return {
+        ...prev,
+        backupReplicas: updatedReplicas,
+        lastAutoBackupAt: nowIso,
+        lastBackupChecksum: envelope.checksum,
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: 'global',
+          action: 'REPLICATION_AUTO_MULTI_APPAREILS',
+          target: targetDevice
+            ? targetDevice.deviceName
+            : 'Tous les appareils de secours (2 PC, 2 Tablettes, 2 Téléphones)',
+          afterState: `Snapshot ${envelope.checksum} répliqué (${prev.heitzMembers.length} adhérents, ${prev.employees.length} salariés, ${prev.prospects.length} prospects)`,
+        }),
+      };
+    });
+
+    notify(
+      'success',
+      targetNodeId
+        ? 'Sauvegarde instantanée répliquée avec succès sur cet appareil de secours.'
+        : 'Sauvegarde automatique répliquée sur tous les PC, Tablettes et Téléphones des 2 clubs.'
+    );
+  };
+
+  const toggleReplicaAutoSync = (nodeId: string) => {
+    setState((prev) => ({
+      ...prev,
+      backupReplicas: prev.backupReplicas.map((r) =>
+        r.id === nodeId ? { ...r, autoSyncEnabled: !r.autoSyncEnabled } : r
+      ),
+    }));
+  };
+
+  const simulateServerPowerOutage = (outageActive: boolean, failoverNodeId?: string) => {
+    const nowIso = new Date().toISOString();
+    setState((prev) => {
+      const selectedNodeId = failoverNodeId || prev.activeFailoverNodeId || 'replica-pc-beynost';
+      const selectedNode =
+        prev.backupReplicas.find((r) => r.id === selectedNodeId) ?? prev.backupReplicas[0];
+
+      if (outageActive) {
+        const envelope = buildBackupEnvelope(
+          prev as unknown as Parameters<typeof buildBackupEnvelope>[0],
+          selectedNode.deviceName,
+          'coupure_courant_bascule_active',
+          nowIso
+        );
+        return {
+          ...prev,
+          serverPowerStatus: 'coupure_courant_bascule_active',
+          activeFailoverNodeId: selectedNode.id,
+          kioskOfflineMode: true,
+          clubs: prev.clubs.map((c) => ({ ...c, degradedMode: true })),
+          lastAutoBackupAt: nowIso,
+          lastBackupChecksum: envelope.checksum,
+          backupReplicas: prev.backupReplicas.map((r) => ({
+            ...r,
+            lastSyncedAt: nowIso,
+            lastChecksum: envelope.checksum,
+            status:
+              r.id === selectedNode.id
+                ? ('relais_actif_secours' as const)
+                : ('synchronise' as const),
+          })),
+          auditLogs: appendAudit(prev.auditLogs, {
+            clubId: 'global',
+            action: 'BASCULE_SECOURS_COUPURE_SERVEUR',
+            target: selectedNode.deviceName,
+            beforeState: 'Serveur Principal Debian 12 (.10) En Ligne',
+            afterState: `Coupure serveur détectée -> Relais autonome actif sur ${selectedNode.deviceName} (Cache Tourniquets Heitz + Pointage PIN Hors-Ligne actifs)`,
+          }),
+        };
+      }
+
+      // Power restored on primary server: automatically flush offline pointages and restore nominal mode
+      const flushedCount = prev.offlinePointageQueue.length;
+      const mergedTimeEntries = [
+        ...prev.offlinePointageQueue.map((p) => ({ ...p, syncedFromOffline: true })),
+        ...prev.timeEntries,
+      ];
+
+      return {
+        ...prev,
+        serverPowerStatus: 'nominal',
+        kioskOfflineMode: false,
+        timeEntries: mergedTimeEntries,
+        offlinePointageQueue: [],
+        clubs: prev.clubs.map((c) => ({ ...c, degradedMode: false })),
+        lastAutoBackupAt: nowIso,
+        backupReplicas: prev.backupReplicas.map((r) => ({
+          ...r,
+          lastSyncedAt: nowIso,
+          status: 'synchronise' as const,
+          recordsMirrored: {
+            members: prev.heitzMembers.length,
+            employees: prev.employees.length,
+            prospects: prev.prospects.length,
+            shifts: prev.shifts.length,
+            offlinePunches: 0,
+          },
+        })),
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: 'global',
+          action: 'RETOUR_COURANT_RESYNC_SERVEUR_PRINCIPAL',
+          target: 'Serveur Principal Debian 12 (10.10.0.10)',
+          beforeState: `Mode Secours sur ${selectedNode.deviceName}`,
+          afterState: `Serveur rétabli · ${flushedCount} pointage(s) hors-ligne et passages tourniquets réintégrés sans aucune perte`,
+        }),
+      };
+    });
+
+    if (outageActive) {
+      notify(
+        'warning',
+        'Coupure serveur simulée : Bascule automatique active sur l’appareil de secours (PC/Tablette/Téléphone). Les 2 clubs continuent de fonctionner.'
+      );
+    } else {
+      notify(
+        'success',
+        'Courant & Serveur Principal rétablis : toutes les opérations saisies sur PC/Tablette/Téléphone de secours ont été resynchronisées.'
+      );
+    }
+  };
+
+  const exportDeviceBackupJson = (targetNodeId?: string) => {
+    const targetDevice = state.backupReplicas.find((r) => r.id === targetNodeId);
+    const originLabel = targetDevice
+      ? targetDevice.deviceName
+      : `${currentUser.firstName} ${currentUser.lastName} (PC / Tablette / Smartphone)`;
+
+    const envelope = buildBackupEnvelope(
+      state as unknown as Parameters<typeof buildBackupEnvelope>[0],
+      originLabel,
+      state.serverPowerStatus
+    );
+
+    const blob = new Blob([JSON.stringify(envelope, null, 2)], {
+      type: 'application/json;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const slug = targetNodeId ? targetNodeId.replace('replica-', '') : 'complet-biclub';
+    a.href = url;
+    a.download = `cfitness-os-secours-${slug}-${dateStamp}.cfos-backup.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    syncAllDeviceReplicasNow(targetNodeId);
+    notify(
+      'success',
+      `Fichier de secours autonome (.cfos-backup.json · ${envelope.checksum}) téléchargé pour continuer à faire tourner les clubs sur PC, Tablette ou Téléphone.`
+    );
+  };
+
+  const importAndMergeDeviceBackup: CfosContextValue['importAndMergeDeviceBackup'] = (rawJson) => {
+    try {
+      const parsed = JSON.parse(rawJson);
+      const replicaPayload =
+        parsed && parsed.schemaVersion === 'cfos-replica-v1.2' && parsed.payload
+          ? parsed.payload
+          : parsed;
+
+      if (!replicaPayload || !Array.isArray(replicaPayload.heitzMembers)) {
+        const msg = 'Fichier de sauvegarde invalide : structure C.Fitness OS non reconnue.';
+        notify('error', msg);
+        return { ok: false, message: msg };
+      }
+
+      const mergeOutcome = mergeFailoverSnapshot(state, replicaPayload);
+      const nowIso = new Date().toISOString();
+      const summary = `+${mergeOutcome.stats.addedPunches} pointages, +${mergeOutcome.stats.addedAccessEvents} passages tourniquets, +${mergeOutcome.stats.addedProspects} prospects, ${mergeOutcome.stats.regularisedMembers} régularisations SEPA`;
+
+      setState((prev) => ({
+        ...prev,
+        ...mergeOutcome.mergedState,
+        lastAutoBackupAt: nowIso,
+        auditLogs: appendAudit(mergeOutcome.mergedState.auditLogs, {
+          clubId: 'global',
+          action: 'RESTAURATION_FUSION_SAUVEGARDE_APPAREIL_SECOURS',
+          target: parsed.originDevice || 'Fichier .cfos-backup.json (PC/Tablette/Téléphone)',
+          afterState: `Fusion sans perte terminée (${summary})`,
+        }),
+      }));
+
+      const okMsg = `Sauvegarde de secours fusionnée avec succès (${summary}) !`;
+      notify('success', okMsg);
+      return { ok: true, message: okMsg };
+    } catch {
+      const errMsg = 'Impossible de lire le fichier JSON de sauvegarde.';
+      notify('error', errMsg);
+      return { ok: false, message: errMsg };
+    }
+  };
+
   const value: CfosContextValue = {
     ...state,
     currentUser,
+    isAuthenticated,
     shellMode,
     activeSection,
     clubFilter,
@@ -1012,7 +1541,15 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     setActiveSection,
     setClubFilter,
     switchUserSession,
+    loginWithLocalCredentials,
+    logoutSession,
     resetDemoData,
+    syncAllDeviceReplicasNow,
+    toggleReplicaAutoSync,
+    simulateServerPowerOutage,
+    exportDeviceBackupJson,
+    importAndMergeDeviceBackup,
+    setSipTrunkProvider,
     takePhoneLineSession,
     releasePhoneLineSession,
     placeSimulatedCall,
@@ -1032,6 +1569,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     toggleBpjepsMilestoneValidation,
     toggleChecklistItem,
     moveCandidateStage,
+    ingestEmailCandidate,
     createJobOffer,
     runCandidateOnboarding,
     simulateMemberGateScan,

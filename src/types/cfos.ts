@@ -17,6 +17,8 @@ export type AdminSection =
 
 export type ContractType = 'CDI' | 'CDD' | 'Apprentissage' | 'Extra';
 
+export type SipTrunkProvider = 'freebox_pro' | 'ovhcloud_sip';
+
 export interface Club {
   id: ClubId;
   name: string;
@@ -46,6 +48,11 @@ export interface Employee {
   jobTitle: string;
   hourlyRate: number;
   weeklyContractHours: number;
+  monthlyGrossEur?: number;
+  monthlySubscriptionsTarget?: number;
+  monthlySubscriptionsActual?: number;
+  probationMonths?: number;
+  probationRenewed?: boolean;
   pinCode: string;
   failedPinAttempts: number;
   pinLocked: boolean;
@@ -106,6 +113,7 @@ export interface HRDocument {
   encryptedAtRest: boolean;
   signedStatus: 'Signé horodaté' | 'En attente signature' | 'Archivé coffre-fort';
   period?: string;
+  contractBodyText?: string;
 }
 
 export type ProspectStage =
@@ -235,8 +243,17 @@ export interface Candidate {
   clubId: ClubId;
   roleTarget: Role;
   contractTarget: ContractType;
-  sourceChannel: 'Indeed' | 'WTTJ' | 'LinkedIn' | 'France Travail' | 'JobTeaser' | 'Site c.fitness';
+  sourceChannel:
+    | 'recrutement@c.fitness'
+    | 'Site c.fitness'
+    | 'Indeed'
+    | 'WTTJ'
+    | 'LinkedIn'
+    | 'France Travail'
+    | 'JobTeaser';
   stage: CandidateStage;
+  cvPdfFileName?: string;
+  rgpdAckSentAt?: string;
   experienceSummary: string;
   certifications: string[];
   aiDecisionSupportNote: string;
@@ -314,3 +331,47 @@ export interface GoNoGoPhase {
   signedBy?: string;
   signedAt?: string;
 }
+
+export type BackupDeviceType = 'pc_secours' | 'tablette_kiosque' | 'smartphone_pwa';
+
+export type ServerPowerStatus = 'nominal' | 'coupure_courant_bascule_active';
+
+export interface BackupReplicaNode {
+  id: string;
+  deviceName: string;
+  deviceType: BackupDeviceType;
+  clubId: ClubId | 'bi-club';
+  ipOrHolder: string;
+  storageEngine: string;
+  lastSyncedAt: string;
+  lastChecksum: string;
+  snapshotSizeKb: number;
+  status: 'synchronise' | 'relais_actif_secours' | 'en_attente';
+  autoSyncEnabled: boolean;
+  recordsMirrored: {
+    members: number;
+    employees: number;
+    prospects: number;
+    shifts: number;
+    offlinePunches: number;
+  };
+}
+
+export interface BackupSnapshotEnvelope {
+  schemaVersion: 'cfos-replica-v1.2';
+  exportedAt: string;
+  originDevice: string;
+  checksum: string;
+  serverPowerStatus: ServerPowerStatus;
+  counts: {
+    members: number;
+    employees: number;
+    prospects: number;
+    shifts: number;
+    timeEntries: number;
+    offlinePunches: number;
+    accessEvents: number;
+  };
+  payload: Record<string, unknown>;
+}
+

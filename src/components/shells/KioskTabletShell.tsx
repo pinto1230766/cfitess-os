@@ -10,6 +10,7 @@ import {
   Delete,
   UserPlus,
   Clock,
+  HardDriveDownload,
 } from 'lucide-react';
 import { ClubId, PointageType } from '../../types/cfos';
 import { formatPointageType } from '../../domain/rules';
@@ -20,8 +21,11 @@ export function KioskTabletShell() {
     timeEntries,
     offlinePointageQueue,
     kioskOfflineMode,
+    serverPowerStatus,
+    lastBackupChecksum,
     punchWithPin,
     toggleKioskOfflineMode,
+    exportDeviceBackupJson,
     createProspect,
     setShellMode,
   } = useCfos();
@@ -136,6 +140,21 @@ export function KioskTabletShell() {
               <Wifi className="w-4 h-4" />
             )}
             {kioskOfflineMode ? 'Mode Hors-Ligne (IndexedDB)' : 'Réseau En Ligne'}
+          </button>
+
+          <button
+            onClick={() =>
+              exportDeviceBackupJson(
+                kioskClub === 'carre-de-soie' ? 'replica-tablette-cds' : 'replica-tablette-bey'
+              )
+            }
+            className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+          >
+            <HardDriveDownload className="w-4 h-4 text-orange-400" />
+            <span>
+              Sauvegarde Tablette ({lastBackupChecksum.slice(-6)}
+              {serverPowerStatus === 'coupure_courant_bascule_active' ? ' · RELAIS ACTIF' : ''})
+            </span>
           </button>
 
           {offlinePointageQueue.length > 0 && (

@@ -15,8 +15,12 @@ import {
   Smartphone,
   Tablet,
   RotateCcw,
+  LogOut,
+  HardDriveDownload,
+  ZapOff,
 } from 'lucide-react';
 import { AdminSection } from '../types/cfos';
+import { isSectionAllowedForRole } from '../domain/rules';
 import { DashboardView } from './views/DashboardView';
 import { TelephonyView } from './views/TelephonyView';
 import { CrmView } from './views/CrmView';
@@ -51,11 +55,26 @@ export function AdminShell() {
     activeSection,
     setActiveSection,
     setShellMode,
+    logoutSession,
     resetDemoData,
+    serverPowerStatus,
+    activeFailoverNodeId,
+    backupReplicas,
+    lastBackupChecksum,
+    simulateServerPowerOutage,
+    exportDeviceBackupJson,
   } = useCfos();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const isOutage = serverPowerStatus === 'coupure_courant_bascule_active';
+  const activeFailoverDevice =
+    backupReplicas.find((r) => r.id === activeFailoverNodeId) ?? backupReplicas[0];
+
+  const visibleNavItems = NAV_ITEMS.filter((item) =>
+    isSectionAllowedForRole(item.id, currentUser.role)
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row">
@@ -77,7 +96,7 @@ export function AdminShell() {
           <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Modules Opérationnels
           </div>
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = activeSection === item.id;
             return (
@@ -141,13 +160,22 @@ export function AdminShell() {
             </div>
             <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
           </button>
-          <button
-            onClick={resetDemoData}
-            className="w-full py-1.5 text-[11px] text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1 cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Réinitialiser les données démo
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={logoutSession}
+              className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-[11px] text-rose-300 font-semibold flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <LogOut className="w-3 h-3" />
+              Verrouiller
+            </button>
+            <button
+              onClick={resetDemoData}
+              className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset démo
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -178,8 +206,25 @@ export function AdminShell() {
             </div>
           </div>
 
-          {/* Right Quick Actions: Shell Switchers & Role Modal */}
+          {/* Right Quick Actions: Backup Status, Shell Switchers & Role Modal */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveSection('devices')}
+              title="Gérer la sauvegarde automatique sur PC, Tablette et Téléphone (Continuité coupure de courant)"
+              className={`hidden sm:flex min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-semibold items-center gap-1.5 border cursor-pointer ${
+                isOutage
+                  ? 'bg-amber-600 text-white border-amber-700'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+            >
+              <HardDriveDownload className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {isOutage
+                  ? 'Mode Secours Actif (Coupure Serveur)'
+                  : `Sauvegarde Auto 6 Appareils (${lastBackupChecksum.slice(-6)})`}
+              </span>
+            </button>
+
             <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setShellMode('employe')}
@@ -213,8 +258,45 @@ export function AdminShell() {
                 ({currentUser.role})
               </span>
             </button>
+
+            <button
+              onClick={logoutSession}
+              title="Verrouiller la session locale (Retour à l'écran de connexion)"
+              className="min-h-[44px] px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-700 hover:text-rose-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Déconnexion</span>
+            </button>
           </div>
         </header>
+
+        {/* Emergency Power Outage / Server Failure Continuity Banner */}
+        {isOutage && (
+          <div className="bg-amber-600 text-white px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 font-semibold">
+              <ZapOff className="w-4 h-4 shrink-0" />
+              <span>
+                COUPURE SERVEUR PRINCIPAL DÉTECTÉE — Les 2 clubs fonctionnent en autonomie sur{' '}
+                <span className="underline font-bold">{activeFailoverDevice.deviceName}</span>{' '}
+                (Tourniquets Heitz sur cache local, Badgeuse PIN &amp; CRM sauvegardés sans perte).
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => exportDeviceBackupJson(activeFailoverDevice.id)}
+                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold cursor-pointer"
+              >
+                Télécharger copie .json
+              </button>
+              <button
+                onClick={() => simulateServerPowerOutage(false)}
+                className="px-2.5 py-1 rounded-lg bg-white text-amber-900 font-bold hover:bg-amber-50 cursor-pointer"
+              >
+                Rétablir Serveur &amp; Resynchroniser
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Active View Content */}
         <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">

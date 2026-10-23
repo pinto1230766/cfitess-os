@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Plus,
   FileSignature,
+  HardDriveDownload,
 } from 'lucide-react';
 import { formatLeaveStatus } from '../../domain/rules';
 import { LeaveRequest } from '../../types/cfos';
@@ -24,11 +25,14 @@ export function EmployeeMobileShell() {
     moduleProgress,
     bpjepsMilestones,
     checklists,
+    serverPowerStatus,
+    lastBackupChecksum,
     setShellMode,
     submitLeaveRequest,
     signHrDocument,
     completeAcademyQuiz,
     toggleChecklistItem,
+    exportDeviceBackupJson,
   } = useCfos();
 
   const fieldEmployees = employees.filter((e) => e.role !== 'kiosque');
@@ -123,6 +127,30 @@ export function EmployeeMobileShell() {
               <div className="text-[11px] text-slate-500">Code PIN Kiosque</div>
               <div className="font-bold text-orange-700 text-sm">{activeEmp.pinCode}</div>
             </div>
+          </div>
+
+          {/* Smartphone Local Backup Replica Strip */}
+          <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-2 text-[11px]">
+            <div>
+              <div className="font-bold text-emerald-400">
+                {serverPowerStatus === 'coupure_courant_bascule_active'
+                  ? 'Mode Secours Actif sur Mobile (Coupure Serveur)'
+                  : `Sauvegarde Auto Mobile OK (${lastBackupChecksum.slice(-6)})`}
+              </div>
+              <div className="text-slate-400">
+                Copie locale chiffrée des 2 clubs prête hors-ligne
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                exportDeviceBackupJson('replica-tel-mario');
+                setToastMsg('Copie de secours complète (.json) enregistrée sur ce téléphone !');
+              }}
+              className="px-2.5 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <HardDriveDownload className="w-3.5 h-3.5" />
+              <span>Sauvegarder</span>
+            </button>
           </div>
 
           {toastMsg && (

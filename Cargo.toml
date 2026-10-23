@@ -1,0 +1,30 @@
+[package]
+name = "cfitness-os-server"
+version = "1.2.0"
+edition = "2021"
+authors = ["C.FITNESS — Mario & Daniel Carvalho <direction@c.fitness>"]
+description = "Serveur de production Linux Debian 12 en Rust (Axum) pour C.Fitness OS (Carré de Soie & Beynost) avec passerelle Heitz-WS.exe, ingestion recrutement@c.fitness et Trunk SIP OVHcloud/Freebox Pro"
+
+[[bin]]
+name = "cfitness-os-server"
+path = "src-rust/main.rs"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros", "ws", "multipart"] }
+tokio = { version = "1.40", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["fs", "cors", "trace", "compression-gzip"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

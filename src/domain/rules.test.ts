@@ -1,17 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CFITNESS_LEGAL_IDENTITY,
+  INITIAL_BACKUP_REPLICAS,
+  buildBackupEnvelope,
   canAccessFeature,
   canCallProspectProspection,
   canSendProspectSms,
   computePayrollVariables,
+  computeProbationNoticePeriod,
+  computeSnapshotChecksum,
   evaluateGatePassage,
   evaluateShiftCompliance,
   executeTransactionalOnboarding,
   findDuplicateProspect,
+  formatClubName,
   formatLeaveStatus,
   formatPointageType,
+  generateOfficialCdiContractText,
   generateSilaeCsv,
+  isSectionAllowedForRole,
+  mergeFailoverSnapshot,
+  parseRecruitmentEmailPayload,
   selectOutboundNumber,
   verifyEmployeePin,
 } from './rules';
@@ -175,7 +185,7 @@ test('Heitz gatekeeper blocks SEPA unpaid with SMS relance and allows inter-club
   assert.equal(allowed.reason.includes('D9'), true);
 });
 
-test('Transactional 1-click onboarding rolls back cleanly on simulated failure and commits atomically otherwise', () => {
+test('Transactional 1-click onboarding rolls back cleanly on simulated failure and commits atomically with official C.FITNESS CDI contract', () => {
   const candidate: Candidate = {
     id: 'cand-1',
     offerId: 'off-1',
@@ -184,12 +194,12 @@ test('Transactional 1-click onboarding rolls back cleanly on simulated failure a
     email: 'ines.benali@mail.fr',
     phone: '06 78 90 12 34',
     clubId: 'beynost',
-    roleTarget: 'apprenti',
-    contractTarget: 'Apprentissage',
-    sourceChannel: 'WTTJ',
+    roleTarget: 'commercial',
+    contractTarget: 'CDI',
+    sourceChannel: 'recrutement@c.fitness',
     stage: 'Retenu',
-    experienceSummary: 'Stagiaire plateau musculation & cours collectifs',
-    certifications: ['PSC1', 'Entrée BPJEPS AF'],
+    experienceSummary: 'Vente et conseil fitness',
+    certifications: ['PSC1'],
     aiDecisionSupportNote: 'Profil aligné accueil 3S',
     aiFitIndicators: ['PSC1 valide', 'Disponibilité samedi'],
     appliedAt: '2026-10-15',
@@ -219,7 +229,7 @@ test('Transactional 1-click onboarding rolls back cleanly on simulated failure a
     firstShiftDate: '2026-10-26',
     firstShiftStart: '09:00',
     firstShiftEnd: '16:00',
-    hourlyRate: 11.88,
+    hourlyRate: 12.02,
     weeklyHours: 35,
     actorName: 'Commercial Test',
     actorRole: 'commercial',
@@ -234,7 +244,7 @@ test('Transactional 1-click onboarding rolls back cleanly on simulated failure a
     firstShiftDate: '2026-10-26',
     firstShiftStart: '09:00',
     firstShiftEnd: '16:00',
-    hourlyRate: 11.88,
+    hourlyRate: 12.02,
     weeklyHours: 35,
     actorName: 'Mario Carvalho',
     actorRole: 'admin',
@@ -251,7 +261,7 @@ test('Transactional 1-click onboarding rolls back cleanly on simulated failure a
     firstShiftDate: '2026-10-26',
     firstShiftStart: '09:00',
     firstShiftEnd: '16:00',
-    hourlyRate: 11.88,
+    hourlyRate: 12.02,
     weeklyHours: 35,
     actorName: 'Mario Carvalho',
     actorRole: 'admin',
@@ -259,7 +269,54 @@ test('Transactional 1-click onboarding rolls back cleanly on simulated failure a
   });
   assert.equal(committed.ok, true);
   assert.equal(committed.newEmployee?.pinCode.length, 4);
+  assert.equal(committed.newEmployee?.monthlyGrossEur, 1823.03);
+  assert.equal(committed.newEmployee?.monthlySubscriptionsTarget, 20);
   assert.equal(committed.newDocuments?.length, 2);
+  assert.equal(
+    committed.newDocuments?.[0].contractBodyText?.includes(CFITNESS_LEGAL_IDENTITY.siret),
+    true
+  );
+});
+
+test('v1.2 specifications: probation notice periods, recrutement@c.fitness parser, and official CDI contract clauses', () => {
+  const noticeUnder8d = computeProbationNoticePeriod('2026-10-19', '2026-10-23', false);
+  assert.equal(noticeUnder8d.employerNoticeDelayLabel.includes('24 heures'), true);
+
+  const noticeUnder1m = computeProbationNoticePeriod('2026-10-01', '2026-10-23', false);
+  assert.equal(noticeUnder1m.employerNoticeDelayLabel.includes('48 heures'), true);
+
+  const noticeBetween1And3m = computeProbationNoticePeriod('2026-09-01', '2026-10-23', false);
+  assert.equal(noticeBetween1And3m.employerNoticeDelayLabel.includes('2 semaines'), true);
+
+  const parsedEmail = parseRecruitmentEmailPayload({
+    senderLine: 'Lucas Garnier <lucas.garnier@mail.fr>',
+    subjectLine: 'Candidature Conseiller Commercial Beynost',
+    bodyText: 'Bonjour, voici mon CV. Tel: 06 58 41 29 70.',
+    attachmentPdf: 'CV_Lucas_Garnier.pdf',
+  });
+  assert.equal(parsedEmail.firstName, 'Lucas');
+  assert.equal(parsedEmail.lastName, 'Garnier');
+  assert.equal(parsedEmail.email, 'lucas.garnier@mail.fr');
+  assert.equal(parsedEmail.phone, '06 58 41 29 70');
+  assert.equal(parsedEmail.clubId, 'beynost');
+  assert.equal(parsedEmail.rgpdAutoReplyText.includes('recrutement@c.fitness'), true);
+
+  const contractText = generateOfficialCdiContractText({
+    firstName: 'Lucas',
+    lastName: 'Garnier',
+    email: 'lucas.garnier@mail.fr',
+    phone: '06 58 41 29 70',
+    jobTitle: 'Conseiller Commercial Fitness',
+    clubId: 'carre-de-soie',
+    startDate: '2026-10-26',
+  });
+  assert.equal(contractText.includes('818 651 317 00018'), true);
+  assert.equal(contractText.includes('827000002188207761'), true);
+  assert.equal(contractText.includes('20 abonnements mensuels'), true);
+  assert.equal(
+    contractText.includes('TOUTE ACTION COMMERCIALE NON TRACÉE DANS LE CRM C.FITNESS OS EST JURIDIQUEMENT RÉPUTÉE NON RÉALISÉE'),
+    true
+  );
 });
 
 test('Silae payroll calculation, formatters, and CRM guards work accurately', () => {
@@ -308,4 +365,105 @@ test('Silae payroll calculation, formatters, and CRM guards work accurately', ()
   assert.equal(canCallProspectProspection(prospects[0]).allowed, false);
   assert.equal(canAccessFeature('commercial', 'finances_payroll'), false);
   assert.equal(canAccessFeature('admin', 'finances_payroll'), true);
+  assert.equal(canAccessFeature('coach', 'inbody_health_data'), true);
+  assert.equal(canAccessFeature('commercial', 'inbody_health_data'), false);
+  assert.equal(formatClubName('carre-de-soie'), 'Carré de Soie');
+  assert.equal(formatClubName('carre-de-soie', true), 'CDS');
+  assert.equal(formatClubName('beynost', true), 'BEY');
+  assert.equal(isSectionAllowedForRole('governance', 'admin'), true);
+  assert.equal(isSectionAllowedForRole('governance', 'commercial'), false);
+  assert.equal(isSectionAllowedForRole('crm', 'coach'), false);
 });
+
+test('Multi-device backup envelope checksum and power-outage failover merge preserve offline club activity', () => {
+  assert.equal(INITIAL_BACKUP_REPLICAS.length, 6);
+  const checksumA = computeSnapshotChecksum('{"clubs":2,"members":6}');
+  const checksumB = computeSnapshotChecksum('{"clubs":2,"members":6}');
+  const checksumC = computeSnapshotChecksum('{"clubs":2,"members":7}');
+  assert.equal(checksumA, checksumB);
+  assert.notEqual(checksumA, checksumC);
+  assert.equal(checksumA.startsWith('CFOS-SHA-'), true);
+
+  const primaryState = {
+    heitzMembers: [
+      {
+        id: 'm-1',
+        badgeCode: 'HZ-9012',
+        firstName: 'Camille',
+        lastName: 'Roux',
+        phone: '06 44 11 22 33',
+        homeClubId: 'beynost' as const,
+        subscriptionName: 'Formule Liberté',
+        activeSubscription: true,
+        finBalanceEur: -39.9,
+        finBalanceState: 0 as const,
+        technogymMoves30d: 2400,
+        daysSinceLastWorkout: 3,
+      },
+    ],
+    employees: [baseEmployee],
+    prospects: [],
+    shifts: [],
+    timeEntries: [],
+    offlinePointageQueue: [],
+    accessEvents: [],
+    callLogs: [],
+    auditLogs: [],
+  };
+
+  const envelope = buildBackupEnvelope(
+    primaryState,
+    'Tablette Kiosque Accueil Beynost',
+    'coupure_courant_bascule_active',
+    '2026-10-23T14:00:00Z'
+  );
+  assert.equal(envelope.schemaVersion, 'cfos-replica-v1.2');
+  assert.equal(envelope.counts.members, 1);
+
+  // Simulate actions performed on a backup PC/Tablet/Phone during server power outage
+  const replicaDuringOutage = {
+    ...primaryState,
+    heitzMembers: [
+      {
+        ...primaryState.heitzMembers[0],
+        finBalanceEur: 0,
+        finBalanceState: 1 as const,
+      },
+    ],
+    offlinePointageQueue: [
+      {
+        id: 'te-offline-1',
+        employeeId: 'emp-1',
+        clubId: 'beynost' as const,
+        timestamp: '2026-10-23T14:05:00Z',
+        type: 'arrivee' as const,
+        source: 'tablette_pin' as const,
+        syncedFromOffline: true,
+      },
+    ],
+    accessEvents: [
+      {
+        id: 'acc-offline-1',
+        clubId: 'beynost' as const,
+        memberId: 'm-1',
+        memberName: 'Camille Roux',
+        homeClubId: 'beynost' as const,
+        timestamp: '2026-10-23T14:06:00Z',
+        latencyMs: 12,
+        granted: true,
+        reason: 'Validé sur appareil de secours',
+        smsRelanceSent: false,
+        qrTokenGenerated: 'HZ-SEC-01',
+      },
+    ],
+  };
+
+  const merged = mergeFailoverSnapshot(primaryState, replicaDuringOutage);
+  assert.equal(merged.stats.addedPunches, 1);
+  assert.equal(merged.stats.addedAccessEvents, 1);
+  assert.equal(merged.stats.regularisedMembers, 1);
+  assert.equal(merged.mergedState.timeEntries.length, 1);
+  assert.equal(merged.mergedState.offlinePointageQueue.length, 0);
+  assert.equal(merged.mergedState.heitzMembers[0].finBalanceEur, 0);
+});
+

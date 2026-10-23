@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useCfos } from '../context/CfosContext';
 import { KeyRound, UserCheck, AlertTriangle, Unlock } from 'lucide-react';
+import { formatClubName } from '../domain/rules';
 
 export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
   const {
     employees,
     currentUser,
     switchUserSession,
-    punchWithPin,
+    loginWithLocalCredentials,
     unlockEmployeePin,
   } = useCfos();
 
@@ -20,11 +21,14 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetEmp) return;
-    const res = punchWithPin(targetEmp.clubId, targetEmp.id, pinInput, 'arrivee');
+    const res = loginWithLocalCredentials({
+      employeeId: targetEmp.id,
+      secretOrPin: pinInput,
+      preferredShell: 'admin',
+    });
     if (!res.ok) {
       setPinFeedback(res.message);
     } else {
-      switchUserSession(targetEmp.id);
       onClose();
     }
   };
@@ -149,7 +153,7 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
                       </span>
                     </div>
                     <div className="text-slate-500 mt-0.5">
-                      {emp.jobTitle} · Club {emp.clubId} · PIN :{' '}
+                      {emp.jobTitle} · Club {formatClubName(emp.clubId)} · PIN :{' '}
                       <span className="font-mono font-semibold">{emp.pinCode}</span>
                     </div>
                   </div>

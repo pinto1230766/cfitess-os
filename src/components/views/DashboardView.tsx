@@ -17,7 +17,7 @@ const SAAS_REPLACED_COMPARISON = [
   {
     tool: 'Ringover Business + Onoff (12 licences)',
     annualCostBeforeEur: 8640,
-    replacedBy: 'M2 · Téléphonie WebRTC SIP.js + Pool 04/07 + Whisper GPU Local',
+    replacedBy: 'M2 · Téléphonie WebRTC + Trunk SIP Freebox Pro / OVHcloud + Pool 04/07',
   },
   {
     tool: 'Skello Premium (2 établissements)',
@@ -32,7 +32,7 @@ const SAAS_REPLACED_COMPARISON = [
   {
     tool: 'ATS Recrutement & Parapheur Signature RH',
     annualCostBeforeEur: 2160,
-    replacedBy: 'M6 & M4 bis · Multiposting ATS + Bascule 1-Clic + Coffre-fort RH',
+    replacedBy: 'M6 & M4 bis · Ingestion recrutement@c.fitness + Contrat CDI C.FITNESS 1-Clic',
   },
 ];
 
@@ -50,6 +50,7 @@ export function DashboardView() {
     callLogs,
     checklists,
     auditLogs,
+    sipTrunkProvider,
     setActiveSection,
     setShellMode,
   } = useCfos();
@@ -89,17 +90,17 @@ export function DashboardView() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-orange-600">
-              C.Fitness Operating System · Production v1.0
+              C.Fitness Operating System · Production v1.2 (Linux Debian 12 · Rust Axum + Leptos WASM/WebRTC · WireGuard &lt; 3 ms)
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
-              Pilotage Unifié Carré de Soie &amp; Beynost
+              Pilotage Unifié Carré de Soie (2 Rue Jacquard) &amp; Beynost (ZAC des Baterses)
             </h1>
             <p className="text-sm text-slate-600 mt-1">
               Connecté en tant que{' '}
               <span className="font-semibold text-slate-900">
                 {currentUser.firstName} {currentUser.lastName}
               </span>{' '}
-              ({currentUser.jobTitle}) · Circulation bi-club incluse sans supplément (Décision D9)
+              ({currentUser.jobTitle}) · SIRET 818 651 317 00018 · Circulation bi-club incluse (D9)
             </p>
           </div>
 
@@ -150,7 +151,7 @@ export function DashboardView() {
                   Interface Employé &amp; Apprenti (Mobile)
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Planning, Congés, Livret BPJEPS &amp; Signature
+                  Planning, Congés, Livret BPJEPS &amp; Contrat CDI
                 </div>
               </div>
             </div>
@@ -183,7 +184,7 @@ export function DashboardView() {
               <PhoneCall className="w-5 h-5 text-blue-600 shrink-0" />
               <div>
                 <div className="text-xs font-bold text-slate-900 group-hover:text-blue-700">
-                  Téléphone Virtuel WebRTC (SIP.js)
+                  Téléphone Virtuel WebRTC (SIP.js / OVHcloud)
                 </div>
                 <div className="text-[11px] text-slate-500">
                   Hot-desking 1-clic &amp; Rotation 04 / 07
@@ -212,7 +213,8 @@ export function DashboardView() {
             <span className="text-xs font-medium text-emerald-700">postes actifs</span>
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            {clubCalls.length} appels journalisés · Rotation 04/07 active
+            {clubCalls.length} appels tracés · Trunk{' '}
+            {sipTrunkProvider === 'ovhcloud_sip' ? 'OVHcloud SIP' : 'Freebox Pro'}
           </div>
         </div>
 
@@ -221,7 +223,7 @@ export function DashboardView() {
           className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-colors cursor-pointer"
         >
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <span>Pipeline Prospects &amp; Essais</span>
+            <span>Pipeline CRM (Clause Art. 4)</span>
             <Users className="w-4 h-4 text-orange-600" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -233,7 +235,7 @@ export function DashboardView() {
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            {scheduledTrialsCount} séances planifiées · {conversionRate}% transfo
+            {scheduledTrialsCount} séances · Obj. 20 abos/mois ({conversionRate}% transfo)
           </div>
         </div>
 
@@ -242,7 +244,7 @@ export function DashboardView() {
           className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-colors cursor-pointer"
         >
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <span>Planning RH &amp; IDCC 2511</span>
+            <span>RH &amp; Contrat CDI IDCC 2511</span>
             <Calendar className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -252,7 +254,7 @@ export function DashboardView() {
             <span className="text-xs font-medium text-emerald-700">créneaux validés</span>
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            {employees.length} collaborateurs · Export Silae prêt
+            1 823,03 € brut (151,67h) · Export Silae prêt
           </div>
         </div>
 
@@ -335,7 +337,7 @@ export function DashboardView() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-orange-600" />
-                État Opérationnel des 2 Clubs
+                État Opérationnel des 2 Établissements C.FITNESS
               </h2>
               <button
                 onClick={() => setActiveSection('academy')}

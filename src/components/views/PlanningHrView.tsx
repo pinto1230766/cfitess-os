@@ -9,15 +9,22 @@ import {
   CheckCircle2,
   XCircle,
   FileSignature,
+  Scale,
+  Eye,
 } from 'lucide-react';
 import { ClubId, Shift } from '../../types/cfos';
 import {
+  CFITNESS_LEGAL_IDENTITY,
   computePayrollVariables,
+  computeProbationNoticePeriod,
   evaluateShiftCompliance,
+  formatClubName,
   formatLeaveStatus,
   formatPointageType,
+  generateOfficialCdiContractText,
   generateSilaeCsv,
 } from '../../domain/rules';
+import { ContractPreviewModal } from '../ContractPreviewModal';
 
 const WEEK_DATES = [
   { date: '2026-10-19', label: 'Lun 19/10' },
@@ -43,7 +50,7 @@ export function PlanningHrView() {
   } = useCfos();
 
   const [subTab, setSubTab] = useState<
-    'PLANNING' | 'POINTAGES' | 'CONGES' | 'COFFRE_RH' | 'SILAE'
+    'PLANNING' | 'CONTRAT_CDI_LEGAL' | 'POINTAGES' | 'CONGES' | 'COFFRE_RH' | 'SILAE'
   >('PLANNING');
 
   // Add Shift Form state
@@ -54,6 +61,10 @@ export function PlanningHrView() {
   const [breakMinutes, setBreakMinutes] = useState(60);
   const [shiftClub, setShiftClub] = useState<ClubId>('carre-de-soie');
   const [roleLabel, setRoleLabel] = useState('Accueil & Vente');
+
+  // Contract Generator / Viewer state
+  const [selectedContractEmpId, setSelectedContractEmpId] = useState<string>('emp-maxime');
+  const [modalContractText, setModalContractText] = useState<string | null>(null);
 
   const filteredEmployees = employees.filter(
     (e) =>
@@ -79,6 +90,21 @@ export function PlanningHrView() {
 
   const payrollRows = computePayrollVariables(employees, shifts);
   const silaeCsvText = generateSilaeCsv(payrollRows, '2026-10');
+
+  const selectedContractEmployee =
+    employees.find((e) => e.id === selectedContractEmpId) || employees[3] || employees[0];
+
+  const liveContractText = generateOfficialCdiContractText({
+    firstName: selectedContractEmployee.firstName,
+    lastName: selectedContractEmployee.lastName,
+    email: selectedContractEmployee.email,
+    phone: selectedContractEmployee.phone,
+    jobTitle: selectedContractEmployee.jobTitle,
+    clubId: selectedContractEmployee.clubId,
+    startDate: selectedContractEmployee.hireDate,
+    monthlyGrossEur:
+      selectedContractEmployee.monthlyGrossEur ?? CFITNESS_LEGAL_IDENTITY.salaireBrutMensuelEur,
+  });
 
   const handleAddShift = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +133,7 @@ export function PlanningHrView() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'EXPORT_PAIE_SILAE_CFITNESS_2025_05.csv';
+    a.download = 'EXPORT_PAIE_SILAE_CFITNESS_2026_10.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -118,19 +144,20 @@ export function PlanningHrView() {
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-            Modules M4 &amp; M4 bis · Remplacement Intégral Skello (Décision D7)
+            Modules M4 &amp; M4 bis (v1.2) · Modèle Officiel Contrat CDI C.FITNESS &amp; IDCC 2511
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-1">
-            Planning RH, Moteur Convention IDCC 2511, Pointages &amp; Coffre-Fort Salariés
+            Planning RH, Contrat CDI Officiel (1 823,03 € brut), Périodes d&apos;Essai &amp; Coffre-Fort
           </h1>
           <p className="text-xs text-slate-600 mt-1">
-            Contrôle temps réel Convention Collective Nationale du Sport (repos ≥ 11h, durée ≤ 10h, pause ≥ 20min dès 6h) · Export Silae 1-clic
+            SIRET <span className="font-mono font-semibold">{CFITNESS_LEGAL_IDENTITY.siret}</span> · NAF 9313Z · URSSAF 827000002188207761 · APICIL · REPAM · Clause CRM opposable &amp; Objectif 20 abonnements/mois
           </p>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
           {[
             { id: 'PLANNING', label: 'Planning & IDCC 2511' },
+            { id: 'CONTRAT_CDI_LEGAL', label: 'Modèle Contrat CDI & Essai (v1.2)' },
             { id: 'POINTAGES', label: `Pointages (${timeEntries.length})` },
             { id: 'CONGES', label: `Congés (${leaveRequests.length})` },
             { id: 'COFFRE_RH', label: `Coffre-fort RH (${hrDocuments.length})` },
@@ -168,7 +195,7 @@ export function PlanningHrView() {
           {/* Weekly Schedule Grid */}
           <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 overflow-x-auto">
             <h2 className="text-base font-bold text-slate-900 mb-4">
-              Grille Hebdomadaire Bi-Club (Semaine du 19 au 25 Mai)
+              Grille Hebdomadaire Bi-Club (Semaine du 19 au 25 Octobre 2026)
             </h2>
             <table className="w-full text-left border-collapse min-w-[680px]">
               <thead>
@@ -194,6 +221,11 @@ export function PlanningHrView() {
                           {emp.contractType} · {emp.weeklyContractHours}h/sem ·{' '}
                           {emp.clubId === 'carre-de-soie' ? 'CDS' : 'BEY'}
                         </div>
+                        {emp.monthlySubscriptionsTarget && (
+                          <div className="text-[10px] font-semibold text-orange-600 mt-0.5">
+                            Obj. CRM : {emp.monthlySubscriptionsActual ?? 0}/{emp.monthlySubscriptionsTarget} abos
+                          </div>
+                        )}
                       </td>
                       {WEEK_DATES.map((d) => {
                         const dayShifts = empShifts.filter((s) => s.date === d.date);
@@ -216,7 +248,7 @@ export function PlanningHrView() {
                                   </div>
                                   <div className="text-slate-600 truncate">{s.roleLabel}</div>
                                   <div className="text-[10px] text-slate-400">
-                                    {s.clubId === 'carre-de-soie' ? 'CDS' : 'BEY'} · Pause{' '}
+                                    {formatClubName(s.clubId, true)} · Pause{' '}
                                     {s.breakMinutes}m
                                   </div>
                                 </div>
@@ -382,6 +414,143 @@ export function PlanningHrView() {
         </div>
       )}
 
+      {subTab === 'CONTRAT_CDI_LEGAL' && (
+        <div className="space-y-6">
+          {/* Official Legal Identity & Clauses Card */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+              <div className="pb-3 border-b border-slate-100">
+                <div className="text-xs font-semibold uppercase text-orange-600">
+                  Données Juridiques Réelles C.FITNESS (M4 bis RH)
+                </div>
+                <h2 className="text-base font-bold text-slate-900 mt-0.5 flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-orange-600" />
+                  Identité Légale, Caisses &amp; Clauses Opposables
+                </h2>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">Raison Sociale :</span>
+                  <span className="font-bold text-slate-900">{CFITNESS_LEGAL_IDENTITY.raisonSociale}</span>
+                </div>
+                <div className="border-b border-slate-100 pb-2">
+                  <div className="text-slate-500">Siège Social :</div>
+                  <div className="font-semibold text-slate-900 mt-0.5">
+                    {CFITNESS_LEGAL_IDENTITY.siegeSocial}
+                  </div>
+                </div>
+                <div className="border-b border-slate-100 pb-2">
+                  <div className="text-slate-500">Établissement secondaire :</div>
+                  <div className="font-semibold text-slate-900 mt-0.5">
+                    {CFITNESS_LEGAL_IDENTITY.etablissementSecondaire}
+                  </div>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">SIRET &amp; Code NAF :</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {CFITNESS_LEGAL_IDENTITY.siret} · {CFITNESS_LEGAL_IDENTITY.codeNaf}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">URSSAF Rhône-Alpes :</span>
+                  <span className="font-mono font-semibold text-slate-900">
+                    827000002188207761
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">Retraite &amp; Prévoyance :</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    AGIRA Salariés (APICIL) · REPAM Lyon
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">Convention Collective :</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    Sport (IDCC 2511) · Employé, Non-cadre, Gr. 1
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span className="text-slate-500">Temps complet &amp; Salaire :</span>
+                  <span className="font-mono font-bold text-emerald-700">
+                    35,00 h/sem (151,67 h) · 1 823,03 € brut
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">Objectif Commercial :</span>
+                  <span className="font-bold text-orange-600">
+                    20 abonnements mensuels (Clause CRM opposable)
+                  </span>
+                </div>
+              </div>
+
+              {/* Probation Notice Delays Monitor */}
+              <div className="pt-3 border-t border-slate-200 space-y-2.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Suivi Périodes d&apos;Essai (2 mois renouv. 1 fois) &amp; Délais de Prévenance
+                </h3>
+                <div className="space-y-2">
+                  {filteredEmployees.map((emp) => {
+                    const prob = computeProbationNoticePeriod(
+                      emp.hireDate,
+                      '2026-10-23',
+                      emp.probationRenewed
+                    );
+                    return (
+                      <div
+                        key={emp.id}
+                        className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900">
+                            {emp.firstName} {emp.lastName}
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-600">
+                            Embauche : {emp.hireDate}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-700">{prob.explanation}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Official Contract Generator */}
+            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Générateur du Contrat de Travail CDI Officiel C.FITNESS
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Intègre la clause opposable de traçabilité CRM C.Fitness OS, l&apos;interdiction du portable personnel et la mention vidéosurveillance.
+                  </p>
+                </div>
+                <select
+                  value={selectedContractEmpId}
+                  onChange={(e) => setSelectedContractEmpId(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold bg-slate-50"
+                >
+                  {employees
+                    .filter((e) => e.role !== 'kiosque')
+                    .map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.firstName} {e.lastName} ({e.jobTitle})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[540px] overflow-y-auto">
+                {liveContractText}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
       {subTab === 'POINTAGES' && (
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-base font-bold text-slate-900 mb-4">
@@ -401,7 +570,7 @@ export function PlanningHrView() {
                       {formatPointageType(pt.type)}
                     </span>
                     <div className="text-slate-500 mt-0.5">
-                      Club {pt.clubId === 'carre-de-soie' ? 'Carré de Soie' : 'Beynost'} · Source :{' '}
+                      Club {formatClubName(pt.clubId)} · Source :{' '}
                       {pt.source}
                     </div>
                   </div>
@@ -487,7 +656,7 @@ export function PlanningHrView() {
             Coffre-Fort Numérique Salarié &amp; Signature Électronique Horodatée (M4 bis)
           </h2>
           <p className="text-xs text-slate-500 mb-4">
-            Chiffrement AES-256 au repos · Contrats, avenants, DPAE et bulletins de paie accessibles par chaque salarié depuis son mobile.
+            Chiffrement AES-256 au repos · Contrats CDI C.FITNESS (IDCC 2511 Gr. 1), DPAE URSSAF 818 651 317 00018 et bulletins de paie.
           </p>
           <div className="divide-y divide-slate-100 text-xs">
             {hrDocuments.map((doc) => {
@@ -511,7 +680,16 @@ export function PlanningHrView() {
                       · Catégorie : {doc.category} · Déposé le {doc.uploadedAt}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
+                    {doc.contractBodyText && (
+                      <button
+                        onClick={() => setModalContractText(doc.contractBodyText!)}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Lire le contrat
+                      </button>
+                    )}
                     {isSigned ? (
                       <span className="text-emerald-700 font-semibold flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4" />
@@ -542,7 +720,7 @@ export function PlanningHrView() {
                 Générateur d&apos;Export Comptable &amp; Paie Silae (M4.6)
               </h2>
               <p className="text-xs text-slate-500">
-                Calcul automatique des heures normales, heures supplémentaires 25%, majorations dimanche et heures de nuit (&gt;22h).
+                Calcul automatique des heures normales (base 151,67h / 1 823,03 € brut), heures supplémentaires 25%, majorations dimanche et heures de nuit (&gt;22h).
               </p>
             </div>
             <button
@@ -559,6 +737,11 @@ export function PlanningHrView() {
           </pre>
         </div>
       )}
+
+      <ContractPreviewModal
+        contractText={modalContractText}
+        onClose={() => setModalContractText(null)}
+      />
     </div>
   );
 }
