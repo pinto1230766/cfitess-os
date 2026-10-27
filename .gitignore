@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.dev.env.json
+.dev.pid
+.playwright-cli
+.aistudio
+.DS_Store
+*.log

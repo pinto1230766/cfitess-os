@@ -7,17 +7,20 @@ export type ShellMode = 'admin' | 'employe' | 'tablette' | 'telephone';
 
 export type AdminSection =
   | 'dashboard'
+  | 'orchestrator'
+  | 'my-day'
+  | 'planning-hr'
+  | 'devices'
   | 'telephony'
   | 'crm'
-  | 'planning-hr'
-  | 'academy'
   | 'ats'
-  | 'devices'
-  | 'governance';
+  | 'academy'
+  | 'governance'
+  | 'executive-dossier';
 
 export type ContractType = 'CDI' | 'CDD' | 'Apprentissage' | 'Extra';
 
-export type SipTrunkProvider = 'freebox_pro' | 'ovhcloud_sip';
+export type SipTrunkProvider = 'ovhcloud_sip' | 'ovhcloud_mobile_07';
 
 export interface Club {
   id: ClubId;
@@ -64,6 +67,7 @@ export interface Employee {
   medicalVisitDue?: string;
   contractEndDate?: string;
   tutorName?: string;
+  heitzEmployeeId?: number;
 }
 
 export interface Shift {
@@ -104,16 +108,35 @@ export interface LeaveRequest {
   validatedBy?: string;
 }
 
+export interface ElectronicSignatureProof {
+  proofId: string;
+  documentId: string;
+  employeeId: string;
+  signerFullName: string;
+  signerEmail: string;
+  signerPhone: string;
+  identityVerificationMethod: 'OTP_SMS_6_DIGITS + AUTH_SESSION_CFOS';
+  otpCodeVerified: string;
+  consentStatement: string;
+  signedAtIso: string;
+  documentSha256: string;
+  proofSealSha256: string;
+  userAgent: string;
+  clubIpAddress: string;
+  legalFramework: 'Code civil Art. 1366 & 1367 + Règlement UE eIDAS n°910/2014 (0 € / signature)';
+}
+
 export interface HRDocument {
   id: string;
   employeeId: string;
   title: string;
-  category: 'Contrat' | 'Bulletin Silae' | 'Diplôme BPJEPS' | 'Carte Pro' | 'DPAE' | 'Attestation';
+  category: 'Contrat' | 'Avenant' | 'Bulletin Silae' | 'Diplôme BPJEPS' | 'Carte Pro' | 'DPAE' | 'Attestation';
   uploadedAt: string;
   encryptedAtRest: boolean;
   signedStatus: 'Signé horodaté' | 'En attente signature' | 'Archivé coffre-fort';
   period?: string;
   contractBodyText?: string;
+  signatureProof?: ElectronicSignatureProof;
 }
 
 export type ProspectStage =
@@ -144,6 +167,8 @@ export interface Prospect {
   notes: string;
   createdAt: string;
   pendingSmsDraft?: string;
+  heitzPassageQrCode?: string;
+  heitzBookingId?: number;
 }
 
 export interface PhoneLine {
@@ -175,6 +200,9 @@ export interface CallLog {
   whisperScore?: number;
   whisperTranscript?: string;
   detectedObjection?: string;
+  ringoverTags?: string[];
+  callNote?: string;
+  voicemailDropped?: boolean;
 }
 
 export interface TrainingModule {
@@ -266,9 +294,12 @@ export interface Candidate {
 export interface HeitzMember {
   id: string;
   badgeCode: string;
+  rfidBluetoothEnabled?: boolean;
+  mywellnessMemberId?: string;
   firstName: string;
   lastName: string;
   phone: string;
+  email?: string;
   homeClubId: ClubId;
   subscriptionName: string;
   activeSubscription: boolean;
@@ -277,6 +308,11 @@ export interface HeitzMember {
   lastPassageAt?: string;
   technogymMoves30d: number;
   daysSinceLastWorkout: number;
+  technogymCheckupWellnessAge?: number;
+  technogymCheckupScore?: number;
+  loyaltyPoints?: number;
+  referralsCount?: number;
+  lastRewardLabel?: string;
 }
 
 export interface AccessEvent {
@@ -291,6 +327,9 @@ export interface AccessEvent {
   reason: string;
   smsRelanceSent: boolean;
   qrTokenGenerated: string;
+  readerType?: 'RFID_MIFARE_HEITZ' | 'BLUETOOTH_BLE_HEITZ' | 'QR_PASSAGE_CODE_HEITZ';
+  idClientHeitz?: number;
+  idCenterHeitz?: number;
 }
 
 export interface InBodyScan {
@@ -299,7 +338,13 @@ export interface InBodyScan {
   personType: 'Adhérent' | 'Prospect';
   clubId: ClubId;
   date: string;
-  deviceModel: 'InBody 570' | 'InBody 270';
+  deviceModel:
+    | 'Technogym Checkup (Mywellness)'
+    | 'Technogym Checkup — Carré de Soie (Mywellness)'
+    | 'Technogym Checkup — Beynost (Mywellness)';
+  mywellnessSynced?: boolean;
+  mywellnessDeepLink?: string;
+  wellnessAgeYears?: number;
   weightKg: number;
   skeletalMuscleMassKg: number;
   bodyFatPercent: number;
@@ -374,4 +419,134 @@ export interface BackupSnapshotEnvelope {
   };
   payload: Record<string, unknown>;
 }
+
+export interface HardwareCompatibilitySpec {
+  id: string;
+  domain:
+    | 'TELEPHONIE_ARCEP_SIP_GSM'
+    | 'PORTILLONS_HEITZ_WIEGAND'
+    | 'TABLETTES_KIOSQUES_POE'
+    | 'BIOMETRIE_INBODY_LB120'
+    | 'PARC_MACHINES_CARDIO_MUSCU';
+  title: string;
+  manufacturerModels: string;
+  physicalWiringAndProtocol: string;
+  hallucinationAvoided: string;
+  realWorldSolution: string;
+  regulatoryCompliance: string;
+  estimatedHardwareBudget: string;
+}
+
+export interface LegacySoftwareParityEntry {
+  id: string;
+  legacySoftwareName: string;
+  cfosModuleSection: AdminSection;
+  cfosModuleTitle: string;
+  visualCloneDescription: string;
+  collaboratorRoutinePreserved: string;
+  featuresImplemented: string[];
+  parityScorePct: 100;
+}
+
+export interface InBodyComputedSheet {
+  inBodyScore: number;
+  basalMetabolicRateKcal: number;
+  weightBarPct: number;
+  smmBarPct: number;
+  pbfBarPct: number;
+  smmStatus: 'Sous-optimal' | 'Normal' | 'Élevé (Athlétique)';
+  pbfStatus: 'Sous-optimal' | 'Normal' | 'Élevé';
+  segmentalLean: {
+    rightArmKg: number;
+    leftArmKg: number;
+    trunkKg: number;
+    rightLegKg: number;
+    leftLegKg: number;
+    balanceStatus: 'Équilibré';
+  };
+}
+
+export type UnifiedEventSource =
+  | 'cfitness_rh'
+  | 'mywellness_api'
+  | 'heitz_api'
+  | 'interne_club';
+
+export type UnifiedEventCategory =
+  | 'Horaire RH'
+  | 'Cours Mywellness'
+  | 'Bilan Technogym Checkup'
+  | 'RDV Heitz'
+  | 'Événement Interne';
+
+export interface UnifiedPlanningEvent {
+  id: string;
+  externalSourceId: string; // e.g. 'SH-101', 'MW-CRS-204', 'HZ-RDV-309', 'INT-401' (prevents duplication)
+  originSystem: UnifiedEventSource;
+  category: UnifiedEventCategory;
+  title: string;
+  subtitle: string;
+  clubId: ClubId;
+  employeeId: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  participantName?: string;
+  mywellnessMemberId?: string;
+  locationLabel: string;
+  writableViaApi: boolean;
+  lastSyncedAt: string;
+  placesMax?: number;
+  placesTaken?: number;
+  bookingQueueCount?: number;
+  attendanceRatePct?: number;
+}
+
+export interface CollaboratorTask {
+  id: string;
+  employeeId: string;
+  clubId: ClubId;
+  date: string;
+  dueTime: string;
+  title: string;
+  category: 'Accueil & TPV' | 'Relance CRM (ex-LEADS)' | 'Suivi Mywellness' | 'RH & Administratif';
+  priority: 'Haute' | 'Normale';
+  completed: boolean;
+  completedAt?: string;
+  linkedSection?: AdminSection;
+}
+
+export interface CollaboratorNotification {
+  id: string;
+  employeeId: string;
+  clubId: ClubId;
+  createdAt: string;
+  title: string;
+  message: string;
+  type: 'signature_requise' | 'rdv_heitz' | 'passage_club' | 'mywellness_checkup' | 'rh_planning';
+  read: boolean;
+  actionLabel?: string;
+  targetSection?: AdminSection;
+}
+
+export interface HeitzKpiTicket {
+  id: number;
+  number: string;
+  clubId: ClubId;
+  idCenter: 5052 | 5053; // 5052 = Carré de Soie, 5053 = Beynost
+  dateIso: string;
+  idEmpSeller: number;
+  sellerEmployeeId: string;
+  sellerName: string;
+  idClient: number;
+  clientName: string;
+  articleId: number;
+  articleCategory: 2 | 8; // 2 = Abonnement ACCESS, 8 = Pass / Article TPV
+  articleName: string;
+  paymentMethodName: 'PRELEVEMENT SEPA' | 'CB TPV' | 'ESPECES' | 'ANCV' | 'ACTOBI';
+  amountTtcEur: number;
+  silaeCommissionEur: number;
+  ticketState: 1;
+}
+
 

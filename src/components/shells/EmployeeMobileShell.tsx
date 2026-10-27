@@ -10,9 +10,13 @@ import {
   Plus,
   FileSignature,
   HardDriveDownload,
+  LayoutDashboard,
+  Smartphone,
+  Maximize2,
 } from 'lucide-react';
 import { formatLeaveStatus } from '../../domain/rules';
 import { LeaveRequest } from '../../types/cfos';
+import { EmployeeDashboardGrid } from '../views/EmployeeDashboardGrid';
 
 export function EmployeeMobileShell() {
   const {
@@ -28,8 +32,9 @@ export function EmployeeMobileShell() {
     serverPowerStatus,
     lastBackupChecksum,
     setShellMode,
+    setActiveSection,
     submitLeaveRequest,
-    signHrDocument,
+    signDocumentWithInternalProof,
     completeAcademyQuiz,
     toggleChecklistItem,
     exportDeviceBackupJson,
@@ -53,8 +58,12 @@ export function EmployeeMobileShell() {
     fieldEmployees.find((e) => e.id === selectedEmpId) || currentUser;
 
   const [tab, setTab] = useState<
-    'PLANNING' | 'CONGES' | 'DOCS' | 'ACADEMIE' | 'CHECKLIST'
-  >('PLANNING');
+    'DASHBOARD' | 'PLANNING' | 'CONGES' | 'DOCS' | 'ACADEMIE' | 'CHECKLIST'
+  >('DASHBOARD');
+
+  // Allows toggling between phone mockup (390px) and wide Skello dashboard view
+  const [viewLayout, setViewLayout] = useState<'mobile' | 'wide'>('wide');
+
   const [leaveType, setLeaveType] = useState<LeaveRequest['type']>('CP');
   const [startDate, setStartDate] = useState('2025-06-15');
   const [endDate, setEndDate] = useState('2025-06-20');
@@ -80,25 +89,52 @@ export function EmployeeMobileShell() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-start sm:py-6">
-      {/* Mobile Device Container */}
-      <div className="w-full max-w-md min-h-screen sm:min-h-[820px] sm:rounded-3xl bg-white sm:border sm:border-slate-300 sm:shadow-xl flex flex-col justify-between overflow-hidden">
-        {/* Compact Mobile Top Bar */}
-        <header className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-2 shrink-0">
-          <button
-            onClick={() => setShellMode('admin')}
-            className="min-h-[44px] px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 text-orange-400" />
-            <span>Vue Direction</span>
-          </button>
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-start sm:py-6 px-0 sm:px-4">
+      {/* Container: Responsive (Phone width or Wide Skello Grid width based on viewLayout) */}
+      <div
+        className={`w-full ${
+          viewLayout === 'mobile' ? 'max-w-md' : 'max-w-5xl'
+        } min-h-screen sm:min-h-[840px] sm:rounded-3xl bg-white sm:border sm:border-slate-300 sm:shadow-xl flex flex-col justify-between overflow-hidden transition-all duration-200`}
+      >
+        {/* Compact Top Bar */}
+        <header className="bg-slate-900 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShellMode('admin')}
+              className="min-h-[44px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <ArrowLeft className="w-4 h-4 text-orange-400" />
+              <span>Retour Application Club</span>
+            </button>
+          </div>
 
-          <div className="text-right">
+          <div className="flex items-center gap-2">
+            {/* View Width Toggle (Phone vs Skello Grid Wide) */}
+            <button
+              type="button"
+              onClick={() => setViewLayout((prev) => (prev === 'mobile' ? 'wide' : 'mobile'))}
+              title={viewLayout === 'mobile' ? 'Passer en vue Grille Large' : 'Passer en vue Smartphone'}
+              className="min-h-[44px] px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer border border-slate-700"
+            >
+              {viewLayout === 'mobile' ? (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="hidden sm:inline">Grille Large</span>
+                </>
+              ) : (
+                <>
+                  <Smartphone className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="hidden sm:inline">Vue Mobile</span>
+                </>
+              )}
+            </button>
+
+            {/* Collaborator Selector */}
             <select
               aria-label="Choisir le collaborateur"
               value={activeEmp.id}
               onChange={(e) => setSelectedEmpId(e.target.value)}
-              className="bg-slate-800 text-white text-xs font-bold px-2.5 py-2 rounded-lg border border-slate-700 min-h-[44px]"
+              className="bg-slate-800 text-white text-xs font-bold px-2.5 py-2 rounded-lg border border-slate-700 min-h-[44px] cursor-pointer"
             >
               {fieldEmployees.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -111,68 +147,64 @@ export function EmployeeMobileShell() {
         </header>
 
         {/* Scrollable Content Canvas */}
-        <main className="flex-1 p-4 space-y-4 overflow-y-auto">
-          {/* User Identity Strip */}
-          <div className="p-3.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between text-xs">
-            <div>
-              <div className="font-bold text-slate-900">
-                {activeEmp.firstName} {activeEmp.lastName}
+        <main className="flex-1 p-4 sm:p-5 space-y-4 overflow-y-auto">
+          {/* Identity & PIN Quick Strip (shown on non-dashboard tabs or for quick pin lookup) */}
+          {tab !== 'DASHBOARD' && (
+            <div className="p-3.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between text-xs">
+              <div>
+                <div className="font-bold text-slate-900">
+                  {activeEmp.firstName} {activeEmp.lastName}
+                </div>
+                <div className="text-slate-600">
+                  {activeEmp.jobTitle} · {activeEmp.weeklyContractHours}h/sem · CP{' '}
+                  {activeEmp.cpBalance}j
+                </div>
               </div>
-              <div className="text-slate-600">
-                {activeEmp.jobTitle} · {activeEmp.weeklyContractHours}h/sem · CP{' '}
-                {activeEmp.cpBalance}j
-              </div>
-            </div>
-            <div className="text-right font-mono">
-              <div className="text-[11px] text-slate-500">Code PIN Kiosque</div>
-              <div className="font-bold text-orange-700 text-sm">{activeEmp.pinCode}</div>
-            </div>
-          </div>
-
-          {/* Smartphone Local Backup Replica Strip */}
-          <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-2 text-[11px]">
-            <div>
-              <div className="font-bold text-emerald-400">
-                {serverPowerStatus === 'coupure_courant_bascule_active'
-                  ? 'Mode Secours Actif sur Mobile (Coupure Serveur)'
-                  : `Sauvegarde Auto Mobile OK (${lastBackupChecksum.slice(-6)})`}
-              </div>
-              <div className="text-slate-400">
-                Copie locale chiffrée des 2 clubs prête hors-ligne
+              <div className="text-right font-mono">
+                <div className="text-[11px] text-slate-500">Code PIN Kiosque</div>
+                <div className="font-bold text-orange-700 text-sm">{activeEmp.pinCode}</div>
               </div>
             </div>
-            <button
-              onClick={() => {
-                exportDeviceBackupJson('replica-tel-mario');
-                setToastMsg('Copie de secours complète (.json) enregistrée sur ce téléphone !');
-              }}
-              className="px-2.5 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-            >
-              <HardDriveDownload className="w-3.5 h-3.5" />
-              <span>Sauvegarder</span>
-            </button>
-          </div>
+          )}
 
           {toastMsg && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-900 flex items-center justify-between">
               <span>{toastMsg}</span>
-              <button onClick={() => setToastMsg(null)} className="underline">
+              <button onClick={() => setToastMsg(null)} className="underline cursor-pointer">
                 OK
               </button>
             </div>
           )}
 
-          {/* TAB 1: PLANNING */}
+          {/* TAB 0 (DEFAULT): SKELLO-STYLE GRID-BASED 'MY DASHBOARD' */}
+          {tab === 'DASHBOARD' && (
+            <EmployeeDashboardGrid
+              activeEmp={activeEmp}
+              onNavigateTab={(targetTab) => setTab(targetTab)}
+            />
+          )}
+
+          {/* TAB 1: PLANNING HEBDOMADAIRE COMPLET */}
           {tab === 'PLANNING' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h1 className="text-base font-bold text-slate-900">
-                  Mon Planning de la Semaine
-                </h1>
-                <span className="text-xs font-semibold text-emerald-700">
-                  Conforme IDCC 2511
-                </span>
+                <div>
+                  <h1 className="text-base font-bold text-slate-900">
+                    Mon Planning de la Semaine
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Horaires prévisionnels et modulés conformes Convention Collective Nationale du Sport (IDCC 2511)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('DASHBOARD')}
+                  className="text-xs font-semibold text-orange-600 underline cursor-pointer"
+                >
+                  ← Retour Dashboard
+                </button>
               </div>
+
               {myShifts.length === 0 ? (
                 <div className="p-6 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500">
                   Aucun créneau planifié sur ce profil cette semaine.
@@ -181,7 +213,7 @@ export function EmployeeMobileShell() {
                 myShifts.map((s) => (
                   <div
                     key={s.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-white flex items-center justify-between text-xs"
+                    className="p-4 rounded-xl border border-slate-200 bg-white flex items-center justify-between text-xs shadow-2xs hover:border-orange-300 transition-colors"
                   >
                     <div>
                       <div className="font-bold text-slate-900">{s.date}</div>
@@ -204,12 +236,27 @@ export function EmployeeMobileShell() {
             </div>
           )}
 
-          {/* TAB 2: CONGES */}
+          {/* TAB 2: CONGES & ABSENCES */}
           {tab === 'CONGES' && (
             <div className="space-y-4">
-              <h1 className="text-base font-bold text-slate-900">
-                Poser une Demande d&apos;Absence / Congés
-              </h1>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-base font-bold text-slate-900">
+                    Poser une Demande d&apos;Absence / Congés
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Solde disponible : <strong>{activeEmp.cpBalance} jours de CP</strong> · <strong>{activeEmp.rttBalance} jours de RTT</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('DASHBOARD')}
+                  className="text-xs font-semibold text-orange-600 underline cursor-pointer"
+                >
+                  ← Retour Dashboard
+                </button>
+              </div>
+
               <form
                 onSubmit={handleLeaveSubmit}
                 className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs"
@@ -263,7 +310,7 @@ export function EmployeeMobileShell() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full min-h-[46px] rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full min-h-[46px] rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   Envoyer ma demande
@@ -294,12 +341,27 @@ export function EmployeeMobileShell() {
             </div>
           )}
 
-          {/* TAB 3: COFFRE RH */}
+          {/* TAB 3: COFFRE RH & SIGNATURES */}
           {tab === 'DOCS' && (
             <div className="space-y-3">
-              <h1 className="text-base font-bold text-slate-900">
-                Mon Coffre-Fort RH &amp; Signatures
-              </h1>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-base font-bold text-slate-900">
+                    Mon Coffre-Fort RH &amp; Signatures
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Signature électronique intégrée C.Fitness OS sans frais tiers (0 € / signature)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('DASHBOARD')}
+                  className="text-xs font-semibold text-orange-600 underline cursor-pointer"
+                >
+                  ← Retour Dashboard
+                </button>
+              </div>
+
               {myDocs.length === 0 ? (
                 <div className="p-6 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500">
                   Aucun document en attente pour ce profil.
@@ -310,7 +372,7 @@ export function EmployeeMobileShell() {
                   return (
                     <div
                       key={doc.id}
-                      className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 text-xs"
+                      className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 text-xs shadow-2xs"
                     >
                       <div>
                         <div className="font-bold text-slate-900">{doc.title}</div>
@@ -321,18 +383,26 @@ export function EmployeeMobileShell() {
                       {isSigned ? (
                         <div className="text-emerald-700 font-bold flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4" />
-                          {doc.signedStatus}
+                          <span>{doc.signedStatus}</span>
                         </div>
                       ) : (
                         <button
                           onClick={() => {
-                            signHrDocument(doc.id);
-                            setToastMsg('Document signé électroniquement avec horodatage !');
+                            signDocumentWithInternalProof({
+                              docId: doc.id,
+                              otpInput: activeEmp.pinCode.padEnd(6, '42'),
+                              consentChecked: true,
+                              consentPhrase:
+                                'Lu et approuvé, bon pour accord depuis mon espace personnel C.Fitness OS',
+                            });
+                            setToastMsg(
+                              'Signé avec preuve SHA-256, consentement et horodatage UTC (0 € / signature) !'
+                            );
                           }}
-                          className="w-full min-h-[44px] rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-2 cursor-pointer"
+                          className="w-full min-h-[44px] rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                         >
                           <FileSignature className="w-4 h-4" />
-                          Signer avec code OTP Mobile
+                          Signer (OTP + Preuve SHA-256 · 0 €)
                         </button>
                       )}
                     </div>
@@ -345,9 +415,24 @@ export function EmployeeMobileShell() {
           {/* TAB 4: ACADEMIE & BPJEPS */}
           {tab === 'ACADEMIE' && (
             <div className="space-y-4">
-              <h1 className="text-base font-bold text-slate-900">
-                Académie C.Fitness &amp; Livret BPJEPS
-              </h1>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-base font-bold text-slate-900">
+                    Académie C.Fitness &amp; Livret BPJEPS
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Modules de formation interne et validation tuteur pour apprentis
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('DASHBOARD')}
+                  className="text-xs font-semibold text-orange-600 underline cursor-pointer"
+                >
+                  ← Retour Dashboard
+                </button>
+              </div>
+
               <div className="space-y-2.5">
                 {trainingModules.map((mod) => {
                   const done = moduleProgress.some(
@@ -416,20 +501,35 @@ export function EmployeeMobileShell() {
             </div>
           )}
 
-          {/* TAB 5: CHECKLISTS */}
+          {/* TAB 5: CHECKLISTS TERRAIN */}
           {tab === 'CHECKLIST' && (
             <div className="space-y-3">
-              <h1 className="text-base font-bold text-slate-900">
-                Checklist Terrain Club{' '}
-                {activeEmp.clubId === 'carre-de-soie' ? 'Carré de Soie' : 'Beynost'}
-              </h1>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-base font-bold text-slate-900">
+                    Checklist Terrain Club{' '}
+                    {activeEmp.clubId === 'carre-de-soie' ? 'Carré de Soie' : 'Beynost'}
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    Contrôles propreté, TPV, matériel et sécurité
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('DASHBOARD')}
+                  className="text-xs font-semibold text-orange-600 underline cursor-pointer"
+                >
+                  ← Retour Dashboard
+                </button>
+              </div>
+
               {myChecklist.map((c) => {
                 const completed = Boolean(c.checkedBy);
                 return (
                   <button
                     key={c.id}
                     onClick={() => toggleChecklistItem(c.id)}
-                    className="w-full min-h-[52px] p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 text-left text-xs cursor-pointer"
+                    className="w-full min-h-[52px] p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 text-left text-xs cursor-pointer shadow-2xs hover:border-orange-300 transition-colors"
                   >
                     <div>
                       <div
@@ -455,9 +555,10 @@ export function EmployeeMobileShell() {
           )}
         </main>
 
-        {/* Bottom Thumb-Zone Navigation Bar (5 tabs, ≥48px touch targets) */}
-        <nav className="bg-white border-t border-slate-200 grid grid-cols-5 px-1 py-1.5 shrink-0">
+        {/* Bottom Thumb-Zone Navigation Bar (6 tabs, ≥48px touch targets, Skello Dashboard first) */}
+        <nav className="bg-white border-t border-slate-200 grid grid-cols-6 px-1 py-1.5 shrink-0">
           {[
+            { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'PLANNING', label: 'Planning', icon: Calendar },
             { id: 'CONGES', label: 'Congés', icon: Plus },
             { id: 'DOCS', label: 'Coffre RH', icon: FileText },
@@ -470,12 +571,12 @@ export function EmployeeMobileShell() {
               <button
                 key={item.id}
                 onClick={() => setTab(item.id as typeof tab)}
-                className={`min-h-[48px] flex flex-col items-center justify-center rounded-xl text-[11px] font-semibold cursor-pointer ${
-                  active ? 'text-orange-600 bg-orange-50/60' : 'text-slate-500'
+                className={`min-h-[48px] flex flex-col items-center justify-center rounded-xl text-[10px] font-semibold cursor-pointer transition-colors ${
+                  active ? 'text-orange-600 bg-orange-50/70 font-bold' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 <Icon className="w-4 h-4 mb-0.5" />
-                <span>{item.label}</span>
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}

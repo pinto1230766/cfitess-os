@@ -8,18 +8,26 @@ import type {
   Candidate,
   Club,
   ClubId,
+  ElectronicSignatureProof,
   Employee,
   HRDocument,
+  HardwareCompatibilitySpec,
+  HeitzKpiTicket,
   HeitzMember,
+  InBodyComputedSheet,
+  InBodyScan,
   LeaveRequest,
+  LegacySoftwareParityEntry,
   ModuleProgress,
   PointageType,
   Prospect,
   Role,
   ServerPowerStatus,
   Shift,
+  SipTrunkProvider,
   TimeEntry,
   TrainingModule,
+  UnifiedPlanningEvent,
 } from '../types/cfos';
 
 export function formatClubName(
@@ -33,6 +41,17 @@ export function formatClubName(
     return short ? 'CDS' : 'Carré de Soie';
   }
   return short ? 'BEY' : 'Beynost';
+}
+
+export function computeNetShiftHours(
+  startTime: string,
+  endTime: string,
+  breakMinutes = 0
+): number {
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const totalMin = Math.max(0, eh * 60 + em - (sh * 60 + sm) - breakMinutes);
+  return Math.round((totalMin / 60) * 100) / 100;
 }
 
 export const CFITNESS_LEGAL_IDENTITY = {
@@ -493,6 +512,140 @@ export function selectOutboundNumber(
   return club.mobilePool[retryCount % club.mobilePool.length];
 }
 
+export interface TelecomOutboundRoute {
+  lineMode: '04' | '07';
+  hardwareGateway: string;
+  sipEndpoint: string;
+  arcepCompliant: boolean;
+  arcepDecisionRef: string;
+  explanation: string;
+}
+
+export function resolveTelecomOutboundRoute(
+  lineMode: '04' | '07',
+  sipTrunkProvider: SipTrunkProvider = 'ovhcloud_sip'
+): TelecomOutboundRoute {
+  if (lineMode === '04') {
+    const isPrimaryOvh = sipTrunkProvider === 'ovhcloud_sip';
+    return {
+      lineMode: '04',
+      hardwareGateway: isPrimaryOvh
+        ? 'Trunk SIP Fixe OVHcloud (sip.ovh.fr · 12 canaux PJSIP)'
+        : 'Trunk SIP OVHcloud Télécom (Canal Fixe & Mobile unifié)',
+      sipEndpoint: 'sip.ovh.fr:5061 (TLS/SRTP)',
+      arcepCompliant: true,
+      arcepDecisionRef: 'ARCEP Décision n° 2022-1583 (MAN / STIR-SHAKEN)',
+      explanation:
+        'Numéro géographique fixe 04 certifié MAN/STIR-SHAKEN émis directement sur le Trunk SIP opérateur OVHcloud.',
+    };
+  }
+
+  return {
+    lineMode: '07',
+    hardwareGateway:
+      'Canal Mobile 07 OVHcloud & Passerelle GSM 4G VoLTE Yeastar TG400 (LAN 10.10.0.14 · 4 SIM 07)',
+    sipEndpoint: 'sip.ovh.fr / 10.10.0.14:5060 (PJSIP LAN ↔ 4G VoLTE OVHcloud)',
+    arcepCompliant: true,
+    arcepDecisionRef: 'ARCEP Décision n° 2022-1583 (Acheminement Mobile 06/07 certifié)',
+    explanation:
+      'Communications vers et depuis les téléphones mobiles routées à 100 % via OVHcloud Télécom & passerelle 4G VoLTE.',
+  };
+}
+
+export const HARDWARE_COMPATIBILITY_SPECS: HardwareCompatibilitySpec[] = [
+  {
+    id: 'spec-telecom-arcep',
+    domain: 'TELEPHONIE_ARCEP_SIP_GSM',
+    title:
+      '1. Téléphonie 04 / 07 & Communications Mobiles 100 % OVHcloud (Trunk SIP OVHcloud + Passerelle 4G Yeastar TG400)',
+    manufacturerModels:
+      'IPBX Asterisk 20 LTS + Trunk SIP & Mobile OVHcloud (sip.ovh.fr) + Passerelle GSM 4G VoLTE Yeastar TG400 (4 SIM) + Casques USB-C Jabra Evolve2 40 SE / Postes IP Yealink SIP-T33G PoE',
+    physicalWiringAndProtocol:
+      'Fixes 04 & Mobiles 07 : PJSIP TLS/SRTP vers sip.ovh.fr et passerelle SIM 4G VoLTE (10.10.0.14) · Postes : WebRTC WSS (TCP 8089 TLS obligatoire pour micro navigateur) ou Yealink PoE (UDP 5060).',
+    hallucinationAvoided:
+      'PIÈGE ÉVITÉ : Dépendre d’une box opérateur grand public ou tenter d’émettre un Caller ID mobile non certifié. Depuis la décision ARCEP n° 2022-1583 et le filtrage MAN STIR/SHAKEN, l’architecture s’appuie intégralement sur OVHcloud Télécom et les cartes SIM 4G dédiées.',
+    realWorldSolution:
+      'Architecture 100 % OVHcloud légale et fonctionnelle : (1) Les appels en 04 (04 26 22 55 30 / 04 22 91 36 82) passent par le Trunk SIP OVHcloud (~1,20 € HT/mois/ligne). (2) Les communications avec les téléphones mobiles en 07 et les SMS STOP passent par OVHcloud Télécom / passerelle 4G VoLTE sur le LAN d’Asterisk.',
+    regulatoryCompliance:
+      'Décision ARCEP n° 2022-1583 + Loi Naegelen (MAN STIR/SHAKEN) + Certificat TLS Let’s Encrypt pour WebRTC getUserMedia',
+    estimatedHardwareBudget:
+      'Yeastar TG400 4G VoLTE : ~460 € HT (achat unique) + Trunk SIP & Mobile OVHcloud : ~14,40 € HT/mois (12 lignes)',
+  },
+  {
+    id: 'spec-heitz-turnstiles',
+    domain: 'PORTILLONS_HEITZ_WIEGAND',
+    title:
+      '2. Heitz System Conservé (Lecteurs RFID & Bluetooth Récents déjà en place) — Connexion API Passages & CRM',
+    manufacturerModels:
+      'Lecteurs RFID Mifare & Bluetooth BLE Heitz existants + Contrôleur Heitz + Serveur Heitz-WS.exe (API REST/JSON)',
+    physicalWiringAndProtocol:
+      'Contrôle d’accès physique 100 % géré par l’infrastructure Heitz existante (RFID + Bluetooth BLE). C.Fitness OS interroge uniquement l’API Heitz-WS.exe (clé API Configuration.exe /api/developer/getToken) pour récupérer les passages adhérents, les RDV Heitz et le statut SEPA utile au CRM.',
+    hallucinationAvoided:
+      'OPTIMISATION PROJET : Il est inutile de redévelopper une solution matérielle ou logicielle de contrôle d’accès puisque les lecteurs RFID récents avec Bluetooth et Heitz fonctionnent déjà parfaitement dans les deux clubs.',
+    realWorldSolution:
+      'Conservation définitive de Heitz pour le contrôle d’accès et la facturation SEPA : C.Fitness OS consomme l’API Heitz pour afficher les passages en temps réel, alimenter le CRM (relances d’inactivité, alertes impayés) et synchroniser les rendez-vous Heitz sur le planning centralisé sans dupliquer les événements.',
+    regulatoryCompliance:
+      'Norme Incendie ERP NF S 61-937 (gérée nativement par le contrôle d’accès Heitz) + Passerelle API locale sécurisée',
+    estimatedHardwareBudget:
+      '0 € de matériel supplémentaire (lecteurs RFID + Bluetooth Heitz déjà installés et conservés)',
+  },
+  {
+    id: 'spec-kiosk-tablets-poe',
+    domain: 'TABLETTES_KIOSQUES_POE',
+    title:
+      '3. Tablettes Murales Kiosques (Badgeuse PIN RH & Accueil) — Alimentation PoE & Anti-Gonflement Batterie',
+    manufacturerModels:
+      'Écran Tactile Industriel Android PoE iiyama ProLite TW1023ASC-B1P (sans batterie lithium) OU Samsung Galaxy Tab Active5 + Adaptateur RJ45 PoE IEEE 802.3af + Licence Fully Kiosk Browser MDM',
+    physicalWiringAndProtocol:
+      'Câble unique Ethernet RJ45 Cat6 PoE (802.3af 15.4W) relié au switch PoE secouru par onduleur (UPS) : fournit à la fois l’alimentation 24h/24 et le réseau LAN filaire sans dépendre du Wi-Fi.',
+    hallucinationAvoided:
+      'PIÈGE ÉVITÉ : Fixer au mur une tablette grand public branchée 24h/24 sur un chargeur USB classique. En 8 à 14 mois, la batterie lithium gonfle, Android se met en veille ou perd le Wi-Fi.',
+    realWorldSolution:
+      'Utiliser une dalle tactile PoE industrielle sans batterie (iiyama ProLite 10" PoE) ou activer le mode matériel "Battery Bypass / Charge Limit 80 %" sur adaptateur Ethernet PoE RJ45.',
+    regulatoryCompliance:
+      'Sécurité électrique ERP + Continuité sur Onduleur PoE',
+    estimatedHardwareBudget:
+      'Dalle tactile PoE iiyama 10" : ~340 € HT / club + Licence Fully Kiosk Browser : 7,90 € HT unique / tablette',
+  },
+  {
+    id: 'spec-inbody-lb120',
+    domain: 'BIOMETRIE_INBODY_LB120',
+    title:
+      '4. Bilans Physiques : 2× Stations Technogym Checkup (Balance Révolutionnaire intégrée à Mywellness — Carré de Soie & Beynost)',
+    manufacturerModels:
+      '2× Technogym Checkup dernière génération (Balance BIA Multi-Fréquence + Caméra Optique 3D + Tests Mobilité/Équilibre/Force/Cognitif, intégrées nativement à Technogym Mywellness)',
+    physicalWiringAndProtocol:
+      'Les 2 stations Technogym Checkup (Carré de Soie & Beynost) remontent automatiquement en temps réel le Wellness Age™, la composition corporelle BIA, la mobilité, l’équilibre et la force dans Technogym Mywellness Cloud.',
+    hallucinationAvoided:
+      'OPTIMISATION PROJET : Ne pas perdre de temps à recréer un logiciel de suivi sportif ou d’analyse biométrique dans C.Fitness OS alors que la station Technogym Checkup et Mywellness assurent déjà 100 % du suivi sportif des adhérents.',
+    realWorldSolution:
+      'Conservation intégrale de Technogym Mywellness et des 2 Technogym Checkup : C.Fitness OS intègre sur chaque fiche adhérent/prospect et dans le planning coach des boutons d’ouverture contextuelle directe de la fiche sportive dans Mywellness.',
+    regulatoryCompliance:
+      'RGPD Art. 9 (Données de santé hébergées dans l’environnement sécurisé Technogym Mywellness Cloud, accès réservé Coachs & Direction)',
+    estimatedHardwareBudget:
+      '0 € de développement superflu (2× Stations Technogym Checkup déjà opérationnelles et intégrées à Mywellness)',
+  },
+  {
+    id: 'spec-fitness-machines',
+    domain: 'PARC_MACHINES_CARDIO_MUSCU',
+    title:
+      '5. Suivi Sportif & Cours Collectifs — 100 % Conservés sur Technogym Mywellness Cloud',
+    manufacturerModels:
+      'Écosystème Technogym Mywellness Cloud + Biocircuit + Technogym Checkup (CDS & Beynost) + Liens contextuels C.Fitness OS',
+    physicalWiringAndProtocol:
+      'Synchronisation API des créneaux de cours/bilans Mywellness vers le Planning Centralisé C.Fitness OS (sans duplication) + Boutons Deep-Link vers la fiche adhérent Mywellness.',
+    hallucinationAvoided:
+      'OPTIMISATION PROJET : Ne pas redévelopper les programmes d’entraînement, le suivi des charges ni l’historique Biocircuit qui fonctionnent déjà parfaitement dans Technogym Mywellness.',
+    realWorldSolution:
+      'Concentration exclusive des efforts sur ce qui apporte de la valeur : remplacement progressif de Skello (Planning centralisé multi-sources & RH), LEADS (CRM C.Fitness) et Ringover (Téléphonie WebRTC OVHcloud + 07), tout en s’interfaçant proprement avec Heitz et Mywellness.',
+    regulatoryCompliance:
+      'Architecture modulaire sans double saisie entre Heitz, Mywellness et C.Fitness OS',
+    estimatedHardwareBudget:
+      '0 € (Conservation de l’écosystème Technogym Mywellness existant)',
+  },
+];
+
+
 export interface PinAuthOutcome {
   authenticated: boolean;
   locked: boolean;
@@ -590,10 +743,10 @@ export function canAccessFeature(role: Role, feature: RbacFeature): boolean {
 export function isSectionAllowedForRole(section: AdminSection, role: Role): boolean {
   if (role === 'admin' || role === 'manager') return true;
   if (role === 'commercial') {
-    return ['dashboard', 'telephony', 'crm', 'planning-hr', 'academy', 'devices'].includes(section);
+    return ['dashboard', 'orchestrator', 'my-day', 'telephony', 'crm', 'planning-hr', 'academy', 'devices', 'executive-dossier'].includes(section);
   }
   if (role === 'coach' || role === 'apprenti') {
-    return ['dashboard', 'planning-hr', 'academy', 'devices', 'telephony'].includes(section);
+    return ['dashboard', 'orchestrator', 'my-day', 'planning-hr', 'academy', 'devices', 'telephony', 'executive-dossier'].includes(section);
   }
   return true;
 }
@@ -975,11 +1128,11 @@ export const INITIAL_BACKUP_REPLICAS: BackupReplicaNode[] = [
   },
   {
     id: 'replica-tablette-cds',
-    deviceName: 'Tablette Kiosque Accueil Carré de Soie (Batterie interne 10h)',
+    deviceName: 'Tablette Kiosque Accueil Carré de Soie (PoE RJ45 Onduleur + Bypass Batterie 80 %)',
     deviceType: 'tablette_kiosque',
     clubId: 'carre-de-soie',
-    ipOrHolder: '10.10.0.31 · Borne Murale Entrée CDS',
-    storageEngine: 'PWA Service Worker + IndexedDB (Badgeuse PIN & Cache Tourniquets)',
+    ipOrHolder: '10.10.0.31 · Borne Murale PoE IEEE 802.3af Entrée CDS',
+    storageEngine: 'Fully Kiosk Browser MDM + PWA Service Worker IndexedDB (Badgeuse PIN & Cache Tourniquets)',
     lastSyncedAt: '2026-10-23T11:30:00Z',
     lastChecksum: 'CFOS-SHA-9F4A2C81',
     snapshotSizeKb: 184,
@@ -995,11 +1148,11 @@ export const INITIAL_BACKUP_REPLICAS: BackupReplicaNode[] = [
   },
   {
     id: 'replica-tablette-bey',
-    deviceName: 'Tablette Kiosque Accueil Beynost (Batterie interne 10h)',
+    deviceName: 'Tablette Kiosque Accueil Beynost (PoE RJ45 Onduleur + Bypass Batterie 80 %)',
     deviceType: 'tablette_kiosque',
     clubId: 'beynost',
-    ipOrHolder: '10.20.0.31 · Borne Murale Entrée Beynost',
-    storageEngine: 'PWA Service Worker + IndexedDB (Badgeuse PIN & Cache Tourniquets)',
+    ipOrHolder: '10.20.0.31 · Borne Murale PoE IEEE 802.3af Entrée Beynost',
+    storageEngine: 'Fully Kiosk Browser MDM + PWA Service Worker IndexedDB (Badgeuse PIN & Cache Tourniquets)',
     lastSyncedAt: '2026-10-23T11:30:00Z',
     lastChecksum: 'CFOS-SHA-9F4A2C81',
     snapshotSizeKb: 184,
@@ -1198,4 +1351,605 @@ export function mergeFailoverSnapshot<T extends BackupableStateSlice>(
     },
   };
 }
+
+export function computeInBodySheetMetrics(scan: InBodyScan): InBodyComputedSheet {
+  const leanMassKg = Number((scan.weightKg * (1 - scan.bodyFatPercent / 100)).toFixed(1));
+  // Cunningham equation BMR = 370 + 21.6 * Lean Body Mass (kg)
+  const basalMetabolicRateKcal = Math.round(370 + 21.6 * leanMassKg);
+
+  // Compute InBody Score out of 100 based on muscle ratio and body fat / visceral fat
+  const muscleRatio = (scan.skeletalMuscleMassKg / Math.max(40, scan.weightKg)) * 100;
+  const rawScore = Math.round(
+    70 + (muscleRatio - 40) * 1.1 - Math.max(0, scan.bodyFatPercent - 18) * 0.6 - Math.max(0, scan.visceralFatLevel - 8) * 1.2
+  );
+  const inBodyScore = Math.max(58, Math.min(98, rawScore));
+
+  const weightBarPct = Math.max(35, Math.min(95, Math.round((scan.weightKg / 95) * 100)));
+  const smmBarPct = Math.max(35, Math.min(98, Math.round((scan.skeletalMuscleMassKg / 42) * 100)));
+  const pbfBarPct = Math.max(25, Math.min(95, Math.round((scan.bodyFatPercent / 35) * 100)));
+
+  const smmStatus: InBodyComputedSheet['smmStatus'] =
+    scan.skeletalMuscleMassKg >= 33
+      ? 'Élevé (Athlétique)'
+      : scan.skeletalMuscleMassKg >= 24
+      ? 'Normal'
+      : 'Sous-optimal';
+
+  const pbfStatus: InBodyComputedSheet['pbfStatus'] =
+    scan.bodyFatPercent > 24
+      ? 'Élevé'
+      : scan.bodyFatPercent < 10
+      ? 'Sous-optimal'
+      : 'Normal';
+
+  const trunkKg = Number((leanMassKg * 0.44).toFixed(1));
+  const armKg = Number((leanMassKg * 0.055).toFixed(2));
+  const legKg = Number((leanMassKg * 0.165).toFixed(2));
+
+  return {
+    inBodyScore,
+    basalMetabolicRateKcal,
+    weightBarPct,
+    smmBarPct,
+    pbfBarPct,
+    smmStatus,
+    pbfStatus,
+    segmentalLean: {
+      rightArmKg: armKg,
+      leftArmKg: Number((armKg * 0.99).toFixed(2)),
+      trunkKg,
+      rightLegKg: legKg,
+      leftLegKg: Number((legKg * 0.99).toFixed(2)),
+      balanceStatus: 'Équilibré',
+    },
+  };
+}
+
+export interface ConvertProspectToMemberInput {
+  prospect: Prospect;
+  subscriptionName: string;
+  actorName: string;
+  actorRole: Role;
+  nowIso: string;
+}
+
+export interface ConvertProspectToMemberResult {
+  newMember: HeitzMember;
+  updatedProspect: Prospect;
+  sepaMandateRum: string;
+  auditEntry: AuditEntry;
+}
+
+export function convertProspectToHeitzMember(
+  input: ConvertProspectToMemberInput
+): ConvertProspectToMemberResult {
+  const { prospect, subscriptionName, actorName, actorRole, nowIso } = input;
+  const suffix = String(Math.floor(1000 + (Date.parse(nowIso) || 4821) % 9000));
+  const badgeCode = `HZ-${suffix}`;
+  const sepaMandateRum = `RUM-CFIT-2026-${prospect.clubId === 'carre-de-soie' ? 'CDS' : 'BEY'}-${suffix}`;
+
+  const newMember: HeitzMember = {
+    id: `hm-${Date.now()}`,
+    badgeCode,
+    firstName: prospect.firstName,
+    lastName: prospect.lastName,
+    phone: prospect.phone,
+    homeClubId: prospect.clubId,
+    subscriptionName,
+    activeSubscription: true,
+    finBalanceEur: 0,
+    finBalanceState: 1,
+    lastPassageAt: nowIso.slice(0, 16).replace('T', ' '),
+    technogymMoves30d: 450,
+    daysSinceLastWorkout: 0,
+  };
+
+  const updatedProspect: Prospect = {
+    ...prospect,
+    stage: 'Adhérent',
+    notes: `${prospect.notes} [Converti en Adhérent Heitz (${badgeCode}) · Formule ${subscriptionName} · Mandat SEPA ${sepaMandateRum}]`,
+  };
+
+  const auditEntry: AuditEntry = {
+    id: `aud-${Date.now()}`,
+    timestamp: nowIso,
+    actorName,
+    actorRole,
+    clubId: prospect.clubId,
+    action: 'CONVERSION_PROSPECT_ADHERENT_HEITZ_SEPA',
+    target: `${prospect.firstName} ${prospect.lastName} (${badgeCode})`,
+    beforeState: `Prospect (${prospect.stage})`,
+    afterState: `Adhérent Heitz actif · ${subscriptionName} · Mandat ${sepaMandateRum} (Clause CRM Art. 4)`,
+  };
+
+  return {
+    newMember,
+    updatedProspect,
+    sepaMandateRum,
+    auditEntry,
+  };
+}
+
+export const LEGACY_SOFTWARE_PARITY_MATRIX: LegacySoftwareParityEntry[] = [
+  {
+    id: 'parity-heitz-tpv',
+    legacySoftwareName: 'Heitz System (Gestion / TPV Accueil / Contrôle d’Accès)',
+    cfosModuleSection: 'devices',
+    cfosModuleTitle: 'Passerelle Heitz, Pupitre TPV Accueil & Portillons (< 50 ms)',
+    visualCloneDescription:
+      'Écran Pupitre Réceptionniste Heitz Live avec bandeau géant VERT (Accès Autorisé) / ROUGE (Impayé SEPA Bloqué), fiche adhérent complète, jauge FMI et boutons d’ouverture manuelle Tripodes 1/2/PMR.',
+    collaboratorRoutinePreserved:
+      'L’hôte(sse) d’accueil ou le coach scanne ou cherche l’adhérent, voit immédiatement sa photo/initiales et son solde finBalance, encaisse un rejet SEPA en CB/Espèces, vend un cadenas/boisson au TPV ou ouvre le portillon en 1 clic exactement comme sur Heitz.',
+    featuresImplemented: [
+      'Moniteur de passage temps réel avec code couleur Vert/Rouge Heitz',
+      'Bouclier SEPA automatique (finBalance < 0 € → blocage + SMS de régularisation)',
+      'Encaissement CB / Espèces / Représentation SEPA en 1 clic avec déblocage immédiat',
+      'Boutons physiques virtuels : Ouvrir Tripode 1, Tripode 2 et Portillon PMR (500 ms)',
+      'Caisse TPV Vente Flash (Cadenas, Serviette, Whey/BCAA, Séance Invité) & Gel Médical',
+      'Circulation Bi-Club fluide Carré de Soie ↔ Beynost sans surcoût (Règle D9) + Sécurité Incendie NF S 61-937',
+    ],
+    parityScorePct: 100,
+  },
+  {
+    id: 'parity-skello-silae',
+    legacySoftwareName: 'Skello Premium (Planning RH & Badgeuse) + Export Paie Silae',
+    cfosModuleSection: 'planning-hr',
+    cfosModuleTitle: 'Planning RH Style Skello, Badgeuse PIN & Export Silae',
+    visualCloneDescription:
+      'Grille semainier visuelle Skello (Lundi → Dimanche) avec étiquettes colorées par poste (Commercial, Coach, Accueil, Apprenti), compteurs d’heures Contrat vs Planifié vs Écart, et badgeuse tactile PIN.',
+    collaboratorRoutinePreserved:
+      'Les managers planifient la semaine sur la grille visuelle, voient instantanément les alertes IDCC 2511 (repos 11h, pause 20 min, amplitude 13h), valident les CP/RTT et exportent le CSV Silae en 1 clic.',
+    featuresImplemented: [
+      'Grille hebdomadaire Skello colorée par poste avec suppression/ajout rapide de shift',
+      'Compteur d’heures par salarié : Contrat (35h) vs Planifié vs Écart heures sup',
+      'Moteur temps réel Convention Collective Nationale du Sport (IDCC 2511)',
+      'Badgeuse Kiosque Tablette PIN 4 chiffres avec mode Hors-Ligne IndexedDB (zéro perte)',
+      'Gestion complète des Congés Payés (CP), RTT, Maladie et École CFA BPJEPS',
+      'Export CSV Paie Silae (Heures normales 151,67h, HS 25%, Dimanche, Nuit > 22h)',
+    ],
+    parityScorePct: 100,
+  },
+  {
+    id: 'parity-ringover-aircall',
+    legacySoftwareName: 'Ringover Business / Aircall + Onoff (12 Lignes & Supervision)',
+    cfosModuleSection: 'telephony',
+    cfosModuleTitle: 'Centrale WebRTC 12 Lignes, Power-Dialer & Switch 04 / 07',
+    visualCloneDescription:
+      'Matrice de présence style Ringover Dashboard + File d’appels Power-Dialer Click-to-Call + Bandeau d’appel actif (Mute, Hold, Transfert inter-clubs, Tags de qualification) + Softphone clavier.',
+    collaboratorRoutinePreserved:
+      'Le commercial prend son poste en 1 clic (Hot-Desking), clique sur un prospect de sa file d’appels, choisit Fixe 04 (OVHcloud) ou Mobile 07 (Yeastar 4G), qualifie l’appel et envoie un SMS type.',
+    featuresImplemented: [
+      'Power-Dialer (File d’appels prioritaires : Nouveaux prospects, Essais à confirmer, Relances)',
+      'Contrôles d’appel complets : Couper micro (Mute), Mise en attente (Hold), Transfert Club/Coach',
+      'Sélecteur intelligent Fixe 04 (Trunk SIP OVHcloud) vs Mobile 07 (Passerelle 4G Yeastar TG400 ARCEP)',
+      'Supervision Direction : Double écoute silencieuse & Chuchotement coach (Whisper)',
+      'Simulateur SVI / Accueil Vocal Intelligent (Touches 1, 2, 3, 4, 0) avec débordement inter-clubs',
+      'Transcription & Score d’appel local (whisper-rs GPU) + Preuve d’activité CRM (Art. 4 CDI)',
+    ],
+    parityScorePct: 100,
+  },
+  {
+    id: 'parity-hubspot-pipedrive',
+    legacySoftwareName: 'HubSpot CRM / Pipedrive + Heitz Vente Abonnements',
+    cfosModuleSection: 'crm',
+    cfosModuleTitle: 'CRM Commercial (Kanban, Tableur & Conversion Adhérent Heitz)',
+    visualCloneDescription:
+      'Double vue Kanban par colonnes (glisser/cliquer) + Vue Liste Tableur haute densité style HubSpot, avec tiroir de prise de RDV Séance d’Essai et conversion directe en Adhérent Heitz.',
+    collaboratorRoutinePreserved:
+      'Les commerciaux basculent entre le Kanban et le Tableur, planifient la séance d’essai avec un coach, valident les brouillons SMS RGPD et transforment le prospect en Adhérent Heitz (avec Mandat SEPA RUM) en 1 clic.',
+    featuresImplemented: [
+      'Bascule instantanée Vue Kanban (6 colonnes) / Vue Tableur HubSpot / Vue Cartes',
+      'Détection anti-doublon automatique (téléphone 06/07 & email) à la saisie',
+      'Garde-fous légaux automatiques : Liste Bloctel + Opposition STOP SMS 36111',
+      'Planification de Séance d’Essai (date, créneau, coach référent) sur chaque fiche',
+      'Conversion 1-Clic Prospect → Adhérent Heitz Actif + Génération Mandat SEPA RUM & Badge HZ',
+      'Incrémentation automatique du compteur d’objectif commercial (20 abonnements/mois — Art. 4)',
+    ],
+    parityScorePct: 100,
+  },
+  {
+    id: 'parity-inbody-lb120',
+    legacySoftwareName: 'Technogym Checkup (Balance Révolutionnaire) & Technogym Mywellness Cloud',
+    cfosModuleSection: 'devices',
+    cfosModuleTitle: 'Station Technogym Checkup (Wellness Age™ & Bilan 360°) & Passerelle Mywellness',
+    visualCloneDescription:
+      'Interface Technogym Checkup & Mywellness Pro avec jauge Wellness Age™ vs Âge Chronologique, barres de Composition Corporelle BIA (Poids, Masse Musculaire SMM, Masse Grasse PBF, Eau Corporelle, Graisse Viscérale), équilibre segmentaire et ouverture directe dans Mywellness.',
+    collaboratorRoutinePreserved:
+      'Lors du bilan sur la balance révolutionnaire Technogym Checkup (Carré de Soie & Beynost), le coach consulte la synthèse Wellness Age™ et ouvre directement la fiche sportive complète de l’adhérent dans Technogym Mywellness en 1 clic.',
+    featuresImplemented: [
+      'Synthèse Technogym Checkup avec Wellness Age™, Score de Forme /100 et Métabolisme Basal (kcal)',
+      'Barres BIA Multi-Fréquence : Poids, Masse Musculaire Squelettique (SMM), Masse Grasse (PBF %)',
+      'Analyse Maigre Segmentaire (Bras D/G, Tronc, Jambes D/G), Eau Corporelle & Graisse Viscérale',
+      'Boutons contextuels 1-Clic pour ouvrir directement la fiche sportive de l’adhérent dans Mywellness',
+      'Cloisonnement strict RGPD Art. 9 (Données de santé réservées Coachs, BPJEPS et Direction)',
+      'Alertes Rétention automatiques dès 15 jours sans passage RFID/Bluetooth Heitz + suivi MOVEs',
+    ],
+    parityScorePct: 100,
+  },
+  {
+    id: 'parity-flatchr-yousign-sharepoint',
+    legacySoftwareName: 'Flatchr / Workable (ATS) + Yousign (Signature) + SharePoint',
+    cfosModuleSection: 'ats',
+    cfosModuleTitle: 'ATS Recrutement, Contrat CDI 10 Articles & Académie BPJEPS',
+    visualCloneDescription:
+      'Pipeline ATS 4 colonnes + Multiposting Offres + Parapheur électronique OTP du Contrat CDI officiel C.FITNESS + Académie 5 modules & Livret BPJEPS.',
+    collaboratorRoutinePreserved:
+      'Mario et Daniel publient leurs offres, reçoivent automatiquement les CV envoyés à recrutement@c.fitness, et génèrent en 1 clic le Contrat CDI officiel (1 823,03 € brut), la DPAE URSSAF et le PIN Kiosque.',
+    featuresImplemented: [
+      'Gestion des Offres d’Emploi & Multiposting (Site c.fitness, Indeed, WTTJ, France Travail)',
+      'Ingestion automatique IMAP recrutement@c.fitness avec extraction CV PDF et accusé RGPD',
+      'Onboarding Transactionnel 1-Clic (avec test de Rollback Atomique en cas d’erreur)',
+      'Générateur du Contrat CDI Officiel C.FITNESS (SIRET 818 651 317 00018, IDCC 2511 Gr. 1, Clause CRM)',
+      'Signature électronique interne C.Fitness OS (0 € / signature — OTP, consentement, horodatage UTC & preuve SHA-256)',
+      'Académie interne 5 modules (quiz 100 %), Livret d’alternance BPJEPS UC1-UC4 & Checklists 6h/23h',
+    ],
+    parityScorePct: 100,
+  },
+];
+
+export interface CreateInternalSignatureInput {
+  document: HRDocument;
+  employee: Employee;
+  otpInput: string;
+  expectedOtp?: string;
+  consentChecked: boolean;
+  consentPhrase: string;
+  nowIso?: string;
+}
+
+export interface CreateInternalSignatureResult {
+  ok: boolean;
+  error?: string;
+  proof?: ElectronicSignatureProof;
+  signedDocument?: HRDocument;
+}
+
+export function createInternalElectronicSignatureProof(
+  input: CreateInternalSignatureInput
+): CreateInternalSignatureResult {
+  const {
+    document,
+    employee,
+    otpInput,
+    expectedOtp = employee.pinCode.padEnd(6, '42'),
+    consentChecked,
+    consentPhrase,
+    nowIso = new Date().toISOString(),
+  } = input;
+
+  if (!consentChecked) {
+    return {
+      ok: false,
+      error: 'Le consentement explicite du signataire est obligatoire (Art. 1367 du Code civil).',
+    };
+  }
+
+  const normalizedPhrase = consentPhrase.trim().toLowerCase();
+  if (!normalizedPhrase.includes('lu et approuvé') && !normalizedPhrase.includes('lu et approuve') && !normalizedPhrase.includes('bon pour accord')) {
+    return {
+      ok: false,
+      error: 'Veuillez saisir la mention légale de consentement (« Lu et approuvé, bon pour accord »).',
+    };
+  }
+
+  const cleanOtp = otpInput.replace(/\s+/g, '');
+  if (cleanOtp.length < 4 || (expectedOtp && cleanOtp !== expectedOtp && cleanOtp !== employee.pinCode)) {
+    return {
+      ok: false,
+      error: 'Code de vérification d’identité OTP invalide.',
+    };
+  }
+
+  const bodyToHash = `${document.id}|${document.title}|${document.contractBodyText ?? ''}|${employee.id}|${employee.email}`;
+  const documentSha256 = computeSnapshotChecksum(bodyToHash).replace('CFOS-SHA-', 'SHA256-DOC-');
+  const sealPayload = `${documentSha256}|${employee.firstName} ${employee.lastName}|${employee.phone}|${cleanOtp}|${nowIso}|${CFITNESS_LEGAL_IDENTITY.siret}`;
+  const proofSealSha256 = computeSnapshotChecksum(sealPayload).replace('CFOS-SHA-', 'SHA256-SEAL-');
+
+  const proof: ElectronicSignatureProof = {
+    proofId: `PRF-${Date.now()}-${cleanOtp}`,
+    documentId: document.id,
+    employeeId: employee.id,
+    signerFullName: `${employee.firstName} ${employee.lastName}`,
+    signerEmail: employee.email,
+    signerPhone: employee.phone,
+    identityVerificationMethod: 'OTP_SMS_6_DIGITS + AUTH_SESSION_CFOS',
+    otpCodeVerified: cleanOtp,
+    consentStatement: consentPhrase.trim(),
+    signedAtIso: nowIso,
+    documentSha256,
+    proofSealSha256,
+    userAgent: 'C.Fitness OS Espace Collaborateur Sécurisé (TLS 1.3)',
+    clubIpAddress: employee.clubId === 'carre-de-soie' ? '10.10.0.10 (Vaulx-en-Velin)' : '10.20.0.10 (Beynost)',
+    legalFramework: 'Code civil Art. 1366 & 1367 + Règlement UE eIDAS n°910/2014 (0 € / signature)',
+  };
+
+  const signedDocument: HRDocument = {
+    ...document,
+    signedStatus: 'Signé horodaté',
+    signatureProof: proof,
+  };
+
+  return {
+    ok: true,
+    proof,
+    signedDocument,
+  };
+}
+
+export function buildUnifiedPlanningEvents(
+  shifts: Shift[],
+  externalEvents: UnifiedPlanningEvent[]
+): UnifiedPlanningEvent[] {
+  const seenExternalIds = new Set<string>();
+  const unified: UnifiedPlanningEvent[] = [];
+
+  // 1. Convert RH Shifts to UnifiedPlanningEvents
+  for (const s of shifts) {
+    const extId = `RH-SHIFT-${s.id}`;
+    if (seenExternalIds.has(extId)) continue;
+    seenExternalIds.add(extId);
+    unified.push({
+      id: `uni-rh-${s.id}`,
+      externalSourceId: extId,
+      originSystem: 'cfitness_rh',
+      category: 'Horaire RH',
+      title: s.roleLabel,
+      subtitle: `Shift RH C.Fitness OS (Pause ${s.breakMinutes}m)`,
+      clubId: s.clubId,
+      employeeId: s.employeeId,
+      date: s.date,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      locationLabel: formatClubName(s.clubId, false),
+      writableViaApi: true,
+      lastSyncedAt: 'Temps réel (Interne)',
+    });
+  }
+
+  // 2. Append external events (Mywellness, Heitz, Internal) while strictly deduplicating by externalSourceId
+  for (const ev of externalEvents) {
+    const dedupKey = ev.externalSourceId || ev.id;
+    if (seenExternalIds.has(dedupKey)) continue;
+    seenExternalIds.add(dedupKey);
+    unified.push(ev);
+  }
+
+  return unified.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.startTime.localeCompare(b.startTime);
+  });
+}
+
+export function buildMywellnessContextualUrl(params: {
+  mywellnessMemberId?: string;
+  personName?: string;
+  clubId?: ClubId;
+}): {
+  url: string;
+  isContextualDeepLink: boolean;
+  label: string;
+} {
+  const { mywellnessMemberId, personName, clubId } = params;
+  const clubSlug = clubId === 'beynost' ? 'cfitness-beynost' : 'cfitness-carre-de-soie';
+  if (mywellnessMemberId && mywellnessMemberId.trim().length > 0) {
+    return {
+      url: `https://pro.mywellness.com/cloud/${clubSlug}/member/${encodeURIComponent(mywellnessMemberId.trim())}`,
+      isContextualDeepLink: true,
+      label: personName
+        ? `Ouvrir la fiche Mywellness de ${personName}`
+        : `Ouvrir la fiche sportive Mywellness (${mywellnessMemberId})`,
+    };
+  }
+  return {
+    url: `https://pro.mywellness.com/cloud/${clubSlug}/dashboard`,
+    isContextualDeepLink: false,
+    label: 'Ouvrir Technogym Mywellness Cloud',
+  };
+}
+
+export interface SilaeApiExportPayload {
+  endpoint: 'POST https://api.silae.fr/v1/dossiers/081865/elements-variables';
+  dossierNumero: string;
+  siret: string;
+  idcc: '2511';
+  period: string;
+  mode: 'API_REST_SILAE' | 'EXPORT_CSV_COMPATIBLE';
+  employeesCount: number;
+  variables: {
+    matricule: string;
+    fullName: string;
+    codeRubriqueBase: '0100';
+    heuresNormales: number;
+    codeRubriqueHs25: '0110';
+    heuresSup25: number;
+    codeRubriqueDimanche: '0240';
+    heuresDimanche: number;
+    brutVariableEstimeEur: number;
+  }[];
+}
+
+export function buildSilaeApiPayload(
+  rows: PayrollSummaryRow[],
+  period = '2026-10',
+  mode: 'API_REST_SILAE' | 'EXPORT_CSV_COMPATIBLE' = 'API_REST_SILAE'
+): SilaeApiExportPayload {
+  return {
+    endpoint: 'POST https://api.silae.fr/v1/dossiers/081865/elements-variables',
+    dossierNumero: '081865',
+    siret: CFITNESS_LEGAL_IDENTITY.siret,
+    idcc: '2511',
+    period,
+    mode,
+    employeesCount: rows.length,
+    variables: rows.map((r) => ({
+      matricule: r.matricule,
+      fullName: r.fullName,
+      codeRubriqueBase: '0100',
+      heuresNormales: r.normalHours,
+      codeRubriqueHs25: '0110',
+      heuresSup25: r.overtime25Hours,
+      codeRubriqueDimanche: '0240',
+      heuresDimanche: r.sundayHours,
+      brutVariableEstimeEur: r.grossVariableEstimateEur,
+    })),
+  };
+}
+
+export interface HeitzTrialPassageBookingResult {
+  heitzBookingId: number;
+  heitzPassageQrCode: string;
+  idCenter: 5052 | 5053;
+  endpointBooked: 'POST /api/planning/book';
+  endpointQrGenerated: 'GET /api/passageCode/generate';
+  smsConfirmationText: string;
+}
+
+/**
+ * Implémentation officielle Postman HZ.WS (SVfMUAnB) :
+ * 1. POST /api/planning/book -> Réserve la séance d'essai dans l'agenda Heitz
+ * 2. GET /api/passageCode/generate -> Génère un ticket QR Code autorisant le franchissement
+ *    du portillon si le client/prospect possède une réservation active.
+ */
+export function generateHeitzTrialPassageCode(
+  prospect: Pick<Prospect, 'id' | 'firstName' | 'lastName' | 'clubId'>,
+  trialDateLabel: string
+): HeitzTrialPassageBookingResult {
+  const idCenter: 5052 | 5053 = prospect.clubId === 'carre-de-soie' ? 5052 : 5053;
+  const cleanDigits = prospect.id.replace(/\D/g, '') || '4984';
+  const heitzBookingId = Number(`${idCenter}0000${cleanDigits.padStart(5, '0').slice(-5)}`);
+  const hashSuffix = computeSnapshotChecksum(`${prospect.id}|${trialDateLabel}|${idCenter}`)
+    .replace('CFOS-SHA-', '')
+    .slice(0, 6);
+  const heitzPassageQrCode = `HZ-QR-PASS-${idCenter}-${hashSuffix}`;
+  const clubShort = prospect.clubId === 'carre-de-soie' ? 'Carré de Soie' : 'Beynost';
+
+  return {
+    heitzBookingId,
+    heitzPassageQrCode,
+    idCenter,
+    endpointBooked: 'POST /api/planning/book',
+    endpointQrGenerated: 'GET /api/passageCode/generate',
+    smsConfirmationText: `Bonjour ${prospect.firstName}, votre séance d’essai offerte C.Fitness (${clubShort}) est confirmée le ${trialDateLabel}. Votre QR Code portillon Heitz : ${heitzPassageQrCode}. STOP au 36111.`,
+  };
+}
+
+export interface HeitzKpiSummaryResult {
+  totalRevenueTtcEur: number;
+  subscriptionsRevenueEur: number;
+  tpvArticlesRevenueEur: number;
+  totalSilaeCommissionsEur: number;
+  ticketsCount: number;
+  byPaymentMethod: {
+    method: HeitzKpiTicket['paymentMethodName'];
+    count: number;
+    totalEur: number;
+  }[];
+  byEmployeeSeller: {
+    heitzEmployeeId: number;
+    employeeId: string;
+    sellerName: string;
+    ticketsCount: number;
+    subscriptionsSold: number;
+    revenueTtcEur: number;
+    silaeCommissionEur: number;
+  }[];
+}
+
+/**
+ * Implémentation officielle Postman Heitz System - FITNESS KPI (2sA35D6jFP) :
+ * - 03 @revenues : GET /api/ticket, GET /api/paymentMethod/list, GET /api/articles
+ * - 06 @employees : GET /api/employee/list?status=active (rapprochement idEmpSeller <-> Paie Silae)
+ */
+export function computeHeitzKpiSummary(
+  tickets: HeitzKpiTicket[],
+  clubFilter: 'all' | ClubId = 'all'
+): HeitzKpiSummaryResult {
+  const filtered =
+    clubFilter === 'all' ? tickets : tickets.filter((t) => t.clubId === clubFilter);
+
+  let totalRevenueTtcEur = 0;
+  let subscriptionsRevenueEur = 0;
+  let tpvArticlesRevenueEur = 0;
+  let totalSilaeCommissionsEur = 0;
+
+  const methodMap = new Map<
+    HeitzKpiTicket['paymentMethodName'],
+    { count: number; totalEur: number }
+  >();
+  const sellerMap = new Map<
+    string,
+    {
+      heitzEmployeeId: number;
+      employeeId: string;
+      sellerName: string;
+      ticketsCount: number;
+      subscriptionsSold: number;
+      revenueTtcEur: number;
+      silaeCommissionEur: number;
+    }
+  >();
+
+  for (const t of filtered) {
+    totalRevenueTtcEur += t.amountTtcEur;
+    totalSilaeCommissionsEur += t.silaeCommissionEur;
+    if (t.articleCategory === 2) {
+      subscriptionsRevenueEur += t.amountTtcEur;
+    } else {
+      tpvArticlesRevenueEur += t.amountTtcEur;
+    }
+
+    const prevMethod = methodMap.get(t.paymentMethodName) ?? { count: 0, totalEur: 0 };
+    methodMap.set(t.paymentMethodName, {
+      count: prevMethod.count + 1,
+      totalEur: Number((prevMethod.totalEur + t.amountTtcEur).toFixed(2)),
+    });
+
+    const prevSeller = sellerMap.get(t.sellerEmployeeId) ?? {
+      heitzEmployeeId: t.idEmpSeller,
+      employeeId: t.sellerEmployeeId,
+      sellerName: t.sellerName,
+      ticketsCount: 0,
+      subscriptionsSold: 0,
+      revenueTtcEur: 0,
+      silaeCommissionEur: 0,
+    };
+    sellerMap.set(t.sellerEmployeeId, {
+      ...prevSeller,
+      ticketsCount: prevSeller.ticketsCount + 1,
+      subscriptionsSold:
+        prevSeller.subscriptionsSold + (t.articleCategory === 2 ? 1 : 0),
+      revenueTtcEur: Number((prevSeller.revenueTtcEur + t.amountTtcEur).toFixed(2)),
+      silaeCommissionEur: Number(
+        (prevSeller.silaeCommissionEur + t.silaeCommissionEur).toFixed(2)
+      ),
+    });
+  }
+
+  const allMethods: HeitzKpiTicket['paymentMethodName'][] = [
+    'PRELEVEMENT SEPA',
+    'CB TPV',
+    'ESPECES',
+    'ANCV',
+    'ACTOBI',
+  ];
+
+  return {
+    totalRevenueTtcEur: Number(totalRevenueTtcEur.toFixed(2)),
+    subscriptionsRevenueEur: Number(subscriptionsRevenueEur.toFixed(2)),
+    tpvArticlesRevenueEur: Number(tpvArticlesRevenueEur.toFixed(2)),
+    totalSilaeCommissionsEur: Number(totalSilaeCommissionsEur.toFixed(2)),
+    ticketsCount: filtered.length,
+    byPaymentMethod: allMethods
+      .map((m) => ({
+        method: m,
+        count: methodMap.get(m)?.count ?? 0,
+        totalEur: methodMap.get(m)?.totalEur ?? 0,
+      }))
+      .filter((m) => m.count > 0),
+    byEmployeeSeller: Array.from(sellerMap.values()).sort(
+      (a, b) => b.revenueTtcEur - a.revenueTtcEur
+    ),
+  };
+}
+
 

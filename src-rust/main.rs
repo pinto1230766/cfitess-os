@@ -10,7 +10,7 @@
 //!    exécutant `Heitz-WS.exe` (contrôle `finBalance` SEPA, génération QR `passageCode/generate`,
 //!    ouverture tripodes et mode sécurité incendie).
 //! 3. Exposer les webhooks d'ingestion `recrutement@c.fitness` (parsing CV PDF + accusé RGPD)
-//!    et le monitoring du Trunk SIP Asterisk (Freebox Pro Beynost / Trunk SIP OVHcloud).
+//!    et le monitoring du Trunk SIP OVHcloud (`sip.ovh.fr` · 12 lignes 04/07).
 
 use axum::{
     extract::{Json, State},
@@ -49,6 +49,9 @@ struct SystemHealthResponse {
     wireguard_tunnel: &'static str,
     heitz_ws_endpoint: String,
     sip_trunk_provider: String,
+    yeastar_gsm_07_gateway: &'static str,
+    turnstile_relay_protocol: &'static str,
+    inbody_local_ingestion: &'static str,
     timestamp_utc: String,
 }
 
@@ -139,7 +142,7 @@ async fn main() {
     let heitz_api_token =
         env::var("HEITZ_WS_TOKEN").unwrap_or_else(|_| "CFITNESS-LOCAL-HZ-TOKEN".to_string());
     let sip_trunk_provider =
-        env::var("SIP_TRUNK_PROVIDER").unwrap_or_else(|_| "ovhcloud_sip_and_freebox_pro".to_string());
+        env::var("SIP_TRUNK_PROVIDER").unwrap_or_else(|_| "ovhcloud_sip".to_string());
 
     let http_client = reqwest::Client::builder()
         .timeout(Duration::from_millis(850))
@@ -204,6 +207,9 @@ async fn health_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
         wireguard_tunnel: "CONNECTED (< 3 ms)",
         heitz_ws_endpoint: state.heitz_ws_url.clone(),
         sip_trunk_provider: state.sip_trunk_provider.clone(),
+        yeastar_gsm_07_gateway: "10.10.0.14:5060 (Yeastar TG400 4G VoLTE — Conforme ARCEP n° 2022-1583)",
+        turnstile_relay_protocol: "Wiegand 26/34 bits -> Modbus TCP 502 Contact Sec NO 12V + Fail-Safe SSI NF S 61-937",
+        inbody_local_ingestion: "Lookin'Body 120 Local CSV/SMB (/var/inbody-lb120-drop) AES-256",
         timestamp_utc: Utc::now().to_rfc3339(),
     })
 }

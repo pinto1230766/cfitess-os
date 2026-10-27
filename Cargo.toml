@@ -3,7 +3,7 @@ name = "cfitness-os-server"
 version = "1.2.0"
 edition = "2021"
 authors = ["C.FITNESS — Mario & Daniel Carvalho <direction@c.fitness>"]
-description = "Serveur de production Linux Debian 12 en Rust (Axum) pour C.Fitness OS (Carré de Soie & Beynost) avec passerelle Heitz-WS.exe, ingestion recrutement@c.fitness et Trunk SIP OVHcloud/Freebox Pro"
+description = "Serveur de production Linux Debian 12 en Rust (Axum) pour C.Fitness OS (Carré de Soie & Beynost) avec passerelle Heitz-WS.exe, ingestion recrutement@c.fitness et Téléphonie Fixe 04 / Mobile 07 OVHcloud"
 
 [[bin]]
 name = "cfitness-os-server"

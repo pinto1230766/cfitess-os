@@ -27,16 +27,24 @@ services:
       STATIC_DIR: /opt/cfitness-os/dist
       DATABASE_URL: postgres://${POSTGRES_USER:-cfitness}:${POSTGRES_PASSWORD:-cfitness_secret_prod}@postgres:5432/${POSTGRES_DB:-cfitness_os}
       REDIS_URL: redis://redis:6379
-      # Connexion directe sur le LAN ou l'hôte vers la VM Windows Heitz (Heitz-WS.exe)
+      # Connexion directe sur le LAN ou l'hôte vers la VM Windows Heitz (Heitz-WS.exe · Token Configuration.exe)
       HEITZ_WS_URL: ${HEITZ_WS_URL:-http://10.10.0.20:8080/api/heitz-ws}
       HEITZ_WS_TOKEN: ${HEITZ_WS_TOKEN:-CFITNESS-LOCAL-HZ-TOKEN}
-      # Téléphonie Asterisk : Freebox Pro Beynost + Option Secours Trunk SIP OVHcloud
+      # Contrôleur Relais IP Ethernet (Advantech ADAM-6060 / Shelly Pro) pour contact sec NO 12V/24V des tripodes Gunnebo/Axess
+      TURNSTILE_MODBUS_RELAY_CDS: ${TURNSTILE_MODBUS_RELAY_CDS:-10.10.0.21:502}
+      TURNSTILE_MODBUS_RELAY_BEY: ${TURNSTILE_MODBUS_RELAY_BEY:-10.20.0.21:502}
+      # Téléphonie Asterisk conforme ARCEP n° 2022-1583 :
+      # - Numéros fixes 04 sur Trunk SIP OVHcloud (sip.ovh.fr)
+      # - Pool mobiles 07 & SMS STOP sur Passerelle GSM 4G VoLTE Yeastar TG400 (4 cartes SIM physiques sur le LAN)
       SIP_TRUNK_PROVIDER: ${SIP_TRUNK_PROVIDER:-ovhcloud_sip}
       OVH_SIP_TRUNK_HOST: ${OVH_SIP_TRUNK_HOST:-sip.ovh.fr}
-      FREEBOX_PRO_SIP_HOST: ${FREEBOX_PRO_SIP_HOST:-10.20.0.1}
+      OVH_MOBILE_07_SIP_GATEWAY: ${OVH_MOBILE_07_SIP_GATEWAY:-sip.ovh.fr}
+      YEASTAR_TG400_SIP_GATEWAY: ${YEASTAR_TG400_SIP_GATEWAY:-10.10.0.14:5060}
+      # Ingestion locale sans abonnement Cloud des bilans InBody 570/270 (Export CSV Lookin'Body 120)
+      INBODY_LB120_CSV_DROP_DIR: /var/inbody-lb120-drop
       # Canal officiel recrutement ATS
       ATS_INBOUND_EMAIL: recrutement@c.fitness
-      # Sauvegarde automatique multi-appareils (PC Secours, Tablettes Kiosques, Smartphones PWA)
+      # Sauvegarde automatique multi-appareils (PC Secours, Tablettes Kiosques PoE, Smartphones PWA)
       BACKUP_REPLICA_DIR: /var/backups/cfitness-os
       BACKUP_SECONDARY_NODES: "10.20.0.15,10.10.0.12,10.10.0.31,10.20.0.31"
     volumes:
@@ -44,6 +52,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "heitz-windows-vm.local:10.10.0.20"
+      - "yeastar-tg400-gsm.local:10.10.0.14"
     depends_on:
       postgres:
         condition: service_healthy

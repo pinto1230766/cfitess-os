@@ -105,13 +105,13 @@ export function KioskTabletShell() {
           </button>
           <div>
             <div className="text-xs font-bold text-orange-400 uppercase tracking-wider">
-              Borne Tactile Murale C.Fitness (§7.3 Shell #3)
+              Borne Tactile Murale C.Fitness (PoE RJ45 IEEE 802.3af · Fully Kiosk Browser MDM)
             </div>
             <div className="text-sm font-bold">
               Club :{' '}
               {kioskClub === 'carre-de-soie'
-                ? 'Carré de Soie (Vaulx-en-Velin)'
-                : 'Beynost (ZAC des Baterses)'}
+                ? 'Carré de Soie (Vaulx-en-Velin · 10.10.0.31)'
+                : 'Beynost (ZAC des Baterses · 10.20.0.31)'}
             </div>
           </div>
         </div>
@@ -395,8 +395,8 @@ export function KioskTabletShell() {
                   Séance découverte Musculation &amp; Biocircuit Technogym
                 </option>
                 <option value="Cours Collectifs & Cardio">Cours Collectifs &amp; Cardio</option>
-                <option value="Bilan InBody & Coaching personnalisé">
-                  Bilan InBody &amp; Coaching personnalisé
+                <option value="Bilan Technogym Checkup & Coaching personnalisé">
+                  Bilan Technogym Checkup (Wellness Age™) &amp; Coaching personnalisé
                 </option>
               </select>
             </div>
@@ -425,7 +425,9 @@ export function KioskTabletShell() {
             );
           })}
         </div>
-        <div className="font-mono text-[11px]">Kiosque C.Fitness OS v1.0 · Auto-Reset 3s</div>
+        <div className="font-mono text-[11px]">
+          Kiosque C.Fitness OS v1.2 · Alimentation PoE RJ45 Onduleur (Bypass Batterie 80 %) · Auto-Reset 3s
+        </div>
       </footer>
     </div>
   );

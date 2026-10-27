@@ -13,9 +13,12 @@ import type {
   ClubChecklistItem,
   ClubFilter,
   ClubId,
+  CollaboratorNotification,
+  CollaboratorTask,
   Employee,
   GoNoGoPhase,
   HRDocument,
+  HeitzKpiTicket,
   HeitzMember,
   InBodyScan,
   JobOffer,
@@ -31,6 +34,7 @@ import type {
   SipTrunkProvider,
   TimeEntry,
   TrainingModule,
+  UnifiedPlanningEvent,
 } from '../types/cfos';
 import {
   INITIAL_ACCESS_EVENTS,
@@ -40,8 +44,11 @@ import {
   INITIAL_CANDIDATES,
   INITIAL_CHECKLISTS,
   INITIAL_CLUBS,
+  INITIAL_COLLABORATOR_NOTIFICATIONS,
+  INITIAL_COLLABORATOR_TASKS,
   INITIAL_EMPLOYEES,
   INITIAL_GONOGO_PHASES,
+  INITIAL_HEITZ_KPI_TICKETS,
   INITIAL_HEITZ_MEMBERS,
   INITIAL_HR_DOCUMENTS,
   INITIAL_INBODY_SCANS,
@@ -53,16 +60,21 @@ import {
   INITIAL_SHIFTS,
   INITIAL_TIME_ENTRIES,
   INITIAL_TRAINING_MODULES,
+  INITIAL_UNIFIED_EXTERNAL_EVENTS,
 } from '../data/seed';
 import {
   CFITNESS_LEGAL_IDENTITY,
   INITIAL_BACKUP_REPLICAS,
   buildBackupEnvelope,
+  buildMywellnessContextualUrl,
   canCallProspectProspection,
   canSendProspectSms,
+  convertProspectToHeitzMember,
+  createInternalElectronicSignatureProof,
   evaluateGatePassage,
   executeTransactionalOnboarding,
   findDuplicateProspect,
+  generateHeitzTrialPassageCode,
   mergeFailoverSnapshot,
   parseRecruitmentEmailPayload,
   selectOutboundNumber,
@@ -70,8 +82,8 @@ import {
   type OnboardingTransactionResult,
 } from '../domain/rules';
 
-const STORAGE_KEY = 'cfitness_os_state_v3';
-const BACKUP_ENVELOPE_KEY = 'cfitness_os_backup_envelope_v12';
+const STORAGE_KEY = 'cfitness_os_state_v7';
+const BACKUP_ENVELOPE_KEY = 'cfitness_os_backup_envelope_v13';
 const IDB_NAME = 'cfitness_os_failover_idb';
 const IDB_STORE = 'replica_snapshots';
 
@@ -126,6 +138,10 @@ interface PersistedState {
   inBodyScans: InBodyScan[];
   auditLogs: AuditEntry[];
   goNoGoPhases: GoNoGoPhase[];
+  unifiedExternalEvents: UnifiedPlanningEvent[];
+  collaboratorTasks: CollaboratorTask[];
+  collaboratorNotifications: CollaboratorNotification[];
+  heitzKpiTickets: HeitzKpiTicket[];
 }
 
 function getDefaultState(): PersistedState {
@@ -136,7 +152,7 @@ function getDefaultState(): PersistedState {
     timeEntries: INITIAL_TIME_ENTRIES,
     offlinePointageQueue: [],
     kioskOfflineMode: false,
-    sipTrunkProvider: 'freebox_pro',
+    sipTrunkProvider: 'ovhcloud_sip',
     serverPowerStatus: 'nominal',
     activeFailoverNodeId: 'replica-pc-beynost',
     backupReplicas: INITIAL_BACKUP_REPLICAS,
@@ -158,6 +174,10 @@ function getDefaultState(): PersistedState {
     inBodyScans: INITIAL_INBODY_SCANS,
     auditLogs: INITIAL_AUDIT_LOGS,
     goNoGoPhases: INITIAL_GONOGO_PHASES,
+    unifiedExternalEvents: INITIAL_UNIFIED_EXTERNAL_EVENTS,
+    collaboratorTasks: INITIAL_COLLABORATOR_TASKS,
+    collaboratorNotifications: INITIAL_COLLABORATOR_NOTIFICATIONS,
+    heitzKpiTickets: INITIAL_HEITZ_KPI_TICKETS,
   };
 }
 
@@ -199,7 +219,16 @@ interface CfosContextValue extends PersistedState {
     lineMode: '04' | '07';
     outcome: CallLog['outcome'];
     durationSec?: number;
+    voicemailDropped?: boolean;
+    ringoverTags?: string[];
+    callNote?: string;
   }) => { ok: boolean; message: string; callerIdUsed?: string };
+  qualifyRingoverCall: (params: {
+    callId: string;
+    outcome: CallLog['outcome'];
+    ringoverTags: string[];
+    callNote: string;
+  }) => void;
 
   createProspect: (input: {
     firstName: string;
@@ -212,6 +241,11 @@ interface CfosContextValue extends PersistedState {
     rgpdConsent: boolean;
   }) => { ok: boolean; message: string };
   updateProspectStage: (prospectId: string, stage: ProspectStage) => void;
+  scheduleProspectTrial: (prospectId: string, trialDateLabel: string) => void;
+  convertProspectToMember: (
+    prospectId: string,
+    subscriptionName: string
+  ) => { ok: boolean; message: string; badgeCode?: string; sepaMandateRum?: string };
   sendValidatedProspectSms: (prospectId: string, text: string) => { ok: boolean; message: string };
   toggleProspectStopSms: (prospectId: string) => void;
 
@@ -269,11 +303,47 @@ interface CfosContextValue extends PersistedState {
   }) => OnboardingTransactionResult;
 
   simulateMemberGateScan: (memberId: string, clubId: ClubId) => AccessEvent | null;
+  triggerManualTurnstileOpen: (
+    clubId: ClubId,
+    gateLabel: string,
+    reasonLabel: string
+  ) => AccessEvent;
   regularizeMemberSepa: (memberId: string) => void;
+  toggleMemberSubscriptionStatus: (memberId: string) => void;
+  rewardMemberLoyaltyOrReferral: (
+    memberId: string,
+    rewardType: 'parrainage' | 'anniversaire',
+    friendName?: string
+  ) => void;
+  recordQuickTpvSale: (
+    clubId: ClubId,
+    itemLabel: string,
+    amountEur: number,
+    memberName?: string
+  ) => void;
   toggleClubMode: (clubId: ClubId, field: 'degradedMode' | 'fireAlarmOpen') => void;
   addInBodyScan: (scan: Omit<InBodyScan, 'id'>) => void;
 
   signGoNoGoPhase: (phaseId: string, signerNames: string) => void;
+
+  createOrUpdateExternalPlanningEvent: (
+    eventInput: Omit<UnifiedPlanningEvent, 'id' | 'lastSyncedAt'>
+  ) => void;
+  deleteExternalPlanningEvent: (id: string) => void;
+  toggleCollaboratorTask: (taskId: string) => void;
+  addCollaboratorTask: (taskInput: Omit<CollaboratorTask, 'id' | 'completed'>) => void;
+  markNotificationRead: (notifId: string) => void;
+  signDocumentWithInternalProof: (params: {
+    docId: string;
+    otpInput: string;
+    consentChecked: boolean;
+    consentPhrase: string;
+  }) => { ok: boolean; message: string };
+  openMywellnessLink: (params: {
+    mywellnessMemberId?: string;
+    personName?: string;
+    clubId?: ClubId;
+  }) => { url: string; label: string; isContextualDeepLink: boolean };
 }
 
 const CfosContext = createContext<CfosContextValue | null>(null);
@@ -317,7 +387,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }
     return 'admin';
   });
-  const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<AdminSection>('my-day');
   const [clubFilter, setClubFilter] = useState<ClubFilter>('all');
   const [bannerNotice, setBannerNotice] = useState<CfosContextValue['bannerNotice']>(null);
 
@@ -471,7 +541,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       setShellMode('tablette');
     } else {
       setShellMode('admin');
-      setActiveSection('dashboard');
+      setActiveSection('my-day');
     }
 
     notify(
@@ -504,7 +574,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     setState(fresh);
     setCurrentUserId('emp-mario');
     setShellMode('admin');
-    setActiveSection('dashboard');
+    setActiveSection('my-day');
     setClubFilter('all');
     notify('success', 'Données de référence C.Fitness OS v1.2 réinitialisées.');
   };
@@ -515,19 +585,22 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       sipTrunkProvider: provider,
       auditLogs: appendAudit(prev.auditLogs, {
         clubId: 'global',
-        action: 'BASCULE_TRUNK_SIP_ASTERISK',
-        target: provider === 'ovhcloud_sip' ? 'Trunk SIP OVHcloud (sip.ovh.fr)' : 'Freebox Pro Beynost (SIP Central)',
+        action: 'CONFIGURATION_TRUNK_SIP_OVHCLOUD',
+        target:
+          provider === 'ovhcloud_sip'
+            ? 'Trunk SIP OVHcloud (sip.ovh.fr · Lignes Fixes 04)'
+            : 'Canal Mobile 07 & SMS OVHcloud Télécom',
         afterState:
           provider === 'ovhcloud_sip'
-            ? 'Trunk SIP OVHcloud actif sur les 12 lignes (fixes 04 + pool 07 anti-spam)'
-            : 'Trunk SIP Freebox Pro Beynost actif sur les 12 lignes',
+            ? 'Trunk SIP OVHcloud actif sur les 12 lignes (fixes 04 + pool mobile 07)'
+            : 'Canal Mobile 07 & SMS OVHcloud Télécom actif pour les communications mobiles',
       }),
     }));
     notify(
       'success',
       provider === 'ovhcloud_sip'
-        ? 'Trunk SIP OVHcloud (https://www.ovhcloud.com/fr/phone/sip-trunk/) activé sur Asterisk (12 lignes 04/07).'
-        : 'Trunk SIP Freebox Pro Beynost activé sur Asterisk (12 lignes 04/07).'
+        ? 'Trunk SIP OVHcloud (sip.ovh.fr) activé sur Asterisk (12 lignes 04/07).'
+        : 'Canal Mobile 07 & SMS OVHcloud Télécom activé pour les communications avec les téléphones mobiles.'
     );
   };
 
@@ -604,6 +677,9 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     lineMode,
     outcome,
     durationSec = 185,
+    voicemailDropped = false,
+    ringoverTags,
+    callNote,
   }) => {
     const club = state.clubs.find((c) => c.id === clubId) ?? state.clubs[0];
     const prospect = prospectId ? state.prospects.find((p) => p.id === prospectId) : undefined;
@@ -623,6 +699,15 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       prospect?.retryCount ?? 0
     );
 
+    const defaultTags =
+      ringoverTags && ringoverTags.length > 0
+        ? ringoverTags
+        : voicemailDropped
+        ? ['Voicemail Drop Studio', 'À relancer J+1']
+        : outcome === 'RDV Séance fixé'
+        ? ['RDV Séance fixé', 'Prospect Chaud']
+        : [outcome];
+
     const newCall: CallLog = {
       id: `cl-${Date.now()}`,
       clubId,
@@ -636,18 +721,32 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       lineMode,
       direction: 'sortant',
       outcome,
-      durationSec: outcome === 'Pas de réponse' || outcome === 'Messagerie' ? 24 : durationSec,
+      durationSec:
+        voicemailDropped
+          ? 8
+          : outcome === 'Pas de réponse' || outcome === 'Messagerie'
+          ? 24
+          : durationSec,
       timestamp: new Date().toISOString(),
       whisperScore:
         outcome === 'Pas de réponse' || outcome === 'Messagerie' ? undefined : 89,
       whisperTranscript:
-        outcome === 'Pas de réponse' || outcome === 'Messagerie'
+        voicemailDropped
+          ? 'Dépôt automatique Voicemail Drop Ringover (Message Studio C.Fitness pré-enregistré déposé sans attente du bip).'
+          : outcome === 'Pas de réponse' || outcome === 'Messagerie'
           ? undefined
           : 'Appel sortant analysé localement (whisper-rs) : présentation club claire, écoute active et proposition de créneau découverte.',
       detectedObjection:
         outcome === 'RDV Séance fixé'
           ? 'Disponibilité horaires du soir (créneau adapté proposé)'
           : undefined,
+      ringoverTags: defaultTags,
+      callNote:
+        callNote ||
+        (voicemailDropped
+          ? 'Message vocal pré-enregistré déposé en 1 clic via Power Dialer.'
+          : undefined),
+      voicemailDropped,
     };
 
     setState((prev) => ({
@@ -660,21 +759,87 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
             ? 'Séance planifiée'
             : outcome === 'Adhésion conclue'
             ? 'Adhérent'
+            : (outcome === 'Décroché — Qualifié' || voicemailDropped) && p.stage === 'Nouveau'
+            ? 'Contacté'
+            : p.stage;
+        const appendedNote = callNote
+          ? `${p.notes} [Note Ringover : ${callNote}]`
+          : voicemailDropped
+          ? `${p.notes} [Voicemail Drop Studio déposé via ${callerIdUsed}]`
+          : p.notes;
+        return {
+          ...p,
+          stage: nextStage,
+          lastOutbound07Used: lineMode === '07' ? callerIdUsed : p.lastOutbound07Used,
+          retryCount: p.retryCount + 1,
+          notes: appendedNote,
+        };
+      }),
+    }));
+
+    const msg = voicemailDropped
+      ? `Voicemail Drop Studio déposé en 1 clic via ${callerIdUsed} et synchronisé dans la fiche CRM.`
+      : `Appel journalisé dans le CRM (Clause Art. 4) via ${callerIdUsed} (${outcome}).`;
+    notify('success', msg);
+    return { ok: true, message: msg, callerIdUsed };
+  };
+
+  const qualifyRingoverCall: CfosContextValue['qualifyRingoverCall'] = ({
+    callId,
+    outcome,
+    ringoverTags,
+    callNote,
+  }) => {
+    const targetCall = state.callLogs.find((c) => c.id === callId);
+    if (!targetCall) return;
+
+    setState((prev) => ({
+      ...prev,
+      callLogs: prev.callLogs.map((c) =>
+        c.id === callId
+          ? {
+              ...c,
+              outcome,
+              ringoverTags,
+              callNote: callNote.trim() || c.callNote,
+            }
+          : c
+      ),
+      prospects: prev.prospects.map((p) => {
+        if (
+          p.id !== targetCall.prospectId &&
+          p.phone.replace(/\s+/g, '') !== targetCall.prospectPhone.replace(/\s+/g, '')
+        ) {
+          return p;
+        }
+        const nextStage: ProspectStage =
+          outcome === 'RDV Séance fixé'
+            ? 'Séance planifiée'
+            : outcome === 'Adhésion conclue'
+            ? 'Adhérent'
             : outcome === 'Décroché — Qualifié' && p.stage === 'Nouveau'
             ? 'Contacté'
             : p.stage;
         return {
           ...p,
           stage: nextStage,
-          lastOutbound07Used: lineMode === '07' ? callerIdUsed : p.lastOutbound07Used,
-          retryCount: p.retryCount + 1,
+          notes: callNote.trim()
+            ? `${p.notes} [Qualification Ringover (${ringoverTags.join(', ')}) : ${callNote.trim()}]`
+            : p.notes,
         };
+      }),
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: targetCall.clubId,
+        action: 'QUALIFICATION_APPEL_RINGOVER_CRM',
+        target: `${targetCall.prospectName} (${targetCall.prospectPhone})`,
+        afterState: `Statut: ${outcome} · Tags: ${ringoverTags.join(', ') || 'Aucun'}`,
       }),
     }));
 
-    const msg = `Appel journalisé dans le CRM (Clause Art. 4) via ${callerIdUsed} (${outcome}).`;
-    notify('success', msg);
-    return { ok: true, message: msg, callerIdUsed };
+    notify(
+      'success',
+      `Appel de ${targetCall.prospectName} qualifié (${outcome}) et synchronisé avec la fiche CRM.`
+    );
   };
 
   const createProspect: CfosContextValue['createProspect'] = (input) => {
@@ -731,6 +896,141 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       prospects: prev.prospects.map((p) => (p.id === prospectId ? { ...p, stage } : p)),
     }));
     notify('success', `Statut prospect mis à jour : ${stage}.`);
+  };
+
+  const scheduleProspectTrial = (prospectId: string, trialDateLabel: string) => {
+    setState((prev) => {
+      const target = prev.prospects.find((p) => p.id === prospectId);
+      if (!target) return prev;
+      const bookingQr = generateHeitzTrialPassageCode(target, trialDateLabel);
+      const [datePart, timePart] = trialDateLabel.split(' ');
+      const eventDate = datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : '2026-10-23';
+      const eventStart = timePart && /^\d{2}:\d{2}$/.test(timePart) ? timePart : '16:00';
+      const startHour = Number(eventStart.split(':')[0] || 16);
+      const eventEnd = `${String(Math.min(22, startHour + 1)).padStart(2, '0')}:${eventStart.split(':')[1] || '00'}`;
+
+      const newHeitzPlanningEvent: UnifiedPlanningEvent = {
+        id: `uev-hz-trial-${Date.now()}`,
+        externalSourceId: `HZ-RDV-${bookingQr.heitzBookingId}`,
+        originSystem: 'heitz_api',
+        category: 'RDV Heitz',
+        title: `Séance d’Essai & Découverte — ${target.firstName} ${target.lastName}`,
+        subtitle: `POST /api/planning/book + QR Portillon ${bookingQr.heitzPassageQrCode}`,
+        clubId: target.clubId,
+        employeeId: target.assignedToId || currentUser.id,
+        date: eventDate,
+        startTime: eventStart,
+        endTime: eventEnd,
+        participantName: `${target.firstName} ${target.lastName}`,
+        locationLabel:
+          target.clubId === 'carre-de-soie'
+            ? 'Plateau & Portillon Carré de Soie (#5052)'
+            : 'Plateau & Portillon Beynost (#5053)',
+        writableViaApi: true,
+        lastSyncedAt: new Date().toISOString(),
+        placesMax: 1,
+        placesTaken: 1,
+        bookingQueueCount: 0,
+        attendanceRatePct: 100,
+      };
+
+      return {
+        ...prev,
+        prospects: prev.prospects.map((p) =>
+          p.id === prospectId
+            ? {
+                ...p,
+                stage: 'Séance planifiée',
+                trialDate: trialDateLabel,
+                heitzBookingId: bookingQr.heitzBookingId,
+                heitzPassageQrCode: bookingQr.heitzPassageQrCode,
+                pendingSmsDraft: p.rgpdConsent ? bookingQr.smsConfirmationText : p.pendingSmsDraft,
+                notes: `${p.notes} [RDV Heitz #${bookingQr.heitzBookingId} fixé le ${trialDateLabel} · QR Portillon ${bookingQr.heitzPassageQrCode}]`,
+              }
+            : p
+        ),
+        unifiedExternalEvents: [newHeitzPlanningEvent, ...prev.unifiedExternalEvents],
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: target.clubId,
+          action: 'PLANIFICATION_SEANCE_ESSAI_HEITZ_QR',
+          target: `${target.firstName} ${target.lastName} (${bookingQr.heitzPassageQrCode})`,
+          afterState: `POST /api/planning/book (#${bookingQr.heitzBookingId}) + GET /api/passageCode/generate (${bookingQr.heitzPassageQrCode}) le ${trialDateLabel}`,
+        }),
+      };
+    });
+    notify(
+      'success',
+      `Séance d’essai planifiée dans Heitz (${trialDateLabel}) + QR Code Portillon généré (/api/passageCode/generate) et préparé dans le SMS 07.`
+    );
+  };
+
+  const convertProspectToMember: CfosContextValue['convertProspectToMember'] = (
+    prospectId,
+    subscriptionName
+  ) => {
+    const target = state.prospects.find((p) => p.id === prospectId);
+    if (!target) {
+      return { ok: false, message: 'Prospect introuvable.' };
+    }
+    if (target.stage === 'Adhérent') {
+      return { ok: false, message: 'Ce prospect est déjà converti en adhérent Heitz.' };
+    }
+
+    const nowIso = new Date().toISOString();
+    const conv = convertProspectToHeitzMember({
+      prospect: target,
+      subscriptionName,
+      actorName: `${currentUser.firstName} ${currentUser.lastName}`,
+      actorRole: currentUser.role,
+      nowIso,
+    });
+
+    const sellerEmp =
+      state.employees.find((e) => e.id === target.assignedToId) || currentUser;
+    const newKpiTicket: HeitzKpiTicket = {
+      id: 1000307250000 + Math.floor(Date.now() % 9000),
+      number: `000000${1457 + state.heitzKpiTickets.length}`,
+      clubId: target.clubId,
+      idCenter: target.clubId === 'carre-de-soie' ? 5052 : 5053,
+      dateIso: nowIso.slice(0, 16).replace('T', ' '),
+      idEmpSeller: sellerEmp.heitzEmployeeId ?? 100404,
+      sellerEmployeeId: sellerEmp.id,
+      sellerName: `${sellerEmp.firstName} ${sellerEmp.lastName}`,
+      idClient: 1000301390000 + Math.floor(Date.now() % 9000),
+      clientName: `${target.firstName} ${target.lastName}`,
+      articleId: 1000301472469,
+      articleCategory: 2,
+      articleName: `01 - ${subscriptionName.toUpperCase()}`,
+      paymentMethodName: 'PRELEVEMENT SEPA',
+      amountTtcEur: subscriptionName.includes('49') ? 49.9 : 39.9,
+      silaeCommissionEur: subscriptionName.includes('49') ? 12 : 10,
+      ticketState: 1,
+    };
+
+    setState((prev) => ({
+      ...prev,
+      heitzMembers: [conv.newMember, ...prev.heitzMembers],
+      heitzKpiTickets: [newKpiTicket, ...prev.heitzKpiTickets],
+      prospects: prev.prospects.map((p) => (p.id === prospectId ? conv.updatedProspect : p)),
+      employees: prev.employees.map((e) =>
+        e.id === target.assignedToId || e.id === currentUser.id
+          ? {
+              ...e,
+              monthlySubscriptionsActual: (e.monthlySubscriptionsActual ?? 0) + 1,
+            }
+          : e
+      ),
+      auditLogs: [conv.auditEntry, ...prev.auditLogs],
+    }));
+
+    const okMsg = `Adhésion validée ! ${target.firstName} ${target.lastName} est maintenant Adhérent Heitz actif (${conv.newMember.badgeCode} · Mandat SEPA ${conv.sepaMandateRum} · Ticket KPI #${newKpiTicket.number}).`;
+    notify('success', okMsg);
+    return {
+      ok: true,
+      message: okMsg,
+      badgeCode: conv.newMember.badgeCode,
+      sepaMandateRum: conv.sepaMandateRum,
+    };
   };
 
   const sendValidatedProspectSms: CfosContextValue['sendValidatedProspectSms'] = (prospectId, text) => {
@@ -1238,6 +1538,156 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     notify('success', 'Impayé SEPA régularisé : accès portillons Heitz immédiatement rétabli.');
   };
 
+  const triggerManualTurnstileOpen: CfosContextValue['triggerManualTurnstileOpen'] = (
+    clubId,
+    gateLabel,
+    reasonLabel
+  ) => {
+    const nowIso = new Date().toISOString();
+    const manualEvent: AccessEvent = {
+      id: `acc-man-${Date.now()}`,
+      clubId,
+      memberId: 'accueil-tpv',
+      memberName: `Ouverture Accueil (${gateLabel})`,
+      homeClubId: clubId,
+      timestamp: nowIso,
+      latencyMs: 11,
+      granted: true,
+      reason: `Impulsion contact sec NO 500 ms commandée depuis Pupitre TPV Heitz : ${gateLabel} (${reasonLabel})`,
+      smsRelanceSent: false,
+      qrTokenGenerated: `HZ-TPV-RELAY-${gateLabel.replace(/\s+/g, '-').toUpperCase()}-500MS`,
+    };
+
+    setState((prev) => ({
+      ...prev,
+      accessEvents: [manualEvent, ...prev.accessEvents],
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId,
+        action: 'OUVERTURE_MANUELLE_PORTILLON_TPV_HEITZ',
+        target: `${gateLabel} (${clubId === 'carre-de-soie' ? 'Carré de Soie' : 'Beynost'})`,
+        afterState: `Relais IP contact sec NO 500ms activé · Motif : ${reasonLabel}`,
+      }),
+    }));
+
+    notify(
+      'success',
+      `${gateLabel} ouvert manuellement (impulsion relais contact sec 500 ms · ${reasonLabel}).`
+    );
+    return manualEvent;
+  };
+
+  const toggleMemberSubscriptionStatus = (memberId: string) => {
+    setState((prev) => {
+      const target = prev.heitzMembers.find((m) => m.id === memberId);
+      if (!target) return prev;
+      const nextActive = !target.activeSubscription;
+      return {
+        ...prev,
+        heitzMembers: prev.heitzMembers.map((m) =>
+          m.id === memberId ? { ...m, activeSubscription: nextActive } : m
+        ),
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId: target.homeClubId,
+          action: nextActive
+            ? 'REACTIVATION_ABONNEMENT_HEITZ'
+            : 'GEL_MEDICAL_SUSPENSION_ABONNEMENT_HEITZ',
+          target: `${target.firstName} ${target.lastName} (${target.badgeCode})`,
+          afterState: nextActive ? 'Abonnement actif' : 'Abonnement suspendu (Gel médical / Congé)',
+        }),
+      };
+    });
+    notify('success', 'Statut de l’abonnement Heitz mis à jour (Gel médical / Réactivation).');
+  };
+
+  const rewardMemberLoyaltyOrReferral: CfosContextValue['rewardMemberLoyaltyOrReferral'] = (
+    memberId,
+    rewardType,
+    friendName
+  ) => {
+    const target = state.heitzMembers.find((m) => m.id === memberId);
+    if (!target) return;
+
+    const addedPoints = rewardType === 'parrainage' ? 150 : 100;
+    const nextPoints = (target.loyaltyPoints ?? 120) + addedPoints;
+    const nextReferrals = (target.referralsCount ?? 1) + (rewardType === 'parrainage' ? 1 : 0);
+    const label =
+      rewardType === 'parrainage'
+        ? `Parrainage validé${friendName ? ` (${friendName})` : ''} · +150 pts & 1 mois offert Heitz`
+        : 'Bonus Anniversaire & Fidélité Heitz · +100 pts & SMS 07 envoyé';
+
+    setState((prev) => ({
+      ...prev,
+      heitzMembers: prev.heitzMembers.map((m) =>
+        m.id === memberId
+          ? {
+              ...m,
+              loyaltyPoints: nextPoints,
+              referralsCount: nextReferrals,
+              lastRewardLabel: label,
+            }
+          : m
+      ),
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: target.homeClubId,
+        action:
+          rewardType === 'parrainage'
+            ? 'PARRAINAGE_FIDELITE_HEITZ'
+            : 'BONUS_ANNIVERSAIRE_FIDELITE_HEITZ',
+        target: `${target.firstName} ${target.lastName} (${target.badgeCode})`,
+        afterState: `${label} (Total : ${nextPoints} pts · ${nextReferrals} parrainage(s))`,
+      }),
+    }));
+
+    notify(
+      'success',
+      `${target.firstName} ${target.lastName} : ${label} (Total fidélité : ${nextPoints} pts).`
+    );
+  };
+
+  const recordQuickTpvSale: CfosContextValue['recordQuickTpvSale'] = (
+    clubId,
+    itemLabel,
+    amountEur,
+    memberName
+  ) => {
+    const nowIso = new Date().toISOString();
+    const tpvTicket: HeitzKpiTicket = {
+      id: 1000307250000 + Math.floor(Date.now() % 9000),
+      number: `000000${1457 + state.heitzKpiTickets.length}`,
+      clubId,
+      idCenter: clubId === 'carre-de-soie' ? 5052 : 5053,
+      dateIso: nowIso.slice(0, 16).replace('T', ' '),
+      idEmpSeller: currentUser.heitzEmployeeId ?? 100403,
+      sellerEmployeeId: currentUser.id,
+      sellerName: `${currentUser.firstName} ${currentUser.lastName}`,
+      idClient: 1000301397776,
+      clientName: memberName || 'Vente Comptoir Accueil',
+      articleId: 1000301396496,
+      articleCategory: 8,
+      articleName: `00 - ${itemLabel.toUpperCase()}`,
+      paymentMethodName: 'CB TPV',
+      amountTtcEur: amountEur,
+      silaeCommissionEur: Number((amountEur * 0.1).toFixed(2)),
+      ticketState: 1,
+    };
+    setState((prev) => ({
+      ...prev,
+      heitzKpiTickets: [tpvTicket, ...prev.heitzKpiTickets],
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId,
+        action: 'ENCAISSEMENT_TPV_CAISSE_HEITZ',
+        target: `${itemLabel} (${memberName || 'Vente Comptoir Accueil'})`,
+        afterState: `Encaissé : ${amountEur.toFixed(2)} € TTC (CB / Espèces · Ticket KPI /api/ticket #${tpvTicket.number})`,
+      }),
+    }));
+    notify(
+      'success',
+      `Vente TPV Heitz encaissée : ${itemLabel} (${amountEur.toFixed(2)} € TTC · Ticket KPI #${tpvTicket.number}${
+        memberName ? ` · ${memberName}` : ''
+      }).`
+    );
+  };
+
   const toggleClubMode = (clubId: ClubId, field: 'degradedMode' | 'fireAlarmOpen') => {
     setState((prev) => {
       const targetClub = prev.clubs.find((c) => c.id === clubId);
@@ -1265,7 +1715,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
       inBodyScans: [newScan, ...prev.inBodyScans],
       auditLogs: appendAudit(prev.auditLogs, {
         clubId: scanInput.clubId,
-        action: 'IMPORT_BILAN_INBODY_SANTE',
+        action: 'SYNCHRO_BILAN_TECHNOGYM_CHECKUP_MYWELLNESS',
         target: scanInput.personName,
         afterState: `${scanInput.deviceModel} · Masse musc. ${scanInput.skeletalMuscleMassKg} kg (accès RGPD cloisonné)`,
       }),
@@ -1528,6 +1978,157 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const createOrUpdateExternalPlanningEvent: CfosContextValue['createOrUpdateExternalPlanningEvent'] =
+    (eventInput) => {
+      const nowIso = new Date().toISOString();
+      setState((prev) => {
+        const existingIdx = prev.unifiedExternalEvents.findIndex(
+          (ev) => ev.externalSourceId === eventInput.externalSourceId
+        );
+        let updatedEvents: UnifiedPlanningEvent[];
+        if (existingIdx >= 0) {
+          updatedEvents = prev.unifiedExternalEvents.map((ev, idx) =>
+            idx === existingIdx
+              ? { ...ev, ...eventInput, lastSyncedAt: nowIso }
+              : ev
+          );
+        } else {
+          updatedEvents = [
+            {
+              ...eventInput,
+              id: `uev-${Date.now()}`,
+              lastSyncedAt: nowIso,
+            },
+            ...prev.unifiedExternalEvents,
+          ];
+        }
+        return {
+          ...prev,
+          unifiedExternalEvents: updatedEvents,
+          auditLogs: appendAudit(prev.auditLogs, {
+            clubId: eventInput.clubId,
+            action: 'PLANNING_CENTRALISE_SYNCHRO_EVENEMENT',
+            target: `${eventInput.title} (${eventInput.externalSourceId})`,
+            afterState: `Synchronisé avec source d'origine ${eventInput.originSystem} sans duplication (${eventInput.date} ${eventInput.startTime}-${eventInput.endTime})`,
+          }),
+        };
+      });
+      notify(
+        'success',
+        `Événement « ${eventInput.title} » enregistré sur le planning centralisé et synchronisé avec sa source d'origine (${eventInput.originSystem}).`
+      );
+    };
+
+  const deleteExternalPlanningEvent = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      unifiedExternalEvents: prev.unifiedExternalEvents.filter((ev) => ev.id !== id),
+    }));
+    notify('success', 'Événement retiré du planning centralisé.');
+  };
+
+  const toggleCollaboratorTask = (taskId: string) => {
+    const nowTime = new Date().toTimeString().slice(0, 5);
+    setState((prev) => ({
+      ...prev,
+      collaboratorTasks: prev.collaboratorTasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              completed: !t.completed,
+              completedAt: !t.completed ? nowTime : undefined,
+            }
+          : t
+      ),
+    }));
+  };
+
+  const addCollaboratorTask: CfosContextValue['addCollaboratorTask'] = (taskInput) => {
+    setState((prev) => ({
+      ...prev,
+      collaboratorTasks: [
+        {
+          ...taskInput,
+          id: `tsk-${Date.now()}`,
+          completed: false,
+        },
+        ...prev.collaboratorTasks,
+      ],
+    }));
+    notify('success', `Tâche ajoutée au tableau de bord « Ma Journée ».`);
+  };
+
+  const markNotificationRead = (notifId: string) => {
+    setState((prev) => ({
+      ...prev,
+      collaboratorNotifications: prev.collaboratorNotifications.map((n) =>
+        n.id === notifId ? { ...n, read: true } : n
+      ),
+    }));
+  };
+
+  const signDocumentWithInternalProof: CfosContextValue['signDocumentWithInternalProof'] = ({
+    docId,
+    otpInput,
+    consentChecked,
+    consentPhrase,
+  }) => {
+    const doc = state.hrDocuments.find((d) => d.id === docId);
+    if (!doc) {
+      return { ok: false, message: 'Document RH introuvable.' };
+    }
+    const emp = state.employees.find((e) => e.id === doc.employeeId) || currentUser;
+    const res = createInternalElectronicSignatureProof({
+      document: doc,
+      employee: emp,
+      otpInput,
+      consentChecked,
+      consentPhrase,
+    });
+
+    if (!res.ok || !res.signedDocument || !res.proof) {
+      notify('error', res.error || 'Échec de la signature électronique.');
+      return { ok: false, message: res.error || 'Échec de la signature électronique.' };
+    }
+
+    setState((prev) => ({
+      ...prev,
+      hrDocuments: prev.hrDocuments.map((d) => (d.id === docId ? res.signedDocument! : d)),
+      collaboratorNotifications: prev.collaboratorNotifications.map((n) =>
+        n.employeeId === emp.id && n.type === 'signature_requise' ? { ...n, read: true } : n
+      ),
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: emp.clubId,
+        action: 'SIGNATURE_ELECTRONIQUE_INTERNE_CFITNESS_OS',
+        target: `${doc.title} (${emp.firstName} ${emp.lastName})`,
+        beforeState: 'En attente signature',
+        afterState: `Signé & scellé (Preuve ${res.proof!.proofId} · ${res.proof!.proofSealSha256} · 0 € / signature)`,
+      }),
+    }));
+
+    const okMsg = `Document signé électroniquement avec succès (Preuve juridique ${res.proof.proofId} · Empreinte ${res.proof.proofSealSha256} · 0 € / signature).`;
+    notify('success', okMsg);
+    return { ok: true, message: okMsg };
+  };
+
+  const openMywellnessLink: CfosContextValue['openMywellnessLink'] = (params) => {
+    const built = buildMywellnessContextualUrl(params);
+    setState((prev) => ({
+      ...prev,
+      auditLogs: appendAudit(prev.auditLogs, {
+        clubId: params.clubId || 'global',
+        action: 'OUVERTURE_LIEN_CONTEXTUEL_MYWELLNESS',
+        target: built.label,
+        afterState: `Redirection contextuelle Mywellness (${built.url})`,
+      }),
+    }));
+    notify(
+      'success',
+      `${built.label} → Lien contextuel Technogym Mywellness ouvert (${built.url}).`
+    );
+    return built;
+  };
+
   const value: CfosContextValue = {
     ...state,
     currentUser,
@@ -1553,8 +2154,11 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     takePhoneLineSession,
     releasePhoneLineSession,
     placeSimulatedCall,
+    qualifyRingoverCall,
     createProspect,
     updateProspectStage,
+    scheduleProspectTrial,
+    convertProspectToMember,
     sendValidatedProspectSms,
     toggleProspectStopSms,
     addShift,
@@ -1573,10 +2177,21 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     createJobOffer,
     runCandidateOnboarding,
     simulateMemberGateScan,
+    triggerManualTurnstileOpen,
     regularizeMemberSepa,
+    toggleMemberSubscriptionStatus,
+    rewardMemberLoyaltyOrReferral,
+    recordQuickTpvSale,
     toggleClubMode,
     addInBodyScan,
     signGoNoGoPhase,
+    createOrUpdateExternalPlanningEvent,
+    deleteExternalPlanningEvent,
+    toggleCollaboratorTask,
+    addCollaboratorTask,
+    markNotificationRead,
+    signDocumentWithInternalProof,
+    openMywellnessLink,
   };
 
   return <CfosContext.Provider value={value}>{children}</CfosContext.Provider>;

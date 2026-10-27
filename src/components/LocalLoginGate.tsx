@@ -78,7 +78,7 @@ export function LocalLoginGate({ children }: { children: React.ReactNode }) {
       label: 'COACH SPORTIF / BPJEPS',
       color: 'bg-emerald-600 text-white',
       permissions:
-        'Accès plateau & santé : Bilans Biométriques InBody 570/270 (RGPD Art. 9), Technogym Biocircuit, Académie & Livret BPJEPS.',
+        'Accès plateau & santé : Bilans Technogym Checkup & Mywellness (RGPD Art. 9), Technogym Biocircuit, Académie & Livret BPJEPS.',
     };
   };
 

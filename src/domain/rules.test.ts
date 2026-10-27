@@ -2,14 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CFITNESS_LEGAL_IDENTITY,
+  HARDWARE_COMPATIBILITY_SPECS,
   INITIAL_BACKUP_REPLICAS,
+  LEGACY_SOFTWARE_PARITY_MATRIX,
   buildBackupEnvelope,
+  buildMywellnessContextualUrl,
+  buildSilaeApiPayload,
+  buildUnifiedPlanningEvents,
   canAccessFeature,
   canCallProspectProspection,
   canSendProspectSms,
+  computeHeitzKpiSummary,
+  computeInBodySheetMetrics,
   computePayrollVariables,
   computeProbationNoticePeriod,
   computeSnapshotChecksum,
+  convertProspectToHeitzMember,
+  createInternalElectronicSignatureProof,
   evaluateGatePassage,
   evaluateShiftCompliance,
   executeTransactionalOnboarding,
@@ -17,15 +26,28 @@ import {
   formatClubName,
   formatLeaveStatus,
   formatPointageType,
+  generateHeitzTrialPassageCode,
   generateOfficialCdiContractText,
   generateSilaeCsv,
   isSectionAllowedForRole,
   mergeFailoverSnapshot,
   parseRecruitmentEmailPayload,
+  resolveTelecomOutboundRoute,
   selectOutboundNumber,
   verifyEmployeePin,
 } from './rules';
-import type { Candidate, Employee, HeitzMember, Prospect, Shift, TrainingModule } from '../types/cfos';
+import { INITIAL_HEITZ_KPI_TICKETS } from '../data/seed';
+import type {
+  Candidate,
+  Employee,
+  HRDocument,
+  HeitzMember,
+  InBodyScan,
+  Prospect,
+  Shift,
+  TrainingModule,
+  UnifiedPlanningEvent,
+} from '../types/cfos';
 
 const baseEmployee: Employee = {
   id: 'emp-1',
@@ -466,4 +488,233 @@ test('Multi-device backup envelope checksum and power-outage failover merge pres
   assert.equal(merged.mergedState.offlinePointageQueue.length, 0);
   assert.equal(merged.mergedState.heitzMembers[0].finBalanceEur, 0);
 });
+
+test('ARCEP Decision n° 2022-1583 telecom routing and manufacturer hardware specs prevent real-world blocking', () => {
+  const fixedRoute = resolveTelecomOutboundRoute('04', 'ovhcloud_sip');
+  assert.equal(fixedRoute.arcepCompliant, true);
+  assert.equal(fixedRoute.sipEndpoint.includes('sip.ovh.fr'), true);
+
+  const mobileRoute = resolveTelecomOutboundRoute('07', 'ovhcloud_sip');
+  assert.equal(mobileRoute.arcepCompliant, true);
+  assert.equal(mobileRoute.hardwareGateway.includes('Yeastar TG400'), true);
+  assert.equal(mobileRoute.sipEndpoint.includes('10.10.0.14'), true);
+
+  assert.equal(HARDWARE_COMPATIBILITY_SPECS.length, 5);
+  assert.equal(
+    HARDWARE_COMPATIBILITY_SPECS.some((s) => s.domain === 'TELEPHONIE_ARCEP_SIP_GSM'),
+    true
+  );
+  assert.equal(
+    HARDWARE_COMPATIBILITY_SPECS.some((s) => s.domain === 'PORTILLONS_HEITZ_WIEGAND'),
+    true
+  );
+  assert.equal(
+    HARDWARE_COMPATIBILITY_SPECS.some((s) => s.domain === 'TABLETTES_KIOSQUES_POE'),
+    true
+  );
+  assert.equal(
+    HARDWARE_COMPATIBILITY_SPECS.some((s) => s.domain === 'BIOMETRIE_INBODY_LB120'),
+    true
+  );
+  assert.equal(
+    HARDWARE_COMPATIBILITY_SPECS.some((s) => s.domain === 'PARC_MACHINES_CARDIO_MUSCU'),
+    true
+  );
+});
+
+test('Legacy software 100% parity matrix, LookinBody 120 sheet metrics, and CRM-to-Heitz member conversion', () => {
+  assert.equal(LEGACY_SOFTWARE_PARITY_MATRIX.length, 6);
+  assert.equal(
+    LEGACY_SOFTWARE_PARITY_MATRIX.every((entry) => entry.parityScorePct === 100 && entry.featuresImplemented.length >= 6),
+    true
+  );
+
+  const sampleScan: InBodyScan = {
+    id: 'inb-test',
+    personName: 'Thomas Mercier',
+    personType: 'Adhérent',
+    clubId: 'carre-de-soie',
+    date: '2026-10-23',
+    deviceModel: 'Technogym Checkup (Mywellness)',
+    weightKg: 78.4,
+    skeletalMuscleMassKg: 36.2,
+    bodyFatPercent: 14.2,
+    totalBodyWaterL: 49.1,
+    visceralFatLevel: 5,
+    coachNote: 'Objectif hypertrophie',
+  };
+
+  const sheet = computeInBodySheetMetrics(sampleScan);
+  assert.equal(sheet.inBodyScore >= 70 && sheet.inBodyScore <= 98, true);
+  assert.equal(sheet.basalMetabolicRateKcal > 1600, true);
+  assert.equal(sheet.smmStatus, 'Élevé (Athlétique)');
+  assert.equal(sheet.pbfStatus, 'Normal');
+  assert.equal(sheet.segmentalLean.balanceStatus, 'Équilibré');
+
+  const prospect: Prospect = {
+    id: 'pr-conv-1',
+    firstName: 'Julie',
+    lastName: 'Morel',
+    phone: '06 45 12 89 34',
+    email: 'julie.morel@mail.fr',
+    clubId: 'carre-de-soie',
+    source: 'Site c.fitness',
+    stage: 'Venu',
+    assignedToId: 'emp-maxime',
+    rgpdConsent: true,
+    bloctelListed: false,
+    smsStopOptOut: false,
+    retryCount: 1,
+    goal: 'Biocircuit & Cours Co',
+    notes: 'Séance découverte validée',
+    createdAt: '2026-10-20',
+  };
+
+  const conv = convertProspectToHeitzMember({
+    prospect,
+    subscriptionName: 'Formule Premium Bi-Club + Biocircuit (39,90 €/mois)',
+    actorName: 'Maxime Lefèvre',
+    actorRole: 'commercial',
+    nowIso: '2026-10-23T15:30:00Z',
+  });
+
+  assert.equal(conv.newMember.activeSubscription, true);
+  assert.equal(conv.newMember.finBalanceEur, 0);
+  assert.equal(conv.newMember.finBalanceState, 1);
+  assert.equal(conv.newMember.badgeCode.startsWith('HZ-'), true);
+  assert.equal(conv.sepaMandateRum.startsWith('RUM-CFIT-2026-CDS-'), true);
+  assert.equal(conv.updatedProspect.stage, 'Adhérent');
+});
+
+test('Internal zero-cost electronic signature proof, Unified multi-source planning deduplication, Mywellness deep-links, and Silae API payload', () => {
+  const sampleDoc: HRDocument = {
+    id: 'doc-avenant-1',
+    employeeId: baseEmployee.id,
+    title: 'Avenant CDI Objectifs CRM C.Fitness',
+    category: 'Avenant',
+    uploadedAt: '2026-10-25',
+    encryptedAtRest: true,
+    signedStatus: 'En attente signature',
+    contractBodyText: 'Clause CRM C.Fitness OS — 20 abonnements/mois',
+  };
+
+  // Missing consent must be rejected
+  const rejectedConsent = createInternalElectronicSignatureProof({
+    document: sampleDoc,
+    employee: baseEmployee,
+    otpInput: '246842',
+    consentChecked: false,
+    consentPhrase: 'Lu et approuvé, bon pour accord',
+  });
+  assert.equal(rejectedConsent.ok, false);
+
+  // Valid OTP + explicit consent produces a sealed SHA-256 legal proof at 0 € / signature
+  const signedRes = createInternalElectronicSignatureProof({
+    document: sampleDoc,
+    employee: baseEmployee,
+    otpInput: '246842',
+    consentChecked: true,
+    consentPhrase: 'Lu et approuvé, bon pour accord',
+    nowIso: '2026-10-25T10:30:00Z',
+  });
+  assert.equal(signedRes.ok, true);
+  assert.equal(signedRes.signedDocument?.signedStatus, 'Signé horodaté');
+  assert.equal(signedRes.proof?.documentSha256.startsWith('SHA256-DOC-'), true);
+  assert.equal(signedRes.proof?.proofSealSha256.startsWith('SHA256-SEAL-'), true);
+  assert.equal(signedRes.proof?.legalFramework.includes('0 € / signature'), true);
+
+  // Unified planning deduplicates events by externalSourceId across RH, Mywellness, Heitz, and Internal
+  const shifts: Shift[] = [
+    {
+      id: 'sh-101',
+      employeeId: baseEmployee.id,
+      clubId: 'carre-de-soie',
+      date: '2026-10-23',
+      startTime: '09:00',
+      endTime: '17:00',
+      breakMinutes: 60,
+      roleLabel: 'Plateau & Bilans Checkup',
+      published: true,
+    },
+  ];
+  const extEvents: UnifiedPlanningEvent[] = [
+    {
+      id: 'ev-1',
+      externalSourceId: 'MW-CRS-999',
+      originSystem: 'mywellness_api',
+      category: 'Cours Mywellness',
+      title: 'Biocircuit Guidé',
+      subtitle: 'Technogym Mywellness',
+      clubId: 'carre-de-soie',
+      employeeId: baseEmployee.id,
+      date: '2026-10-23',
+      startTime: '10:30',
+      endTime: '11:30',
+      locationLabel: 'Studio CDS',
+      writableViaApi: true,
+      lastSyncedAt: '2026-10-23T08:00:00Z',
+    },
+    // Duplicate externalSourceId must be ignored
+    {
+      id: 'ev-1-dup',
+      externalSourceId: 'MW-CRS-999',
+      originSystem: 'mywellness_api',
+      category: 'Cours Mywellness',
+      title: 'Biocircuit Guidé (Doublon)',
+      subtitle: 'Technogym Mywellness',
+      clubId: 'carre-de-soie',
+      employeeId: baseEmployee.id,
+      date: '2026-10-23',
+      startTime: '10:30',
+      endTime: '11:30',
+      locationLabel: 'Studio CDS',
+      writableViaApi: true,
+      lastSyncedAt: '2026-10-23T08:00:00Z',
+    },
+  ];
+
+  const unified = buildUnifiedPlanningEvents(shifts, extEvents);
+  assert.equal(unified.length, 2);
+
+  // Mywellness contextual deep-link vs fallback dashboard link
+  const deepLink = buildMywellnessContextualUrl({
+    mywellnessMemberId: 'mw-claire-1042',
+    personName: 'Claire Dubois',
+    clubId: 'carre-de-soie',
+  });
+  assert.equal(deepLink.isContextualDeepLink, true);
+  assert.equal(deepLink.url.includes('/member/mw-claire-1042'), true);
+
+  const fallbackLink = buildMywellnessContextualUrl({ clubId: 'beynost' });
+  assert.equal(fallbackLink.isContextualDeepLink, false);
+  assert.equal(fallbackLink.url.includes('/dashboard'), true);
+
+  // Silae API payload
+  const payrollRows = computePayrollVariables([baseEmployee], shifts);
+  const apiPayload = buildSilaeApiPayload(payrollRows, '2026-10', 'API_REST_SILAE');
+  assert.equal(apiPayload.dossierNumero, '081865');
+  assert.equal(apiPayload.idcc, '2511');
+  assert.equal(apiPayload.variables.length, 1);
+
+  // Heitz HZ.WS (/planning/book + /passageCode/generate) & FITNESS KPI (/api/ticket + /api/employee/list)
+  const trialQr = generateHeitzTrialPassageCode(
+    {
+      id: 'pr-2',
+      firstName: 'Nicolas',
+      lastName: 'Perrin',
+      clubId: 'carre-de-soie',
+    },
+    '2026-10-25 18:00'
+  );
+  assert.equal(trialQr.idCenter, 5052);
+  assert.equal(trialQr.heitzPassageQrCode.startsWith('HZ-QR-PASS-5052-'), true);
+  assert.equal(trialQr.smsConfirmationText.includes(trialQr.heitzPassageQrCode), true);
+
+  const kpiSummary = computeHeitzKpiSummary(INITIAL_HEITZ_KPI_TICKETS, 'all');
+  assert.equal(kpiSummary.ticketsCount, 5);
+  assert.equal(kpiSummary.totalRevenueTtcEur > 180, true);
+  assert.equal(kpiSummary.totalSilaeCommissionsEur > 40, true);
+  assert.equal(kpiSummary.byEmployeeSeller.length >= 3, true);
+});
+
 

@@ -10,44 +10,74 @@ import {
   ShieldCheck,
   Send,
   Eye,
+  Briefcase,
+  Plus,
+  Star,
+  FileSignature,
+  Download,
+  Lock,
 } from 'lucide-react';
-import { CandidateStage } from '../../types/cfos';
+import { CandidateStage, ClubId, ContractType, HRDocument } from '../../types/cfos';
 import { CFITNESS_LEGAL_IDENTITY, formatClubName } from '../../domain/rules';
 import { ContractPreviewModal } from '../ContractPreviewModal';
 
-const KANBAN_COLUMNS: { stage: CandidateStage; title: string; subtitle: string }[] = [
+const KANBAN_COLUMNS: {
+  stage: CandidateStage;
+  title: string;
+  subtitle: string;
+  accent: string;
+}[] = [
   {
     stage: 'Reçue',
-    title: '1. Reçue',
+    title: '1. Candidatures Reçues',
     subtitle: 'Ingestion auto recrutement@c.fitness + Accusé RGPD',
+    accent: 'border-t-4 border-t-sky-500',
   },
   {
     stage: 'Examen dirigeants',
-    title: '2. Examen Dirigeants (Mario / Daniel)',
-    subtitle: 'Revue CV PDF & adéquation 3S',
+    title: '2. Présélection Dirigeants',
+    subtitle: 'Mario & Daniel Carvalho · Scoring CV PDF',
+    accent: 'border-t-4 border-t-indigo-600',
   },
   {
     stage: 'Entretien club',
-    title: '3. Entretien Club',
-    subtitle: 'Carré de Soie ou Beynost (Jeu de rôle)',
+    title: '3. Entretien en Club',
+    subtitle: 'Carré de Soie ou Beynost (Mise en situation)',
+    accent: 'border-t-4 border-t-amber-500',
   },
   {
     stage: 'Retenu',
-    title: '4. Retenu (Onboarding 1-Clic)',
-    subtitle: 'Génération auto Contrat CDI C.FITNESS',
+    title: '4. Embauché (Signature Interne 0 €)',
+    subtitle: 'Génération auto Contrat CDI 1 823,03 € + Preuve SHA-256',
+    accent: 'border-t-4 border-t-emerald-600',
   },
 ];
+
+function getJobBoardBadgeStyle(channel: string): string {
+  const lower = channel.toLowerCase();
+  if (lower.includes('indeed')) return 'bg-[#003A9B] text-white';
+  if (lower.includes('wttj') || lower.includes('welcome'))
+    return 'bg-[#FFCD00] text-slate-950 font-black';
+  if (lower.includes('linkedin')) return 'bg-[#0A66C2] text-white';
+  if (lower.includes('france travail')) return 'bg-[#1E3A8A] text-white';
+  return 'bg-orange-600 text-white';
+}
 
 export function AtsView() {
   const {
     clubFilter,
     candidates,
+    jobOffers,
     hrDocuments,
+    signDocumentWithInternalProof,
     moveCandidateStage,
     ingestEmailCandidate,
+    createJobOffer,
     runCandidateOnboarding,
   } = useCfos();
 
+  const [atsMode, setAtsMode] = useState<'FLATCHR_KANBAN' | 'YOUSIGN_PARAPHEUR'>('FLATCHR_KANBAN');
+  const [otpInputByDoc, setOtpInputByDoc] = useState<Record<string, string>>({});
   const [simulateRollback, setSimulateRollback] = useState(false);
   const [transactionBanner, setTransactionBanner] = useState<{
     type: 'ok' | 'error';
@@ -67,8 +97,51 @@ export function AtsView() {
   const [lastRgpdAck, setLastRgpdAck] = useState<string | null>(null);
   const [previewContractText, setPreviewContractText] = useState<string | null>(null);
 
+  // Multiposting Job Offer Form (Style Flatchr / Workable)
+  const [offerTitle, setOfferTitle] = useState('Conseiller Commercial Fitness (H/F) - 35h');
+  const [offerClub, setOfferClub] = useState<ClubId>('carre-de-soie');
+  const [offerContract, setOfferContract] = useState<ContractType>('CDI');
+
   const filteredCandidates =
     clubFilter === 'all' ? candidates : candidates.filter((c) => c.clubId === clubFilter);
+  const filteredOffers =
+    clubFilter === 'all' ? jobOffers : jobOffers.filter((o) => o.clubId === clubFilter);
+
+  const contractDocs = hrDocuments.filter(
+    (d) => d.category === 'Contrat' || d.category === 'Avenant'
+  );
+
+  const handleDownloadProofJson = (doc: HRDocument) => {
+    if (!doc.signatureProof) return;
+    const blob = new Blob([JSON.stringify(doc.signatureProof, null, 2)], {
+      type: 'application/json;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `preuve-signature-cfitness-${doc.signatureProof.proofId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCreateOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    createJobOffer({
+      title: offerTitle,
+      clubId: offerClub,
+      contractType: offerContract,
+      weeklyHours: 35,
+      hourlyRate: CFITNESS_LEGAL_IDENTITY.tauxHoraireBrutEur,
+      channels: ['Site Web c.fitness', 'Indeed', 'France Travail', 'Welcome to the Jungle'],
+    });
+    setTransactionBanner({
+      type: 'ok',
+      title: `Offre d'emploi multipostée via Flatchr : ${offerTitle}`,
+      details: `Diffusée simultanément sur Indeed, Welcome to the Jungle, France Travail et Site Web c.fitness (${formatClubName(
+        offerClub
+      )}).`,
+    });
+  };
 
   const handleHireOrRetenu = (candidateId: string) => {
     const res = runCandidateOnboarding({
@@ -91,8 +164,12 @@ export function AtsView() {
       const generatedContract = res.newDocuments?.find((d) => d.category === 'Contrat');
       setTransactionBanner({
         type: 'ok',
-        title: `Onboarding 1-Clic réussi : Contrat CDI C.FITNESS généré pour ${res.newEmployee.firstName} ${res.newEmployee.lastName} !`,
-        details: `Contrat CDI Temps Complet (35h / 151,67h · ${CFITNESS_LEGAL_IDENTITY.salaireBrutMensuelEur.toLocaleString('fr-FR')} € brut · IDCC 2511 Gr. 1 · Objectif 20 abonnements/mois · Clause CRM opposable) déposé dans le coffre-fort RH · Code PIN Kiosque : ${res.newEmployee.pinCode}.`,
+        title: `Onboarding 1-Clic réussi : Contrat CDI C.FITNESS généré dans le Parapheur Interne (0 € / signature) pour ${res.newEmployee.firstName} ${res.newEmployee.lastName} !`,
+        details: `Contrat CDI Temps Complet (35h / 151,67h · ${CFITNESS_LEGAL_IDENTITY.salaireBrutMensuelEur.toLocaleString(
+          'fr-FR'
+        )} € brut · IDCC 2511 Gr. 1 · Objectif 20 abonnements/mois · Clause CRM opposable) prêt à signer depuis l'espace personnel « Ma Journée » · Code PIN Kiosque : ${
+          res.newEmployee.pinCode
+        }.`,
         contractText: generatedContract?.contractBodyText,
       });
       if (generatedContract?.contractBodyText) {
@@ -129,291 +206,554 @@ export function AtsView() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-orange-600">
-            Module M6 (v1.2) · Flux Recrutement Officiel recrutement@c.fitness &amp; Onboarding 1-Clic
-          </div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-1">
-            Ingestion Email Automatique, Kanban Dirigeants (Mario / Daniel) &amp; Contrat CDI Auto
-          </h1>
-          <p className="text-xs text-slate-600 mt-1">
-            Canal d&apos;entrée officiel : <span className="font-mono font-bold text-slate-900">recrutement@c.fitness</span> (page recrutement du site web c.fitness) · Parsing Nom, Prénom, Tél, Email &amp; CV PDF · Accusé RGPD automatique
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* ===================================================================== */}
+      {/* AUTHENTIC FLATCHR ATS + YOUSIGN APPLICATION CHROME                    */}
+      {/* ===================================================================== */}
+      <div className="rounded-xl overflow-hidden border border-slate-300 shadow-xs bg-white">
+        {/* Flatchr Royal Blue & Yousign Green Top Header */}
+        <div className="bg-[#1E3A8A] text-white px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2.5 pr-3 border-r border-white/15">
+              <div className="w-8 h-8 rounded-lg bg-[#3B82F6] text-white font-black text-base flex items-center justify-center shadow-xs">
+                F
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-base tracking-tight text-white">
+                    flatchr
+                  </span>
+                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">
+                    + Signature Interne C.Fitness OS (0 €)
+                  </span>
+                </div>
+                <div className="text-[10px] text-blue-200">
+                  Multiposting Offres, CVthèque &amp; Signature Électronique Interne (Sans abonnement)
+                </div>
+              </div>
+            </div>
 
-        <label className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer shrink-0">
-          <input
-            type="checkbox"
-            checked={simulateRollback}
-            onChange={(e) => setSimulateRollback(e.target.checked)}
-          />
-          <span>Simuler panne Phase 6 (Test Rollback Atomique)</span>
-        </label>
-      </div>
-
-      {transactionBanner && (
-        <div
-          className={`p-4 rounded-xl border text-xs space-y-2 ${
-            transactionBanner.type === 'error'
-              ? 'bg-amber-50 border-amber-300 text-amber-950'
-              : 'bg-emerald-50 border-emerald-300 text-emerald-950'
-          }`}
-        >
-          <div className="font-bold flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              {transactionBanner.type === 'error' ? (
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              )}
-              {transactionBanner.title}
-            </span>
-            <div className="flex items-center gap-3 shrink-0">
-              {transactionBanner.contractText && (
-                <button
-                  onClick={() => setPreviewContractText(transactionBanner.contractText!)}
-                  className="px-2.5 py-1 rounded bg-emerald-700 text-white font-semibold cursor-pointer"
-                >
-                  Afficher le Contrat CDI généré
-                </button>
-              )}
+            {/* Switch between Flatchr ATS Board and Internal Electronic Signature Room */}
+            <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-lg text-xs">
               <button
-                onClick={() => setTransactionBanner(null)}
-                className="underline cursor-pointer"
+                onClick={() => setAtsMode('FLATCHR_KANBAN')}
+                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                  atsMode === 'FLATCHR_KANBAN'
+                    ? 'bg-white text-[#1E3A8A]'
+                    : 'text-blue-100 hover:text-white'
+                }`}
               >
-                Fermer
+                <Briefcase className="w-3.5 h-3.5" />
+                Pipeline Candidats Flatchr ({filteredCandidates.length})
+              </button>
+              <button
+                onClick={() => setAtsMode('YOUSIGN_PARAPHEUR')}
+                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                  atsMode === 'YOUSIGN_PARAPHEUR'
+                    ? 'bg-emerald-500 text-slate-950'
+                    : 'text-blue-100 hover:text-white'
+                }`}
+              >
+                <FileSignature className="w-3.5 h-3.5" />
+                Parapheur Signature Interne Contrats &amp; Avenants ({contractDocs.length})
               </button>
             </div>
           </div>
-          <p>{transactionBanner.details}</p>
-        </div>
-      )}
 
-      {/* Official Email Ingestion Simulator: recrutement@c.fitness */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-orange-600" />
-              Connecteur IMAP/Webhook : <span className="font-mono text-orange-600">recrutement@c.fitness</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Simulez la réception d&apos;une candidature envoyée depuis la page recrutement du site <span className="font-semibold">c.fitness</span> avec extraction automatique du CV en PDF et envoi immédiat de l&apos;accusé RGPD.
-            </p>
-          </div>
-          <span className="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
-            Écoute active : recrutement@c.fitness
-          </span>
+          <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-xs font-medium text-blue-100 cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={simulateRollback}
+              onChange={(e) => setSimulateRollback(e.target.checked)}
+            />
+            <span>Simuler panne Phase 6 (Test Rollback Atomique)</span>
+          </label>
         </div>
 
-        <form onSubmit={handleIngestEmail} className="grid grid-cols-1 lg:grid-cols-12 gap-3 text-xs">
-          <div className="lg:col-span-4 space-y-2">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Expéditeur (Prénom Nom &lt;Email&gt;)
-              </label>
-              <input
-                type="text"
-                value={senderLine}
-                onChange={(e) => setSenderLine(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono text-[11px]"
-              />
+        {transactionBanner && (
+          <div
+            className={`px-4 py-3 border-b text-xs space-y-1.5 ${
+              transactionBanner.type === 'error'
+                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+            }`}
+          >
+            <div className="font-bold flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                {transactionBanner.type === 'error' ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                )}
+                {transactionBanner.title}
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                {transactionBanner.contractText && (
+                  <button
+                    onClick={() => setPreviewContractText(transactionBanner.contractText!)}
+                    className="px-2.5 py-1 rounded bg-emerald-700 text-white font-semibold cursor-pointer"
+                  >
+                    Ouvrir le Contrat CDI
+                  </button>
+                )}
+                <button
+                  onClick={() => setTransactionBanner(null)}
+                  className="underline cursor-pointer"
+                >
+                  Fermer
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Pièce jointe détectée (CV PDF)
-              </label>
-              <input
-                type="text"
-                value={attachmentPdf}
-                onChange={(e) => setAttachmentPdf(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono text-[11px]"
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 space-y-2">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Objet du mail</label>
-              <input
-                type="text"
-                value={subjectLine}
-                onChange={(e) => setSubjectLine(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Corps du message (avec téléphone mobile)
-              </label>
-              <input
-                type="text"
-                value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200"
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-3 flex flex-col justify-end">
-            <button
-              type="submit"
-              className="w-full py-2.5 px-4 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-              Ingérer depuis recrutement@c.fitness
-            </button>
-          </div>
-        </form>
-
-        {lastRgpdAck && (
-          <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start justify-between gap-3">
-            <div>
-              <span className="font-bold text-emerald-700">Accusé de réception RGPD envoyé : </span>
-              {lastRgpdAck}
-            </div>
-            <button
-              onClick={() => setLastRgpdAck(null)}
-              className="text-slate-400 hover:text-slate-700 underline shrink-0 cursor-pointer"
-            >
-              Fermer
-            </button>
+            <p>{transactionBanner.details}</p>
           </div>
         )}
-      </div>
 
-      {/* 4-Column ATS Kanban: [Reçue] -> [Examen Dirigeants (Mario / Daniel)] -> [Entretien Club] -> [Retenu] */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {KANBAN_COLUMNS.map((col) => {
-          const colCandidates = filteredCandidates.filter((c) => c.stage === col.stage);
-          return (
-            <div
-              key={col.stage}
-              className="bg-slate-100/80 border border-slate-200 rounded-xl p-3.5 flex flex-col space-y-3"
-            >
-              <div className="pb-2.5 border-b border-slate-200/80 flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">{col.title}</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{col.subtitle}</p>
+        {/* ===================================================================== */}
+        {/* MODE 1: FLATCHR MULTIPOSTING & CANDIDATE KANBAN                       */}
+        {/* ===================================================================== */}
+        {atsMode === 'FLATCHR_KANBAN' && (
+          <div className="p-4 space-y-4 bg-slate-50">
+            {/* Multiposting Job Offers Strip with Brand Job-Board Pills */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-extrabold text-slate-900">
+                    Diffusion Multiposting Flatchr active :
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#003A9B] text-white">
+                    Indeed
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-[#FFCD00] text-slate-950">
+                    Welcome to the Jungle
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1E3A8A] text-white">
+                    France Travail
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0A66C2] text-white">
+                    LinkedIn Jobs
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-orange-600 text-white">
+                    recrutement@c.fitness
+                  </span>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-xs font-mono font-bold text-slate-800">
-                  {colCandidates.length}
+
+                <form
+                  onSubmit={handleCreateOffer}
+                  className="flex flex-wrap items-center gap-2 text-xs"
+                >
+                  <input
+                    type="text"
+                    value={offerTitle}
+                    onChange={(e) => setOfferTitle(e.target.value)}
+                    placeholder="Intitulé de l'offre..."
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 w-52 bg-white"
+                  />
+                  <select
+                    value={offerClub}
+                    onChange={(e) => setOfferClub(e.target.value as ClubId)}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                  >
+                    <option value="carre-de-soie">Carré de Soie</option>
+                    <option value="beynost">Beynost</option>
+                  </select>
+                  <select
+                    value={offerContract}
+                    onChange={(e) => setOfferContract(e.target.value as ContractType)}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                  >
+                    <option value="CDI">CDI 35h</option>
+                    <option value="Apprentissage">Alternance BPJEPS</option>
+                  </select>
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-[#1E3A8A] hover:bg-[#172e6e] text-white font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Multiposter l&apos;annonce
+                  </button>
+                </form>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                {filteredOffers.map((offer) => (
+                  <div
+                    key={offer.id}
+                    className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between gap-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-slate-900">{offer.title}</div>
+                        <div className="text-[11px] text-slate-500">
+                          {formatClubName(offer.clubId)} · {offer.contractType} ({offer.weeklyHours}
+                          h/sem)
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        En ligne
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {offer.channels.map((ch) => (
+                        <span
+                          key={ch}
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getJobBoardBadgeStyle(
+                            ch
+                          )}`}
+                        >
+                          {ch}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4-Column Flatchr Candidate Kanban Board */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+              {KANBAN_COLUMNS.map((col) => {
+                const colCandidates = filteredCandidates.filter((c) => c.stage === col.stage);
+                return (
+                  <div
+                    key={col.stage}
+                    className={`bg-slate-200/70 border border-slate-300 rounded-xl p-3 flex flex-col space-y-3 ${col.accent}`}
+                  >
+                    <div className="pb-2 border-b border-slate-300 flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-xs font-extrabold text-slate-900">{col.title}</h3>
+                        <p className="text-[10px] text-slate-600 mt-0.5">{col.subtitle}</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-white border border-slate-300 text-xs font-mono font-bold text-slate-800">
+                        {colCandidates.length}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {colCandidates.map((cand) => {
+                        const empContract = hrDocuments.find(
+                          (d) =>
+                            d.employeeId === cand.onboardedEmployeeId &&
+                            d.category === 'Contrat' &&
+                            d.contractBodyText
+                        );
+                        const initials = `${cand.firstName[0] || ''}${cand.lastName[0] || ''}`;
+
+                        return (
+                          <div
+                            key={cand.id}
+                            className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs text-xs"
+                          >
+                            {/* Candidate Header with Avatar, Source Pill & Flatchr Star Rating */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                  {initials}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-slate-900">
+                                    {cand.firstName} {cand.lastName}
+                                  </h4>
+                                  <div className="text-[10px] text-slate-500">
+                                    {cand.roleTarget} · {formatClubName(cand.clubId, true)}
+                                  </div>
+                                </div>
+                              </div>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 ${getJobBoardBadgeStyle(
+                                  cand.sourceChannel
+                                )}`}
+                              >
+                                {cand.sourceChannel}
+                              </span>
+                            </div>
+
+                            {/* Flatchr 5-Star Evaluation Strip */}
+                            <div className="flex items-center justify-between text-[11px] bg-slate-50 px-2.5 py-1 rounded border border-slate-100">
+                              <div className="flex items-center gap-0.5 text-amber-400">
+                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <Star className="w-3.5 h-3.5 text-slate-300" />
+                              </div>
+                              <span className="font-mono text-[10px] text-slate-600">
+                                {cand.phone}
+                              </span>
+                            </div>
+
+                            {cand.cvPdfFileName && (
+                              <div className="px-2.5 py-1.5 rounded bg-blue-50/60 border border-blue-200 flex items-center justify-between text-[11px]">
+                                <span className="font-mono text-slate-800 flex items-center gap-1.5 truncate">
+                                  <FileText className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" />
+                                  <span className="truncate">{cand.cvPdfFileName}</span>
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 shrink-0 ml-1">
+                                  CV PDF
+                                </span>
+                              </div>
+                            )}
+
+                            <p className="text-[11px] text-slate-600 leading-snug bg-slate-50 p-2 rounded border border-slate-100">
+                              {cand.aiDecisionSupportNote}
+                            </p>
+
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
+                              <select
+                                value={cand.stage}
+                                onChange={(e) =>
+                                  handleStageChange(cand.id, e.target.value as CandidateStage)
+                                }
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-800"
+                              >
+                                <option value="Reçue">1. Reçue</option>
+                                <option value="Examen dirigeants">
+                                  2. Examen Dirigeants (Mario / Daniel)
+                                </option>
+                                <option value="Entretien club">3. Entretien Club</option>
+                                <option value="Retenu">4. Retenu (Génère Contrat CDI)</option>
+                              </select>
+
+                              {cand.onboardedEmployeeId ? (
+                                <div className="space-y-1.5">
+                                  <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                                    Contrat CDI généré &amp; salarié créé
+                                  </div>
+                                  {empContract?.contractBodyText && (
+                                    <button
+                                      onClick={() =>
+                                        setPreviewContractText(empContract.contractBodyText!)
+                                      }
+                                      className="w-full py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                                    >
+                                      <FileSignature className="w-3.5 h-3.5" />
+                                      Ouvrir Contrat (Signature Interne 0 €)
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleHireOrRetenu(cand.id)}
+                                  className="w-full py-2 px-3 rounded-lg bg-[#1E3A8A] hover:bg-[#172e6e] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                                  Embaucher &amp; Générer CDI (Signature 0 €)
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Email Ingestion Webhook Simulator: recrutement@c.fitness */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100">
+                <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#1E3A8A]" />
+                  Connecteur Email Automatique Flatchr :{' '}
+                  <span className="font-mono text-orange-600">recrutement@c.fitness</span>
+                </div>
+                <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded">
+                  Parsing CV PDF + Réponse RGPD auto
                 </span>
               </div>
 
-              <div className="space-y-3">
-                {colCandidates.map((cand) => {
-                  const empContract = hrDocuments.find(
-                    (d) =>
-                      d.employeeId === cand.onboardedEmployeeId &&
-                      d.category === 'Contrat' &&
-                      d.contractBodyText
-                  );
-                  return (
-                    <div
-                      key={cand.id}
-                      className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-[10px] font-mono font-semibold text-orange-600">
-                            {cand.sourceChannel} · {formatClubName(cand.clubId, true)}
-                          </div>
-                          <h4 className="text-sm font-bold text-slate-900 mt-0.5">
-                            {cand.firstName} {cand.lastName}
-                          </h4>
-                          <div className="text-[11px] font-medium text-slate-600">
-                            Cible : {cand.roleTarget} ({cand.contractTarget} 35h)
-                          </div>
-                        </div>
-                      </div>
+              <form
+                onSubmit={handleIngestEmail}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-3 text-xs"
+              >
+                <div className="lg:col-span-3">
+                  <input
+                    type="text"
+                    value={senderLine}
+                    onChange={(e) => setSenderLine(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono text-[11px]"
+                    placeholder="Expéditeur"
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <input
+                    type="text"
+                    value={attachmentPdf}
+                    onChange={(e) => setAttachmentPdf(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono text-[11px]"
+                    placeholder="Fichier CV PDF"
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <input
+                    type="text"
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200"
+                    placeholder="Message..."
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <button
+                    type="submit"
+                    className="w-full py-2 px-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Simuler Réception CV
+                  </button>
+                </div>
+              </form>
 
-                      <div className="text-[11px] font-mono text-slate-700 space-y-1">
-                        <div>{cand.phone}</div>
-                        <div className="truncate">{cand.email}</div>
-                      </div>
+              {lastRgpdAck && (
+                <div className="p-2.5 rounded bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
+                  <strong>Accusé RGPD envoyé :</strong> {lastRgpdAck}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-                      {cand.cvPdfFileName && (
-                        <div className="px-2.5 py-1.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px]">
-                          <span className="font-mono text-slate-800 flex items-center gap-1.5 truncate">
-                            <FileText className="w-3.5 h-3.5 text-orange-600 shrink-0" />
-                            <span className="truncate">{cand.cvPdfFileName}</span>
-                          </span>
-                          <span className="text-[10px] font-semibold text-emerald-700 shrink-0 ml-1">
-                            PDF OK
-                          </span>
-                        </div>
-                      )}
+        {/* ===================================================================== */}
+        {/* MODE 2: INTERNAL C.FITNESS OS ELECTRONIC SIGNATURE ENGINE (0 €)       */}
+        {/* ===================================================================== */}
+        {atsMode === 'YOUSIGN_PARAPHEUR' && (
+          <div className="p-5 bg-slate-100 space-y-4">
+            <div className="bg-emerald-900 text-white rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">
+                  Moteur de Signature Électronique Interne C.Fitness OS · 0 € / signature · Sans Abonnement Externe
+                </div>
+                <h2 className="text-base font-black mt-0.5">
+                  Parapheur Interne Contrats CDI &amp; Avenants SAS C.FITNESS (Art. 1366 &amp; 1367 Code civil + eIDAS)
+                </h2>
+                <p className="text-xs text-emerald-100 mt-1">
+                  Vérification d&apos;identité par code OTP, recueil du consentement explicite, horodatage UTC et conservation du fichier de preuve cryptographique SHA-256.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-emerald-400 text-slate-950 text-xs font-extrabold shrink-0">
+                0 € / Signature · Valeur Probante
+              </span>
+            </div>
 
-                      {cand.rgpdAckSentAt && (
-                        <div className="text-[10px] text-emerald-700 font-medium">
-                          ✓ Accusé RGPD envoyé ({cand.rgpdAckSentAt})
-                        </div>
-                      )}
-
-                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
-                        <div className="font-semibold text-slate-800 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-orange-600" />
-                          Parsing &amp; Aide à la décision :
-                        </div>
-                        <p className="mt-1 leading-snug">{cand.aiDecisionSupportNote}</p>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 space-y-2">
-                        <label className="block text-[10px] font-semibold uppercase text-slate-400">
-                          Déplacer vers l&apos;étape :
-                        </label>
-                        <select
-                          value={cand.stage}
-                          onChange={(e) =>
-                            handleStageChange(cand.id, e.target.value as CandidateStage)
-                          }
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-800"
+            <div className="grid grid-cols-1 gap-4">
+              {contractDocs.map((doc) => {
+                const isSigned = doc.signedStatus !== 'En attente signature';
+                const otpVal = otpInputByDoc[doc.id] ?? '482915';
+                return (
+                  <div
+                    key={doc.id}
+                    className="bg-white border-2 border-slate-300 rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="bg-slate-800 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-bold flex items-center gap-2">
+                        <FileSignature className="w-4 h-4 text-emerald-400" />
+                        <span>
+                          [{doc.category.toUpperCase()}] {doc.title}
+                        </span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2.5 py-0.5 rounded font-bold text-[11px] ${
+                            isSigned
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'bg-amber-400 text-slate-950'
+                          }`}
                         >
-                          <option value="Reçue">1. Reçue</option>
-                          <option value="Examen dirigeants">
-                            2. Examen Dirigeants (Mario / Daniel)
-                          </option>
-                          <option value="Entretien club">3. Entretien Club</option>
-                          <option value="Retenu">4. Retenu (Génère Contrat CDI)</option>
-                        </select>
-
-                        {cand.onboardedEmployeeId ? (
-                          <div className="space-y-1.5">
-                            <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                              Contrat CDI généré &amp; salarié créé
-                            </div>
-                            {empContract?.contractBodyText && (
-                              <button
-                                onClick={() => setPreviewContractText(empContract.contractBodyText!)}
-                                className="w-full py-1.5 px-2.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                Voir Contrat CDI C.FITNESS
-                              </button>
-                            )}
-                          </div>
-                        ) : (
+                          {doc.signedStatus}
+                        </span>
+                        {isSigned && doc.signatureProof && (
                           <button
-                            onClick={() => handleHireOrRetenu(cand.id)}
-                            className="w-full py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                            onClick={() => handleDownloadProofJson(doc)}
+                            className="px-2.5 py-1 rounded bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                           >
-                            <UserCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                            Passer Retenu &amp; Générer CDI 1-Clic
+                            <Download className="w-3 h-3" />
+                            Preuve .json (SHA-256)
                           </button>
                         )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {doc.contractBodyText && (
+                      <div className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                        <pre className="lg:col-span-7 p-4 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-800 whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed">
+                          {doc.contractBodyText}
+                        </pre>
+
+                        {/* Internal C.Fitness OS Legal Electronic Signature Proof Box */}
+                        <div className="lg:col-span-5 p-4 rounded-xl border-2 border-dashed border-emerald-500 bg-emerald-50/50 space-y-2.5 text-xs">
+                          <div className="text-[10px] font-mono uppercase font-bold text-emerald-800 flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Scellé Cryptographique Interne C.Fitness OS (0 €)</span>
+                          </div>
+                          <div className="font-bold text-slate-900">
+                            Mention légale : « Lu et approuvé, bon pour accord »
+                          </div>
+                          <div className="p-3 rounded bg-white border border-emerald-300 font-mono text-[11px] text-emerald-950 space-y-1">
+                            <div>Employeur : SAS C.FITNESS ({CFITNESS_LEGAL_IDENTITY.siret})</div>
+                            <div>Statut : {doc.signedStatus}</div>
+                            {doc.signatureProof ? (
+                              <>
+                                <div>Certificat : {doc.signatureProof.proofId}</div>
+                                <div>Horodatage UTC : {doc.signatureProof.signedAtIso}</div>
+                                <div>OTP vérifié : {doc.signatureProof.otpCodeVerified}</div>
+                                <div className="truncate">
+                                  SHA-256 : {doc.signatureProof.documentSha256}
+                                </div>
+                              </>
+                            ) : (
+                              <div>
+                                En attente de validation OTP collaborateur (Espace « Ma Journée » ou ci-dessous)
+                              </div>
+                            )}
+                          </div>
+
+                          {!isSigned && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  maxLength={6}
+                                  value={otpVal}
+                                  onChange={(e) =>
+                                    setOtpInputByDoc({
+                                      ...otpInputByDoc,
+                                      [doc.id]: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Code OTP 6 chiffres"
+                                  className="w-36 px-2.5 py-1.5 rounded border border-emerald-400 bg-white font-mono font-bold text-xs"
+                                />
+                                <span className="text-[10px] text-slate-600">
+                                  Code identité OTP + Consentement
+                                </span>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  signDocumentWithInternalProof({
+                                    docId: doc.id,
+                                    otpInput: otpVal,
+                                    consentChecked: true,
+                                    consentPhrase:
+                                      'Lu et approuvé, bon pour accord sur le contrat/avenant SAS C.FITNESS',
+                                  })
+                                }
+                                className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <FileSignature className="w-4 h-4" />
+                                Signer &amp; Générer Preuve SHA-256 (0 €)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
 
       {/* Shared Modal Preview for Official C.FITNESS CDI Contract */}
