@@ -8,6 +8,10 @@ import {
   Plus,
   UserCheck,
   CheckCircle2,
+  UserPlus,
+  PhoneCall,
+  QrCode,
+  ArrowRight,
 } from 'lucide-react';
 import { useCfos } from '../../context/CfosContext';
 import {
@@ -16,7 +20,6 @@ import {
   formatClubName,
 } from '../../domain/rules';
 import type { CollaboratorTask } from '../../types/cfos';
-import { MywellnessQuickConnect } from '../MywellnessQuickConnect';
 
 export function MyDayCollaboratorView() {
   const {
@@ -42,12 +45,10 @@ export function MyDayCollaboratorView() {
   const activeEmployee =
     staffList.find((e) => e.id === selectedEmpId) || staffList[0] || currentUser;
 
-  // Quick Task add state
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] =
     useState<CollaboratorTask['category']>('Accueil & TPV');
 
-  // Unified events for this collaborator (RH + Mywellness + Heitz + Internal, deduplicated)
   const allUnifiedEvents = buildUnifiedPlanningEvents(
     shifts,
     unifiedExternalEvents
@@ -65,9 +66,13 @@ export function MyDayCollaboratorView() {
   const myTasks = collaboratorTasks.filter(
     (t) => t.employeeId === activeEmployee.id
   );
+  const remainingTasksCount = myTasks.filter((t) => !t.completed).length;
+
   const myNotifications = collaboratorNotifications.filter(
     (n) => n.employeeId === activeEmployee.id
   );
+  const unreadNotifsCount = myNotifications.filter((n) => !n.read).length;
+
   const myDocuments = hrDocuments.filter(
     (d) => d.employeeId === activeEmployee.id
   );
@@ -91,49 +96,47 @@ export function MyDayCollaboratorView() {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Top Collaborator Personal Space Header (Zero duplicate Mywellness button here) */}
-      <div className="bg-[#1B2559] text-white rounded-xl p-5 shadow-xs border border-slate-800">
+    <div className="space-y-6">
+      {/* Top Personal Header & Quick Front-Desk Actions */}
+      <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 shadow-2xs space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-[#4318FF] text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-600 text-white font-black text-base flex items-center justify-center shrink-0">
               {activeEmployee.firstName[0]}
               {activeEmployee.lastName[0]}
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-[#00C48C] text-slate-950 font-black text-[10px] uppercase tracking-wider">
-                  01 · MA JOURNÉE EN CLUB
-                </span>
-                <span className="px-2 py-0.5 rounded bg-white/10 text-sky-200 font-mono text-[10px]">
-                  {formatClubName(activeEmployee.clubId, false)}
-                </span>
-                <span className="px-2 py-0.5 rounded bg-white/10 text-slate-200 font-mono text-[10px]">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span className="text-orange-400 font-semibold">01. Ma Journée</span>
+                <span aria-hidden="true">·</span>
+                <span>{formatClubName(activeEmployee.clubId, false)}</span>
+                <span aria-hidden="true">·</span>
+                <span className="font-mono tabular-nums">
                   {activeEmployee.contractType} {activeEmployee.weeklyContractHours}h/sem
                 </span>
               </div>
-              <h1 className="text-lg font-extrabold tracking-tight mt-1">
-                Bonjour {activeEmployee.firstName} {activeEmployee.lastName} — {activeEmployee.jobTitle}
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-1">
+                Bonjour {activeEmployee.firstName} {activeEmployee.lastName}
               </h1>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Votre feuille de route quotidienne : créneaux du jour (RH, Mywellness, Heitz), tâches prioritaires et notifications.
+              <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+                {activeEmployee.jobTitle} — Voici votre emploi du temps et vos priorités du jour.
               </p>
             </div>
           </div>
 
-          {/* Single Collaborator Switcher */}
+          {/* Single Collaborator Selector */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="bg-[#2B3674] border border-white/15 rounded-lg px-3 py-2 flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-[#00C48C]" />
-              <span className="text-[11px] text-slate-300">Collaborateur :</span>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5">
+              <UserCheck className="w-4 h-4 text-orange-400 shrink-0" />
+              <span className="text-xs text-slate-400">Voir la journée de :</span>
               <select
                 value={activeEmployee.id}
                 onChange={(e) => setSelectedEmpId(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+                className="bg-transparent text-white text-xs sm:text-sm font-semibold focus:outline-none cursor-pointer"
               >
                 {staffList.map((emp) => (
                   <option key={emp.id} value={emp.id} className="text-slate-900">
-                    {emp.firstName} {emp.lastName} ({emp.role.toUpperCase()} · {formatClubName(emp.clubId, true)})
+                    {emp.firstName} {emp.lastName} ({formatClubName(emp.clubId, true)})
                   </option>
                 ))}
               </select>
@@ -141,133 +144,177 @@ export function MyDayCollaboratorView() {
           </div>
         </div>
 
-        {/* Bottom 4 KPI Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10 text-xs">
-          <div className="bg-white/5 rounded-lg px-3 py-2">
-            <div className="text-[10px] text-slate-300 uppercase">Heures Semaine 43</div>
-            <div className="font-mono font-bold text-sm text-white mt-0.5 tabular-nums">
+        {/* 4 Key Daily Figures (Clean, Large, Readable at a Distance) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
+          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
+            <div className="text-xs text-slate-400">Tâches à faire aujourd&apos;hui</div>
+            <div className="text-lg sm:text-xl font-bold text-orange-400 font-mono tabular-nums mt-1">
+              {remainingTasksCount} sur {myTasks.length}
+            </div>
+          </div>
+
+          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
+            <div className="text-xs text-slate-400">Rendez-vous &amp; Créneaux</div>
+            <div className="text-lg sm:text-xl font-bold text-emerald-400 font-mono tabular-nums mt-1">
+              {myEvents.length} programmés
+            </div>
+          </div>
+
+          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
+            <div className="text-xs text-slate-400">Heures de la semaine</div>
+            <div className="text-lg sm:text-xl font-bold text-white font-mono tabular-nums mt-1">
               {totalWeeklyHours.toFixed(1)} h / {activeEmployee.weeklyContractHours} h
             </div>
           </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2">
-            <div className="text-[10px] text-slate-300 uppercase">Créneaux Synchronisés</div>
-            <div className="font-mono font-bold text-sm text-[#00C48C] mt-0.5 tabular-nums">
-              {myEvents.length} créneau(x)
+
+          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
+            <div className="text-xs text-slate-400">Congés disponibles</div>
+            <div className="text-lg sm:text-xl font-bold text-white font-mono tabular-nums mt-1">
+              {activeEmployee.cpBalance} j CP · {activeEmployee.rttBalance} j RTT
             </div>
           </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2">
-            <div className="text-[10px] text-slate-300 uppercase">Solde Congés Acquis</div>
-            <div className="font-mono font-bold text-sm text-sky-300 mt-0.5 tabular-nums">
-              CP : {activeEmployee.cpBalance} j · RTT : {activeEmployee.rttBalance} j
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2">
-            <div className="text-[10px] text-slate-300 uppercase">Tâches du Jour</div>
-            <div className="font-mono font-bold text-sm text-amber-300 mt-0.5 tabular-nums">
-              {myTasks.filter((t) => !t.completed).length} restante(s) sur {myTasks.length}
-            </div>
+        </div>
+
+        {/* 3 Direct Counter Shortcuts ("Actions Comptoir Accueil en 1 Clic") */}
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <span className="text-xs font-semibold text-slate-400">
+            Raccourcis rapides comptoir d&apos;accueil :
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 max-w-3xl">
+            <button
+              type="button"
+              onClick={() => setActiveSection('crm')}
+              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4 shrink-0" />
+              <span>Nouveau Prospect / Essai QR</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSection('telephony')}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <PhoneCall className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Appels &amp; SMS (04 / 07)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSection('devices')}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <QrCode className="w-4 h-4 text-orange-400 shrink-0" />
+              <span>Portillons &amp; Caisse Heitz</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Clean 2-Column Workspace: Left = Agenda Unifié (7 cols) | Right = Tâches, Notifications & Technogym Checkup (5 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* LEFT 7 COLS: Unified Schedule (Horaires RH + Cours Mywellness + RDV Heitz + Interne) */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      {/* Main 2-Column Workspace: Left = Mon Planning du Jour (7 cols) | Right = Mes Tâches & Notifications (5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT 7 COLS: Clean Unified Schedule */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#4318FF]">
-                Agenda Unifié du Collaborateur
-              </div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
-                <Calendar className="w-4 h-4 text-[#4318FF]" />
-                Mes Horaires RH, Cours Mywellness &amp; RDV Heitz ({myEvents.length})
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-orange-600" />
+                <span>Mon Planning &amp; Mes Rendez-vous ({myEvents.length})</span>
               </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Horaires de présence, séances de coaching Mywellness et rendez-vous d&apos;essai Heitz.
+              </p>
             </div>
             <button
               type="button"
               onClick={() => setActiveSection('planning-hr')}
-              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              Ouvrir l’Espace Planning →
+              <span>Voir la semaine</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Stream of Unified Events */}
-          <div className="space-y-2.5">
+          <div className="divide-y divide-slate-100">
             {myEvents.map((ev) => {
-              const sourceBadge =
+              const sourceLabel =
                 ev.originSystem === 'cfitness_rh'
-                  ? {
-                      label: 'HORAIRE RH C.FITNESS',
-                      cls: 'bg-indigo-100 text-indigo-900 border-indigo-300',
-                      border: 'border-l-[#4318FF]',
-                    }
+                  ? 'Horaire Club'
                   : ev.originSystem === 'mywellness_api'
-                  ? {
-                      label: 'TECHNOGYM MYWELLNESS',
-                      cls: 'bg-amber-100 text-amber-950 border-amber-300',
-                      border: 'border-l-amber-500',
-                    }
+                  ? 'Coaching & Bilan Mywellness'
                   : ev.originSystem === 'heitz_api'
-                  ? {
-                      label: 'RDV HEITZ SYSTEM',
-                      cls: 'bg-sky-100 text-sky-950 border-sky-300',
-                      border: 'border-l-sky-600',
-                    }
-                  : {
-                      label: 'ÉVÉNEMENT INTERNE',
-                      cls: 'bg-emerald-100 text-emerald-950 border-emerald-300',
-                      border: 'border-l-emerald-600',
-                    };
+                  ? 'Rendez-vous Heitz'
+                  : 'Vie du Club';
+
+              const sourceTone =
+                ev.originSystem === 'cfitness_rh'
+                  ? 'text-slate-600'
+                  : ev.originSystem === 'mywellness_api'
+                  ? 'text-orange-600'
+                  : ev.originSystem === 'heitz_api'
+                  ? 'text-emerald-700'
+                  : 'text-slate-700';
 
               return (
                 <div
                   key={ev.id}
-                  className={`p-3.5 rounded-lg border border-slate-200 border-l-4 ${sourceBadge.border} bg-white hover:bg-slate-50/70 transition-colors text-xs space-y-1.5`}
+                  className="py-4 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${sourceBadge.cls}`}>
-                      {sourceBadge.label}
-                    </span>
-                    <span className="font-mono text-xs font-bold text-slate-800 tabular-nums">
-                      {ev.date} · {ev.startTime} – {ev.endTime}
-                    </span>
-                  </div>
-                  <div className="font-bold text-slate-900 text-sm">{ev.title}</div>
-                  <div className="text-[11px] text-slate-600 flex flex-wrap items-center justify-between gap-2">
-                    <span>{ev.subtitle}</span>
-                    <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
-                      {typeof ev.placesMax === 'number' && (
-                        <span className="px-2 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-900 font-semibold">
-                          Places {ev.placesTaken ?? 1}/{ev.placesMax} · Attente {ev.bookingQueueCount ?? 0} · Présence {ev.attendanceRatePct ?? 100}%
-                        </span>
-                      )}
-                      <span className="text-slate-400">Réf: {ev.externalSourceId}</span>
-                    </div>
-                  </div>
-                  {ev.participantName && (
-                    <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-slate-100">
-                      <span className="text-[11px] font-medium text-slate-700">
-                        Adhérent / Participant : <strong>{ev.participantName}</strong>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-mono font-bold text-slate-900 tabular-nums">
+                        {ev.startTime} – {ev.endTime}
                       </span>
-                      {ev.mywellnessMemberId && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openMywellnessLink({
-                              mywellnessMemberId: ev.mywellnessMemberId,
-                              personName: ev.participantName,
-                              clubId: ev.clubId,
-                            })
-                          }
-                          className="px-2.5 py-1 rounded bg-amber-400/90 hover:bg-amber-400 text-slate-950 font-bold text-[10px] flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Fiche adhérent
-                        </button>
+                      <span aria-hidden="true" className="text-slate-300">
+                        ·
+                      </span>
+                      <span className="text-slate-500">{ev.date}</span>
+                      <span aria-hidden="true" className="text-slate-300">
+                        ·
+                      </span>
+                      <span className={`font-semibold ${sourceTone}`}>{sourceLabel}</span>
+                    </div>
+
+                    <div className="text-sm sm:text-base font-bold text-slate-900">
+                      {ev.title}
+                    </div>
+
+                    <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+                      <span>{ev.subtitle}</span>
+                      {ev.participantName && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span>
+                            Adhérent : <strong className="text-slate-900">{ev.participantName}</strong>
+                          </span>
+                        </>
+                      )}
+                      {typeof ev.placesMax === 'number' && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-mono tabular-nums text-slate-700">
+                            Inscrits : {ev.placesTaken ?? 1}/{ev.placesMax}
+                          </span>
+                        </>
                       )}
                     </div>
+                  </div>
+
+                  {ev.mywellnessMemberId && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openMywellnessLink({
+                          mywellnessMemberId: ev.mywellnessMemberId,
+                          personName: ev.participantName,
+                          clubId: ev.clubId,
+                        })
+                      }
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-xs flex items-center gap-1.5 self-start sm:self-center shrink-0 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Dossier Mywellness</span>
+                    </button>
                   )}
                 </div>
               );
@@ -275,49 +322,50 @@ export function MyDayCollaboratorView() {
           </div>
         </div>
 
-        {/* RIGHT 5 COLS: Tasks + Notifications + Single Mywellness Quick Connect + Link to Signatures */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* Tasks Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        {/* RIGHT 5 COLS: Tasks & Notifications */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Daily Tasks */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  Feuille de Route Quotidienne
-                </div>
-                <h2 className="text-sm font-bold text-slate-900">
-                  Mes Tâches du Jour ({myTasks.filter((t) => !t.completed).length} à faire)
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-600" />
+                  <span>Mes Tâches du Jour ({remainingTasksCount} à faire)</span>
                 </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Cochez chaque action dès qu&apos;elle est terminée.
+                </p>
               </div>
-              <Clock className="w-4 h-4 text-slate-400" />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {myTasks.map((task) => (
                 <div
                   key={task.id}
                   onClick={() => toggleCollaboratorTask(task.id)}
-                  className={`p-2.5 rounded-lg border text-xs flex items-start gap-2.5 cursor-pointer transition-colors ${
+                  className={`p-3.5 rounded-xl border text-sm flex items-start gap-3 cursor-pointer transition-colors ${
                     task.completed
                       ? 'bg-slate-50 border-slate-200 text-slate-400 line-through'
-                      : 'bg-white border-slate-200 hover:border-indigo-300 text-slate-900'
+                      : 'bg-white border-slate-200 hover:border-orange-300 text-slate-900'
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={task.completed}
                     onChange={() => {}}
-                    className="mt-0.5 rounded text-[#4318FF] cursor-pointer"
+                    className="mt-1 w-4 h-4 rounded text-orange-600 cursor-pointer"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold leading-snug">{task.title}</div>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                      <span className="font-mono font-bold">{task.dueTime}</span>
-                      <span>·</span>
+                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+                      <span className="font-mono font-semibold tabular-nums">{task.dueTime}</span>
+                      <span aria-hidden="true">·</span>
                       <span>{task.category}</span>
                       {task.priority === 'Haute' && !task.completed && (
-                        <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">
-                          Prioritaire
-                        </span>
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="text-rose-600 font-bold">Prioritaire</span>
+                        </>
                       )}
                     </div>
                   </div>
@@ -325,21 +373,24 @@ export function MyDayCollaboratorView() {
               ))}
             </div>
 
-            <form onSubmit={handleAddTask} className="pt-2 border-t border-slate-100 space-y-2 text-xs">
-              <div className="flex gap-1.5">
+            <form
+              onSubmit={handleAddTask}
+              className="pt-3 border-t border-slate-100 space-y-2.5 text-xs"
+            >
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Nouvelle tâche personnelle..."
+                  placeholder="Ajouter une tâche rapide..."
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs"
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-orange-500"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-[#1B2559] hover:bg-[#2B3674] text-white font-bold flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Ajouter
+                  <Plus className="w-4 h-4" />
+                  <span>Ajouter</span>
                 </button>
               </div>
               <select
@@ -347,68 +398,68 @@ export function MyDayCollaboratorView() {
                 onChange={(e) =>
                   setNewTaskCategory(e.target.value as CollaboratorTask['category'])
                 }
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[11px]"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700"
               >
-                <option value="Accueil & TPV">Catégorie : Accueil &amp; TPV</option>
-                <option value="Relance CRM (ex-LEADS)">Catégorie : Relance CRM</option>
-                <option value="Suivi Mywellness">Catégorie : Suivi Mywellness / Checkup</option>
-                <option value="RH & Administratif">Catégorie : RH &amp; Administratif</option>
+                <option value="Accueil & TPV">Catégorie : Accueil &amp; Caisse</option>
+                <option value="Relance CRM (ex-LEADS)">Catégorie : Relance Prospects</option>
+                <option value="Suivi Mywellness">Catégorie : Suivi Sportif &amp; Bilan</option>
+                <option value="RH & Administratif">Catégorie : Administratif</option>
               </select>
             </form>
           </div>
 
-          {/* Notifications + Single Redirect to ATS Signatures if a contract is pending */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                <Bell className="w-4 h-4 text-amber-500" />
-                Notifications &amp; Documents ({myNotifications.filter((n) => !n.read).length} non lues)
+          {/* Notifications & Contracts */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-orange-600" />
+                <span>Messages &amp; Documents ({unreadNotifsCount})</span>
               </h2>
               {pendingDocsCount > 0 ? (
                 <button
                   type="button"
                   onClick={() => setActiveSection('ats')}
-                  className="px-2.5 py-1 rounded-lg bg-[#4318FF] hover:bg-[#3611d4] text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <FileSignature className="w-3 h-3" />
-                  {pendingDocsCount} contrat à signer →
+                  <FileSignature className="w-3.5 h-3.5" />
+                  <span>{pendingDocsCount} contrat à signer</span>
                 </button>
               ) : (
-                <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Contrats à jour
+                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Dossier RH à jour</span>
                 </span>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {myNotifications.length === 0 ? (
                 <div className="text-xs text-slate-500 py-2">
-                  Aucune notification pour ce collaborateur.
+                  Aucun message en attente.
                 </div>
               ) : (
                 myNotifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`p-3 rounded-lg border text-xs space-y-1.5 ${
+                    className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
                       notif.read
                         ? 'bg-slate-50 border-slate-200 text-slate-600'
-                        : 'bg-amber-50/70 border-amber-200 text-slate-900'
+                        : 'bg-orange-50/50 border-orange-200 text-slate-900'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold">{notif.title}</span>
-                      <span className="font-mono text-[10px] text-slate-500">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-sm">{notif.title}</span>
+                      <span className="font-mono text-[11px] text-slate-500 tabular-nums">
                         {notif.createdAt}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600">{notif.message}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{notif.message}</p>
                     {!notif.read && (
                       <div className="pt-1 flex justify-end">
                         <button
                           type="button"
                           onClick={() => markNotificationRead(notif.id)}
-                          className="text-[11px] font-semibold text-slate-700 hover:text-slate-950 underline cursor-pointer"
+                          className="text-xs font-semibold text-orange-700 hover:text-orange-900 underline cursor-pointer"
                         >
                           Marquer comme lu
                         </button>
@@ -421,12 +472,6 @@ export function MyDayCollaboratorView() {
           </div>
         </div>
       </div>
-
-      {/* Full-Width Mywellness Quick Connect Component */}
-      <MywellnessQuickConnect
-        variant="card"
-        defaultClubId={activeEmployee.clubId}
-      />
     </div>
   );
 }

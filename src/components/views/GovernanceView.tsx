@@ -2,772 +2,1191 @@ import React, { useState, useEffect } from 'react';
 import { useCfos } from '../../context/CfosContext';
 import {
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   Lock,
+  Unlock,
   Server,
   HardDrive,
   FileCheck2,
-  Layers,
-  Presentation,
-  GitMerge,
-  Award,
-  Check,
-  XCircle,
-  ArrowRight,
-  Building2,
   Cpu,
-  PhoneCall,
-  Users,
-  Calendar,
-  FileSignature,
-  GraduationCap,
-  QrCode,
-  Sparkles,
-  TrendingUp,
-  Handshake,
+  Radio,
+  RefreshCw,
+  FileCode2,
+  Download,
+  Terminal,
+  Wrench,
+  GitBranch,
+  Copy,
+  Check,
+  KeyRound,
+  Delete,
+  Layers,
+  CheckSquare,
+  Square,
+  Network,
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
+import { ClubId } from '../../types/cfos';
+import { HARDWARE_COMPATIBILITY_SPECS } from '../../domain/rules';
 import { BackupFailoverPanel } from '../BackupFailoverPanel';
+import dockerComposeRaw from '../../../docker-compose.yml?raw';
+import dockerfileRaw from '../../../Dockerfile?raw';
+import cargoTomlRaw from '../../../Cargo.toml?raw';
+import mainRsRaw from '../../../src-rust/main.rs?raw';
 
-export type GovernanceTabId =
-  | 'features'
-  | 'pitch'
-  | 'ecosystem'
-  | 'differentiation'
-  | 'governance';
+const ARCHITECT_PIN = '0766';
 
-interface GovernanceViewProps {
-  initialTab?: GovernanceTabId;
+export type ArchitectTabId =
+  | 'server_hardware'
+  | 'onsite_runbook'
+  | 'third_party_updates'
+  | 'governance_backups';
+
+interface HardwareNode {
+  id: string;
+  clubId: ClubId | 'bi-club';
+  category:
+    | 'ACCES_HEITZ'
+    | 'MACHINES_FITNESS'
+    | 'BIOMETRIE_INBODY'
+    | 'TELEPHONIE_VOIP'
+    | 'INFRA_RESEAU';
+  name: string;
+  model: string;
+  ipOrEndpoint: string;
+  protocol: string;
+  port: string;
+  latencyMs: number;
+  status: 'ONLINE' | 'STANDBY';
+  details: string;
 }
 
-const PROJECT_FEATURE_CATALOG = [
+const CLUB_HARDWARE_INVENTORY: HardwareNode[] = [
   {
-    category: '1er Plan · Opérations Quotidiennes en Club (Front-Office)',
-    badge: '7 Modules Prioritaires',
-    modules: [
-      {
-        code: '01 · Ma Journée',
-        title: 'Cockpit Collaborateur & Priorités Temps Réel',
-        icon: Sparkles,
-        features: [
-          'Feuille de route individuelle dès la prise de poste (tâches urgentes, RDV du jour, objectifs mensuels d’abonnements).',
-          'Pointage d’entrée / pause / sortie horodaté avec calcul automatique des heures nettes.',
-          'Alertes prioritaires : impayés SEPA à régulariser à l’accueil, prospects chauds à rappeler sous 15 min, essais du jour.',
-          'Accès rapide au Livret BPJEPS (apprentis) ou au suivi des commissions variables (commerciaux).',
-        ],
-      },
-      {
-        code: '02 · Le Collaborateur',
-        title: 'Grille d’Exécution Horaire & Application Terrain Mobile',
-        icon: Users,
-        features: [
-          'Grille horaire de la journée tranche par tranche (ouverture club, tour de salle, relances téléphoniques, accueil essais).',
-          'Validation en 1 clic des tâches exécutées avec traçabilité manager en temps réel.',
-          'Consultation de ses propres shifts, compteur d’heures CDD/CDI et solde de congés payés.',
-          'Accès direct aux documents RH signés (Contrat CDI C.Fitness, règlement intérieur, chartes).',
-        ],
-      },
-      {
-        code: '03 · L’Espace Planning',
-        title: 'Planning Centralisé 3-Sources (RH + Mywellness + Heitz) & Pré-Paie Silae',
-        icon: Calendar,
-        features: [
-          'Fusion sans doublon sur un seul écran : Shifts RH collaborateurs + Cours/Bilans Technogym Mywellness + RDV Système Heitz.',
-          'Moteur de conformité Convention Collective Nationale du Sport (IDCC 2511) : contrôle repos quotidien (11h), amplitude max et pauses.',
-          'Suivi automatisé des périodes d’essai (2 mois renouvelables) et calcul légal des délais de prévenance (24h, 48h, 2 sem., 1 mois).',
-          'Export comptable en 1 clic vers Silae Paie : heures travaillées, absences, primes et commissions commerciales paliers.',
-        ],
-      },
-      {
-        code: '04 & 05 · Téléphonie & WebRTC',
-        title: 'Standard Cloud 12 Lignes OVHcloud (04/07), Studio SVI & Clone Ringover',
-        icon: PhoneCall,
-        features: [
-          'Double identité d’appel certifiée ARCEP (MAN / STIR-SHAKEN) : Lignes fixes 04 (Trunk SIP OVHcloud) + Pool mobiles 07 (4G VoLTE Yeastar TG400).',
-          'Power-Dialer anti-spam (rotation intelligente des 07) et Voicemail Drop 1-clic (dépôt de message vocal pré-enregistré sans attendre le bip).',
-          'Boîte SMS Collaborative 07 avec conformité légale automatique (mention STOP 36111 et blocage instantané des opt-out).',
-          'Supervision Manager temps réel sur les 12 lignes : Écoute discrète, Chuchotement coach (Whisper) et Intrusion à 3 (Barge-in).',
-          'Studio SVI visuel (routage horaire, annonces vocales, files d’attente) + Transcription IA locale gratuite (faster-whisper GPU).',
-        ],
-      },
-      {
-        code: '06 · Le CRM',
-        title: 'Acquisition Prospects, Conversion Heitz 1-Clic & Bouclier Fidélisation',
-        icon: Users,
-        features: [
-          'Capture omnicanale (Web, Meta/Instagram, Walk-in, Appels entrants) avec déduplication automatique téléphone/e-mail.',
-          'Garde-fous juridiques natifs : blocage automatique des appels sortants sur numéros inscrits Bloctel et vérification consentement RGPD.',
-          'Réservation de séance d’essai synchronisée dans Heitz (/api/program/makeReservation) + envoi SMS du QR Code d’ouverture portillon.',
-          'Conversion 1-clic Prospect → Adhérent Heitz : création fiche client, souscription abonnement SEPA, génération ticket encaissement KPI.',
-          'Relances automatiques des adhérents absents (> 14j / 30j sans passage portillon) et des rejets de prélèvement SEPA.',
-        ],
-      },
-      {
-        code: '07 · Les ATS & Signatures (0 €)',
-        title: 'Recrutement Automatisé, Contrats CDI Légaux & Signature SHA-256 Gratuite',
-        icon: FileSignature,
-        features: [
-          'Aspiration et parsing automatique des candidatures reçues sur recrutement@c.fitness avec accusé de réception RGPD immédiat.',
-          'Générateur automatique du Contrat CDI officiel C.Fitness (SIRET, URSSAF, APICIL, REPAM, IDCC 2511, objectif 20 abonnements/mois).',
-          'Moteur interne de signature électronique probante (scellement cryptographique SHA-256 + OTP SMS) à 0 € (remplace Yousign/DocuSign).',
-          'Onboarding transactionnel en 1 clic : crée simultanément le salarié, son code PIN badgeuse, son 1er shift, ses contrats et son parcours Académie.',
-        ],
-      },
-    ],
+    id: 'hw-ai-gpu-server',
+    clubId: 'carre-de-soie',
+    category: 'INFRA_RESEAU',
+    name: 'Serveur Physique Local C.Fitness OS (Linux Debian 12 + Rust / Node + Onduleur UPS)',
+    model:
+      'Debian 12 + Rust (Axum API) / Node + PostgreSQL 16 + Redis 7 + GPU RTX 4060 Ti (faster-whisper) + Onduleur Eaton',
+    ipOrEndpoint: '10.10.0.10 (2 Rue Jacquard, Carré de Soie)',
+    protocol: 'HTTPS (TLS Interne) + PostgreSQL 16 + Redis 7 + LiveKit WebRTC + whisper-rs GPU',
+    port: 'TCP 443 / 3000 / 5432 / 6379',
+    latencyMs: 1,
+    status: 'ONLINE',
+    details:
+      'Serveur maître hébergé au club Carré de Soie sur onduleur Line-Interactive, répliqué en temps réel (stratégie 3-2-1) sur les 6 appareils de secours des 2 clubs.',
   },
   {
-    category: '2e Plan · Pilotage Direction, IA, Académie, Matériel & Gouvernance',
-    badge: '6 Modules Stratégiques',
-    modules: [
-      {
-        code: 'Pilotage Bi-Club',
-        title: 'Tableau de Bord Exécutif Carré de Soie & Beynost',
-        icon: TrendingUp,
-        features: [
-          'Jauge FMI (Fréquentation Maximale Instantanée) en direct sur les 2 clubs avec latence VPN WireGuard inter-sites.',
-          'Suivi du Chiffre d’Affaires, des nouveaux abonnements du mois, du taux de transformation par commercial et des impayés SEPA.',
-          'Vue consolidée multi-établissements ou filtrée par club en 1 clic.',
-        ],
-      },
-      {
-        code: 'Orchestration IA',
-        title: '6 Agents IA Métier Spécialisés & Maintenance Prédictive',
-        icon: Cpu,
-        features: [
-          'Agent Télécom & Résumé d’appel (analyse de sentiment, objections, score commercial post-appel).',
-          'Agent Relance Anti-Churn (détection précoce des adhérents à risque de résiliation selon les passages Heitz).',
-          'Agent RH & Conformité IDCC 2511, Agent Recrutement ATS, Agent Tuteur BPJEPS et Agent Audit Sécurité.',
-        ],
-      },
-      {
-        code: 'Académie 3S & BPJEPS',
-        title: 'Formation Interne Certifiante & Livret d’Apprentissage UC1–UC4',
-        icon: GraduationCap,
-        features: [
-          '11 modules e-learning internes (méthode de vente C.Fitness, accueil, sécurité ERP, téléphonie, hygiène) avec QCM auto-corrigés.',
-          'Livret numérique de suivi des apprentis BPJEPS AF (validation des compétences UC1, UC2, UC3, UC4 par le tuteur).',
-        ],
-      },
-      {
-        code: 'Matériel Heitz & Checkup',
-        title: 'Passerelles Temps Réel Portillons RFID/QR & Technogym Checkup',
-        icon: QrCode,
-        features: [
-          'Monitoring en direct des portillons Heitz (Carré de Soie & Beynost), déclenchement d’ouverture manuelle tracée et mode sécurité incendie.',
-          'Bouclier SEPA automatique : blocage du tourniquet si finBalance < 0 € + envoi SMS de régularisation + alerte écran accueil.',
-          'Passerelle directe vers les 2 stations biométriques Technogym Checkup (Wellness Age™, BIA multi-fréquence, caméra 3D) et Mywellness Cloud.',
-        ],
-      },
-      {
-        code: 'Kiosque Badgeuse PIN',
-        title: 'Mode Tablette Murale PoE avec Tolérance aux Pannes Réseau',
-        icon: Server,
-        features: [
-          'Interface tactile grand format dédiée à l’entrée du personnel par code PIN à 4 chiffres (verrouillage sécurité après 5 essais).',
-          'File d’attente locale chiffrée (Offline Queue) : aucun pointage perdu même en cas de coupure Internet temporaire.',
-        ],
-      },
-      {
-        code: 'Gouvernance & Résilience 3-2-1',
-        title: 'Sauvegarde Multi-Appareils, Bascule Électrique < 3s & Audit Immuable',
-        icon: ShieldCheck,
-        features: [
-          'Réplication automatique temps réel (stratégie 3-2-1) sur 6 appareils : Serveur CDS, NAS Beynost, 2 PC secours, 2 Tablettes, 2 Smartphones.',
-          'Bascule automatique en moins de 3 secondes en cas de coupure de courant sur le serveur principal.',
-          'Journal d’audit cryptographique immuable (Append-Only) et validation par signature Direction des jalons Go/No-Go (Phases 0 à 12).',
-        ],
-      },
-    ],
-  },
-];
-
-const REPLACED_SOFTWARE_MATRIX = [
-  {
-    replaced: 'Ringover / Aircall (SaaS Téléphonie)',
-    oldCost: '45 € à 65 € HT / mois / utilisateur (~720 € HT/mois pour 12 postes)',
-    limitation: 'Coût par licence prohibitif, numéros mobiles virtuels parfois bloqués ou surtaxés, pas de lien natif avec le solde SEPA Heitz.',
-    cfitnessSolution: 'Softphone WebRTC 12 lignes + IPBX Asterisk + Trunk SIP OVHcloud (04) + Passerelle 4G VoLTE Yeastar (07) + IA Whisper locale.',
-    newCost: '~14,40 € HT / mois au total (coût télécom OVHcloud pur, 0 € de licence logicielle)',
+    id: 'hw-heitz-srv',
+    clubId: 'carre-de-soie',
+    category: 'ACCES_HEITZ',
+    name: 'Serveur Windows Heitz System & Service HZ.WS / FITNESS KPI (Token Configuration.exe)',
+    model:
+      'Windows Server SQL + API HZ.WS (SVfMUAnB) & FITNESS KPI (2sA35D6jFP) : POST /api/developer/getToken?v=2',
+    ipOrEndpoint: '10.10.0.20 (LAN CDS · idCenter 5052 & 5053)',
+    protocol:
+      'HTTP/REST JSON Local : /api/users/search, /api/userPassages/browse, /api/passageCode/generate, /api/ticket, /api/planning/browse, /api/employee/list',
+    port: 'TCP 8080 / 1433',
+    latencyMs: 18,
+    status: 'ONLINE',
+    details:
+      'Interrogé exclusivement en circuit fermé LAN (câble RJ45 local entre 10.10.0.10 et 10.10.0.20) : aucune donnée adhérent ne transite sur Internet.',
   },
   {
-    replaced: 'Skello / Combo (Planning RH & Badgeuse)',
-    oldCost: '90 € à 160 € HT / mois / club (~250 € HT/mois pour 2 clubs)',
-    limitation: 'Séparé du planning des cours Technogym et des RDV commerciaux Heitz ; les coachs et managers doivent jongler entre 3 plannings.',
-    cfitnessSolution: 'Espace Planning Unifié 3-en-1 (RH IDCC 2511 + Mywellness + Heitz) + Kiosque Tablette Badgeuse PIN hors-ligne.',
-    newCost: '0 € / mois (intégré nativement)',
+    id: 'hw-turnstiles-cds',
+    clubId: 'carre-de-soie',
+    category: 'ACCES_HEITZ',
+    name: 'Tourniquets & Lecteurs RFID + Bluetooth Heitz (Carré de Soie — Conservés)',
+    model:
+      'Lecteurs Heitz RFID MIFARE + Bluetooth Low Energy (BLE) existants + Contrôleur local Heitz (< 50 ms)',
+    ipOrEndpoint: '10.10.0.21–22 (Pilotés en local par Heitz System · idCenter 5052)',
+    protocol:
+      'Ouverture physique locale par Heitz + Remontée GET /api/userPassages/browse & QR /api/passageCode/generate',
+    port: 'TCP 8080 (API Heitz)',
+    latencyMs: 12,
+    status: 'ONLINE',
+    details:
+      'Lecteurs RFID/Bluetooth conservés. L’impulsion électrique (< 50 ms) est gérée localement par Heitz ; C.Fitness OS supervise les passages et génère les QR Codes d’essai.',
   },
   {
-    replaced: 'Yousign / DocuSign (Signature Électronique)',
-    oldCost: '50 € à 150 € HT / mois (ou facturation à l’enveloppe signée)',
-    limitation: 'Obligation de ressaisir les coordonnées du candidat ou de l’adhérent et de payer à chaque contrat.',
-    cfitnessSolution: 'Moteur interne de signature électronique SHA-256 avec horodatage, adresse IP, OTP SMS et génération automatique du CDI C.Fitness.',
-    newCost: '0 € / mois (illimité)',
+    id: 'hw-turnstiles-bey',
+    clubId: 'beynost',
+    category: 'ACCES_HEITZ',
+    name: 'Tourniquets & Lecteurs RFID + Bluetooth Heitz (Beynost — Conservés)',
+    model:
+      'Lecteurs Heitz RFID MIFARE + Bluetooth Low Energy (BLE) existants + API Heitz (via VPN WireGuard)',
+    ipOrEndpoint: '10.20.0.15 → 10.20.0.21–22 (via WireGuard · idCenter 5053)',
+    protocol:
+      'Contrôle d’accès Heitz natif + GET /api/userPassages/browse & /api/planning/browse?viewAs=EMPLOYEE',
+    port: 'UDP 51820 / TCP 8080',
+    latencyMs: 26,
+    status: 'ONLINE',
+    details:
+      'Relié au serveur principal de Carré de Soie via le tunnel chiffré WireGuard site-à-site (2,4 ms) avec cache autonome en cas de coupure fibre.',
   },
   {
-    replaced: 'HubSpot / Pipedrive / Leads génériques (CRM)',
-    oldCost: '150 € à 400 € HT / mois',
-    limitation: 'Aucune connexion native avec les portillons Heitz : impossible de savoir si le prospect est réellement venu faire sa séance d’essai.',
-    cfitnessSolution: 'CRM Fitness C.Fitness OS connecté en temps réel aux portillons Heitz (QR Code essai, détection passage, conversion adhérent 1-clic).',
-    newCost: '0 € / mois (intégré nativement)',
+    id: 'hw-asterisk-webrtc',
+    clubId: 'bi-club',
+    category: 'TELEPHONIE_VOIP',
+    name: 'Centrale IPBX Asterisk 20 LTS + Trunk SIP Fixe OVHcloud (Numéros 04 — Remplace Ringover)',
+    model: '12 Canaux SIP OVHcloud (sip.ovh.fr) + Postes WebRTC WSS TLS / Yealink SIP-T33G PoE',
+    ipOrEndpoint: '10.10.0.10 ↔ sip.ovh.fr (Fixes 04 26 22 55 30 & 04 22 91 36 82)',
+    protocol: 'PJSIP TLS/SRTP + WebRTC WSS (Certificat TLS requis pour micro navigateur)',
+    port: 'TCP 8089 (WSS) / TCP 5061 (SIP TLS)',
+    latencyMs: 11,
+    status: 'ONLINE',
+    details:
+      'Conforme ARCEP n° 2022-1583 : émet les numéros fixes géographiques 04 certifiés MAN STIR/SHAKEN (~1,20 € HT/mois/ligne) + Casques USB-C Jabra Evolve2 40 SE.',
   },
   {
-    replaced: 'Outils ATS Recrutement (Flatchr / WelcomeKit)',
-    oldCost: '80 € à 200 € HT / mois',
-    limitation: 'Déconnecté de la création du salarié dans le planning et de la formation interne.',
-    cfitnessSolution: 'ATS intégré branché sur recrutement@c.fitness avec Onboarding transactionnel en 1 clic (Crée salarié + PIN + Shift + Contrat + Académie).',
-    newCost: '0 € / mois (intégré nativement)',
+    id: 'hw-yeastar-gsm-07',
+    clubId: 'bi-club',
+    category: 'TELEPHONIE_VOIP',
+    name: 'Passerelle GSM 4G VoLTE Yeastar TG400 (Pool Mobiles 07 & SMS STOP — Conformité ARCEP)',
+    model: 'Passerelle Matérielle SIP ↔ 4 Cartes SIM Physiques 4G VoLTE (07 55 52 ...)',
+    ipOrEndpoint: '10.10.0.14 (LAN Asterisk RJ45)',
+    protocol: 'SIP PJSIP Local (5060) + API HTTP SMS locale ↔ Réseau Cellulaire 4G VoLTE',
+    port: 'UDP 5060 / TCP 80',
+    latencyMs: 14,
+    status: 'ONLINE',
+    details:
+      'Indispensable (Décision ARCEP n° 2022-1583) : les opérateurs bloquant tout Caller ID 06/07 sur un Trunk SIP fixe, la passerelle Yeastar TG400 émet les appels 07 et SMS via de vraies cartes SIM 4G VoLTE.',
   },
   {
-    replaced: 'Google Calendar / WhatsApp / Fichiers Excel épars',
-    oldCost: 'Perte de temps estimée à 8h / semaine / manager + perte de prospects',
-    limitation: 'Informations éparpillées, aucune traçabilité opposable, risque RGPD majeur sur les téléphones personnels des salariés.',
-    cfitnessSolution: 'Cockpit unique « Ma Journée » + Grille Collaborateur + Clause de traçabilité CRM opposable + Zéro téléphone personnel.',
-    newCost: '0 € / mois + Sécurité juridique totale',
+    id: 'hw-kiosk-poe-tablets',
+    clubId: 'bi-club',
+    category: 'INFRA_RESEAU',
+    name: 'Bornes Tactiles Murales Accueil & Badgeuse PIN (Alimentation PoE RJ45 Anti-Gonflement)',
+    model:
+      'Dalles Android PoE iiyama ProLite TW1023ASC-B1P (sans batterie) / Samsung Tab Active5 PoE + Fully Kiosk Browser',
+    ipOrEndpoint: '10.10.0.31 (CDS) & 10.20.0.31 (Beynost)',
+    protocol: 'Ethernet PoE IEEE 802.3af (Onduleur) + HTTPS PWA + IndexedDB Offline',
+    port: 'TCP 443 (LAN Filaire RJ45)',
+    latencyMs: 4,
+    status: 'ONLINE',
+    details:
+      'Élimine le gonflement des batteries lithium branchées 24h/24 sur USB et les pertes Wi-Fi : alimentation + réseau filaire via câble unique RJ45 PoE.',
+  },
+  {
+    id: 'hw-checkup-cds',
+    clubId: 'carre-de-soie',
+    category: 'BIOMETRIE_INBODY',
+    name: 'Station Technogym Checkup (Balance Révolutionnaire & Capteurs 3D) — Carré de Soie',
+    model: 'Technogym Checkup Dernière Génération (Balance BIA Multi-Fréquence, Caméra 3D, Wellness Age™)',
+    ipOrEndpoint: '10.10.0.55 ↔ Technogym Mywellness Cloud Pro',
+    protocol: 'Intégration native Technogym Mywellness + Lien contextuel direct depuis C.Fitness OS',
+    port: 'HTTPS 443 (Mywellness)',
+    latencyMs: 9,
+    status: 'ONLINE',
+    details:
+      'Synchronisée avec Mywellness (Wellness Age™, composition corporelle BIA, mobilité, équilibre et force).',
+  },
+  {
+    id: 'hw-checkup-inbody770-bey',
+    clubId: 'beynost',
+    category: 'BIOMETRIE_INBODY',
+    name: 'Station Technogym Checkup (Balance Révolutionnaire & Capteurs 3D) — Beynost',
+    model: 'Technogym Checkup Dernière Génération (Balance BIA Multi-Fréquence, Caméra 3D, Wellness Age™)',
+    ipOrEndpoint: '10.20.0.55 ↔ Technogym Mywellness Cloud Pro',
+    protocol: 'Intégration native Technogym Mywellness + Lien contextuel direct depuis C.Fitness OS',
+    port: 'HTTPS 443 (Mywellness)',
+    latencyMs: 14,
+    status: 'ONLINE',
+    details:
+      'Seconde station Technogym Checkup déployée à Beynost avec ouverture contextuelle 1-clic depuis C.Fitness OS.',
+  },
+  {
+    id: 'hw-ovh-wireguard-router',
+    clubId: 'bi-club',
+    category: 'INFRA_RESEAU',
+    name: 'Routeurs Fibre Pro & Tunnel VPN WireGuard Site-à-Site (< 3 ms) + Switchs PoE',
+    model: 'MikroTik RB5009UG+S+IN (Carré de Soie) ↔ MikroTik hEX S (Beynost) + Switch PoE 8 ports',
+    ipOrEndpoint: '10.10.0.1 ↔ 10.20.0.1',
+    protocol: 'WireGuard VPN (ChaCha20-Poly1305) + Alimentation PoE Tablettes/Yealink',
+    port: 'UDP 51820 / TCP 443',
+    latencyMs: 2,
+    status: 'ONLINE',
+    details:
+      'Assure l’interconnexion privée chiffrée permanente entre les 2 clubs sans exposer aucun port sur Internet.',
   },
 ];
 
-const PARTNER_SYSTEMS_IN_HARMONY = [
+const DEPLOYMENT_FILES: Record<
+  'docker-compose.yml' | 'Dockerfile' | 'Cargo.toml' | 'src-rust/main.rs',
+  string
+> = {
+  'docker-compose.yml': dockerComposeRaw,
+  Dockerfile: dockerfileRaw,
+  'Cargo.toml': cargoTomlRaw,
+  'src-rust/main.rs': mainRsRaw,
+};
+
+const ENV_PRODUCTION_TEMPLATE = `# ============================================================================
+# FICHIER .ENV DE PRODUCTION — SERVEUR LOCAL CLUB (10.10.0.10)
+# Emplacement sur le serveur : /opt/cfitness-os/.env (chmod 600)
+# ============================================================================
+
+# 1. BASE DE DONNÉES LOCALE & CACHE TEMPS RÉEL
+PORT=3000
+NODE_ENV=production
+DATABASE_URL=postgresql://cfitness_admin:MotDePasseFortLocal2026!@127.0.0.1:5432/cfitness_os
+REDIS_URL=redis://127.0.0.1:6379
+
+# 2. CONNEXION 100 % LOCALE AU SERVEUR HEITZ (ZÉRO TRANSIT INTERNET)
+HEITZ_WS_URL=http://10.10.0.20:8080
+HEITZ_WS_DEV_KEY=CLE_DEVELOPPEUR_GENEREE_DANS_CONFIGURATION_EXE
+HEITZ_ID_CENTER_CDS=5052
+HEITZ_ID_CENTER_BEY=5053
+
+# 3. TÉLÉPHONIE OVHCLOUD (FIXES 04) & PASSERELLE 4G YEASTAR TG400 (MOBILES 07)
+OVH_SIP_HOST=sip.ovh.fr
+OVH_SIP_TRUNK_USER=0033426225530
+OVH_SIP_TRUNK_PASS=SecretSipOvh2026!
+YEASTAR_TG400_IP=http://10.10.0.14
+YEASTAR_API_USER=api_cfitness
+YEASTAR_API_PASS=SecretYeastar4G!
+
+# 4. PASSERELLE TECHNOGYM MYWELLNESS & SILAE PAIE
+MYWELLNESS_CDS_SLUG=cfitness-carre-de-soie
+MYWELLNESS_BEY_SLUG=cfitness-beynost
+SILAE_DOSSIER_ID=081865`;
+
+export interface OnsiteStep {
+  id: string;
+  number: number;
+  category: 'hardware' | 'system' | 'heitz' | 'telecom' | 'biometrie' | 'kiosks' | 'vpn' | 'payroll';
+  categoryLabel: string;
+  step: string;
+  duration: string;
+  location: string;
+  summary: string;
+  hardwareRequired: string;
+  tasks: string[];
+  command: string;
+  secondaryCommand?: string;
+  configSnippet?: {
+    filename: string;
+    description: string;
+    content: string;
+  };
+  verification: string;
+  pitfall: string;
+}
+
+const ONSITE_INSTALLATION_STEPS: OnsiteStep[] = [
   {
-    system: '1. Système Heitz v16 (Heitz-WS.exe & SQL)',
-    role: 'Cœur Adhérents, Prélèvements SEPA, Caisse KPI & Contrôle d’Accès Portillons (RFID / Bluetooth / QR)',
-    whyKept: 'Heitz est la référence métier pour la gestion bancaire SEPA et pilote déjà les lecteurs RFID/Bluetooth installés dans les clubs.',
-    howItWorksTogether: [
-      'Authentification sécurisée via /api/developer/getToken et échange JSON temps réel (< 50 ms sur LAN/VPN).',
-      'Sens C.Fitness → Heitz : Lorsqu’un commercial réserve un essai ou convertit un prospect dans le CRM, C.Fitness OS crée automatiquement la fiche dans Heitz (/api/client/add), génère le QR Code portillon (/api/passageCode/generate) et enregistre le ticket KPI (/api/financial/addCheckDetail).',
-      'Sens Heitz → C.Fitness : Chaque passage au tourniquet ou rejet SEPA (finBalance < 0 €) remonte instantanément dans C.Fitness OS pour bloquer le portillon, alerter l’accueil et déclencher un SMS de régularisation.',
+    id: 'step-1-rack-nut-ups',
+    number: 1,
+    category: 'hardware',
+    categoryLabel: 'Matériel & Onduleur',
+    step: 'ÉTAPE 1 · Rack Serveur 19", Onduleur Eaton Ellipse PRO & Daemon NUT (Extinction Propre)',
+    duration: '30 min',
+    location: 'Baie informatique 19" Carré de Soie (2 Rue Jacquard)',
+    summary: 'Montage du serveur maître C.Fitness OS en baie, raccordement sur prises ondulées Eaton et configuration du démon NUT pour extinction automatique sécurisée.',
+    hardwareRequired: 'Serveur Debian 12 (Intel i7/Xeon ou Ryzen, 32 Go RAM, 2x SSD NVMe RAID1), Onduleur Eaton Ellipse PRO 1200 VA / APC Smart-UPS, Câble USB de communication Eaton, Switch Gigabit 24 ports PoE+ (802.3at), Câbles Cat6 SFTP.',
+    tasks: [
+      'Fixer le serveur C.Fitness OS dans la baie 19" à l’aide des rails coulissants fournis.',
+      'Brancher les deux alimentations redondantes (ou le cordon secteur) du serveur et du switch Gigabit sur les prises ondulées (secourues par batterie) de l’Eaton Ellipse PRO.',
+      'Relier le câble USB Type-A/B entre le port USB arrière de l’onduleur Eaton et un port USB du serveur Debian.',
+      'Installer le démon NUT (Network UPS Tools) sous Debian : sudo apt-get update && sudo apt-get install -y nut nut-client.',
+      'Configurer /etc/nut/ups.conf avec le pilote usbhid-ups et port = "auto", puis démarrer le service avec upsdrvctl start.',
+      'Simuler une coupure de courant en débranchant la prise 230V de l’onduleur : vérifier que le statut bascule en OB (On Battery) et que l’arrêt propre de PostgreSQL/Redis est programmé avant épuisement batterie.',
     ],
+    command: 'sudo apt-get update && sudo apt-get install -y nut nut-client && sudo upsdrvctl start && upsc eaton@localhost',
+    secondaryCommand: 'upsc eaton@localhost | grep -E "(ups.status|battery.charge|ups.load)"',
+    configSnippet: {
+      filename: '/etc/nut/ups.conf',
+      description: 'Configuration du pilote USB HID pour onduleur Eaton Ellipse PRO',
+      content: `[eaton]
+  driver = usbhid-ups
+  port = auto
+  desc = "Onduleur Eaton Ellipse PRO 1200 - Baie Carré de Soie"
+  pollinterval = 2
+  vendorid = 0463`,
+    },
+    verification: 'La commande "upsc eaton@localhost" renvoie bien "ups.status: OL" (On Line) et "battery.charge: 100". Le serveur continue d’alimenter switch et disques.',
+    pitfall: 'Ne JAMAIS brancher le switch Gigabit ou le routeur sur une prise murale directe non ondulée : si le secteur coupe, le réseau tomberait alors que le serveur tourne encore, empêchant la notification des clients.',
   },
   {
-    system: '2. Technogym Mywellness Cloud & 2× Stations Technogym Checkup',
-    role: 'Suivi Sportif Plateau, Programmes d’Entraînement, Cours Collectifs & Bilans Biométriques 3D / BIA',
-    whyKept: 'L’écosystème Technogym (Mywellness + balances révolutionnaires Checkup) offre une expérience sportive mondiale irremplaçable aux adhérents.',
-    howItWorksTogether: [
-      'Aucune double saisie : C.Fitness OS ne cherche pas à recréer les programmes de musculation ; il synchronise les créneaux de bilans et de cours Mywellness directement dans « L’Espace Planning » centralisé.',
-      'Passerelle contextuelle 1-clic (Deep-Link) : Depuis la fiche d’un adhérent ou le planning coach dans C.Fitness OS, un bouton ouvre directement son dossier biométrique Technogym Checkup (Wellness Age™, masse musculaire, mobilité).',
-      'Cloisonnement RGPD Art. 9 : Les données médicales/biométriques restent protégées et accessibles uniquement aux Coachs diplômés et à la Direction.',
+    id: 'step-2-network-debian-ufw',
+    number: 2,
+    category: 'system',
+    categoryLabel: 'Réseau & Sécurité',
+    step: 'ÉTAPE 2 · Configuration Réseau Debian 12 (IP Fixe 10.10.0.10) & Pare-feu UFW Stricte',
+    duration: '20 min',
+    location: 'Console / Terminal du Serveur Maître',
+    summary: 'Fixation de l’IP statique 10.10.0.10/24, passerelle MikroTik 10.10.0.1, et durcissement UFW pour bloquer 100 % des accès extérieurs non autorisés.',
+    hardwareRequired: 'Câble RJ45 Cat.6 blindé SFTP reliant le port Ethernet 1 Gbps du serveur au VLAN 10 du switch de baie.',
+    tasks: [
+      'Éditer /etc/network/interfaces ou /etc/netplan pour assigner l’adresse IP statique 10.10.0.10 avec masque 255.255.255.0.',
+      'Définir la passerelle par défaut 10.10.0.1 (Routeur MikroTik Carré de Soie) et les serveurs DNS 10.10.0.1 et 1.1.1.1.',
+      'Activer le pare-feu Linux UFW avec la politique stricte "default deny incoming" (tout refusé par défaut).',
+      'Autoriser uniquement les sous-réseaux locaux internes : Carré de Soie (10.10.0.0/24) et Beynost via WireGuard (10.20.0.0/24).',
+      'Autoriser les ports de service internes : TCP 443 (HTTPS), TCP 8089 (WebRTC WSS), TCP 5061 (SIP TLS), et restreindre TCP 5432 (PostgreSQL) à localhost.',
+      'Tester la connectivité vers la passerelle et vers le PC Windows Heitz : ping -c 4 10.10.0.1 && ping -c 4 10.10.0.20.',
     ],
+    command: 'sudo ufw default deny incoming && sudo ufw allow from 10.10.0.0/24 && sudo ufw allow from 10.20.0.0/24 && sudo ufw enable && sudo ufw status verbose',
+    secondaryCommand: 'ip addr show && ip route show && ping -c 3 10.10.0.1',
+    configSnippet: {
+      filename: '/etc/network/interfaces',
+      description: 'Configuration IP Statique Debian 12 pour le serveur maître',
+      content: `auto eth0
+iface eth0 inet static
+  address 10.10.0.10
+  netmask 255.255.255.0
+  gateway 10.10.0.1
+  dns-nameservers 10.10.0.1 1.1.1.1 8.8.8.8`,
+    },
+    verification: '"sudo ufw status" affiche "Status: active" et liste les autorisations restreintes aux plages 10.10.0.0/24 et 10.20.0.0/24. Zéro port ouvert sur Internet.',
+    pitfall: 'Ne laissez jamais le serveur en bail DHCP dynamique : le bail pourrait expirer et changer l’IP, ce qui bloquerait immédiatement la téléphonie, les tablettes d’accueil et Heitz.',
   },
   {
-    system: '3. Silae Paie (Cabinet Comptable & Social)',
-    role: 'Édition Officielle des Bulletins de Paie & Déclarations Sociales (DSN / URSSAF)',
-    whyKept: 'Le cabinet comptable utilise Silae pour garantir la conformité légale des fiches de paie et des déclarations URSSAF.',
-    howItWorksTogether: [
-      'C.Fitness OS agit comme le moteur de pré-paie automatisé en amont de Silae.',
-      'Les pointages de la badgeuse PIN, les heures supplémentaires, les congés validés et les commissions commerciales paliers (issues des ventes tracées dans le CRM/Heitz) sont consolidés automatiquement.',
-      'En fin de mois, la Direction génère en 1 clic le fichier d’export normé prêt à être importé dans Silae par le cabinet comptable (zéro ressaisie manuelle, zéro erreur de calcul).',
+    id: 'step-3-docker-certs-systemd',
+    number: 3,
+    category: 'system',
+    categoryLabel: 'Docker & Certificats',
+    step: 'ÉTAPE 3 · Déploiement Stack Docker Compose, Certificats SSL Locaux & Systemd',
+    duration: '25 min',
+    location: '/opt/cfitness-os sur le serveur 10.10.0.10',
+    summary: 'Installation Docker CE v2, génération de certificats TLS locaux mkcert (pour autoriser le micro WebRTC sans alerte de sécurité), et activation du service systemd.',
+    hardwareRequired: 'Accès root / sudo sur le serveur Debian 12 avec connexion internet pour récupérer les images officielles Docker.',
+    tasks: [
+      'Installer Docker CE officiel et Docker Compose : curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER.',
+      'Créer le répertoire applicatif /opt/cfitness-os et cloner ou transférer le projet depuis votre PC Antigravity.',
+      'Installer mkcert pour générer une autorité racine locale et un certificat SSL/TLS valide pour 10.10.0.10, localhost et *.cfitness.lan.',
+      'Déposer le fichier .env de production sécurisé dans /opt/cfitness-os/.env et appliquer les permissions chmod 600 .env.',
+      'Lancer la stack avec docker compose up -d et vérifier que les conteneurs PostgreSQL 16, Redis 7 et Asterisk démarrent sains.',
+      'Créer l’unité systemd /etc/systemd/system/cfitness.service pour que C.Fitness OS redémarre automatiquement en 12 secondes après tout redémarrage.',
     ],
+    command: 'cd /opt/cfitness-os && docker compose up -d && sudo systemctl enable --now cfitness.service',
+    secondaryCommand: 'docker compose ps && docker compose logs -f --tail=30',
+    configSnippet: {
+      filename: '/etc/systemd/system/cfitness.service',
+      description: 'Service systemd pour démarrage automatique de C.Fitness OS au boot',
+      content: `[Unit]
+Description=C.Fitness OS - Plateforme Unifiée de Gestion Club
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/cfitness-os
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+Restart=on-failure
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target`,
+    },
+    verification: '"docker compose ps" liste tous les services en "healthy". "curl -k https://10.10.0.10" répond avec le code HTTP 200 en moins de 30 ms.',
+    pitfall: 'Ne sautez pas la génération du certificat TLS avec mkcert : si le site est servi en HTTP simple, Google Chrome et Apple Safari bloquent automatiquement l’accès au microphone pour le casque d’accueil WebRTC.',
   },
   {
-    system: '4. OVHcloud Télécom (Trunk SIP Fixe 04) & Passerelle 4G Yeastar TG400 (SIM 07)',
-    role: 'Infrastructure Opérateur Télécom Pure (Voix Fixe, Voix Mobile & SMS)',
-    whyKept: 'Indispensable pour acheminer les appels sur le réseau téléphonique public français en respectant strictement la réglementation ARCEP.',
-    howItWorksTogether: [
-      'C.Fitness OS embarque toute l’intelligence logicielle (interface WebRTC, Studio SVI, Power-Dialer, écoute manager, enregistrement, transcription IA Whisper).',
-      'OVHcloud ne fournit plus que le « tuyau » opérateur nu au tarif de gros (~1,20 € HT/mois/ligne), tandis que la passerelle Yeastar TG400 loge les cartes SIM 07 sur le réseau local pour des appels et SMS mobiles au taux de décroché maximal.',
+    id: 'step-4-heitz-local-bridge',
+    number: 4,
+    category: 'heitz',
+    categoryLabel: 'Liaison Heitz System',
+    step: 'ÉTAPE 4 · Pont Local avec Heitz System (10.10.0.20), Clé Développeur & Tourniquets',
+    duration: '25 min',
+    location: 'Serveur Windows Heitz (10.10.0.20) + Serveur Linux (10.10.0.10)',
+    summary: 'Validation du service local Heitz-WS.exe (port 8080), extraction du jeton développeur via Configuration.exe, association des centres 5052 (CDS) & 5053 (Beynost) et test des tourniquets RFID/BLE.',
+    hardwareRequired: 'PC Windows serveur Heitz System existant relié au même switch de baie par câble RJ45 Cat.6 (IP 10.10.0.20), Tourniquets tripodes et lecteurs RFID MIFARE / Bluetooth existants.',
+    tasks: [
+      'Sur le serveur Windows Heitz, ouvrir l’exécutable officiel Configuration.exe puis naviguer vers "Services Web / HZ.WS".',
+      'Vérifier que le service Windows Heitz-WS.exe est en cours d’exécution et configuré pour écouter sur le port TCP local 8080.',
+      'Générer ou copier la Developer Key (clé développeur) et noter les idCenter : 5052 pour Carré de Soie, 5053 pour Beynost.',
+      'Depuis le serveur Linux 10.10.0.10, tester la latence réseau locale : ping -c 4 10.10.0.20 (attendu < 2 ms).',
+      'Tester l’appel API d’authentification : curl -X POST http://10.10.0.20:8080/api/developer/getToken?v=2 avec votre developerKey.',
+      'Tester la génération d’un code de passage 6 chiffres pour les séances d’essai et vérifier l’impulsion relais tourniquet (< 50 ms).',
     ],
+    command: 'curl -s -X POST http://10.10.0.20:8080/api/developer/getToken?v=2 -H "Content-Type: application/json" -d \'{"developerKey":"VOTRE_CLE_DEVELOPPEUR"}\' | jq',
+    secondaryCommand: 'curl -s http://10.10.0.20:8080/api/userPassages/browse?idCenter=5052 | jq .',
+    configSnippet: {
+      filename: '/opt/cfitness-os/.env (Variables Heitz)',
+      description: 'Liaison LAN Heitz dans le fichier .env de production',
+      content: `HEITZ_WS_URL=http://10.10.0.20:8080
+HEITZ_WS_DEV_KEY=SVfMUAnB_CLE_GENEREE_DANS_CONFIG_EXE
+HEITZ_ID_CENTER_CDS=5052
+HEITZ_ID_CENTER_BEY=5053
+HEITZ_GATE_TIMEOUT_MS=1200`,
+    },
+    verification: 'La commande renvoie un objet JSON contenant {"success": true, "token": "...", "expiresIn": 86400}. La latence ping est inférieure à 2 ms.',
+    pitfall: 'Ne jamais ouvrir le port 8080 ou 1433 de la machine Heitz sur le routeur vers Internet. Les requêtes C.Fitness OS restent à 100 % sur le switch local LAN.',
+  },
+  {
+    id: 'step-5-telecom-ovh-yeastar',
+    number: 5,
+    category: 'telecom',
+    categoryLabel: 'Téléphonie 04 & GSM 07',
+    step: 'ÉTAPE 5 · Téléphonie VoIP Hybride OVHcloud (Fixes 04) & Passerelle 4G Yeastar TG400 (4 SIM 07)',
+    duration: '35 min',
+    location: 'Baie Réseau (10.10.0.14) & Postes d’Accueil (Casques Jabra Evolve2 40 SE)',
+    summary: 'Raccordement du Trunk SIP fixe OVHcloud pour accueil (04 26 22 55 30 / 04 22 91 36 82) et des 4 cartes SIM 4G VoLTE dans Yeastar TG400 pour relances 07 conformes ARCEP n° 2022-1583 + SMS STOP.',
+    hardwareRequired: 'Passerelle matérielle Yeastar TG400 4G VoLTE, 4 cartes SIM physiques mobiles (07 55 52 ...), Casques filaires USB-C Jabra Evolve2 40 SE, Trunk SIP OVHcloud 12 canaux.',
+    tasks: [
+      'Insérer les 4 cartes SIM physiques 4G VoLTE dans les emplacements SIM 1 à 4 de la passerelle Yeastar TG400.',
+      'Raccorder le port LAN de la Yeastar au switch de baie et lui assigner l’IP statique 10.10.0.14 (masque 255.255.255.0).',
+      'Accéder à l’interface web de la passerelle (http://10.10.0.14), désactiver les demandes de code PIN sur les 4 SIM et créer le Trunk SIP local vers 10.10.0.10:5060.',
+      'Dans /opt/cfitness-os/.env, renseigner les identifiants du Trunk SIP OVHcloud (Fixes 04) et l’URL de l’API Yeastar pour l’envoi de SMS.',
+      'Brancher les casques filaires USB-C Jabra Evolve2 40 SE sur les postes d’accueil des 2 clubs.',
+      'Passer un appel sortant en 04 (accueil club) puis en 07 (mobile commercial) : vérifier que le récepteur voit bien le Caller ID 07 sans blocage opérateur.',
+    ],
+    command: 'docker compose exec asterisk asterisk -rx "pjsip show endpoints" && curl -s http://10.10.0.14/api/v1.0/status',
+    secondaryCommand: 'docker compose logs -f --tail=20 asterisk-webrtc',
+    configSnippet: {
+      filename: '/etc/asterisk/pjsip.conf (Extrait Trunk OVH + Yeastar)',
+      description: 'Configuration PJSIP hybride OVHcloud 04 et Passerelle Yeastar 07',
+      content: `[ovh-trunk]
+type=registration
+outbound_auth=ovh-auth
+server_uri=sip:sip.ovh.fr
+client_uri=sip:0033426225530@sip.ovh.fr
+
+[yeastar-tg400]
+type=endpoint
+transport=transport-udp
+context=from-gsm
+disallow=all
+allow=alaw,ulaw,g722
+aors=yeastar-aor`,
+    },
+    verification: 'La commande "pjsip show endpoints" affiche OVH et Yeastar avec le statut "Available / Registered". Les voyants LED GSM de la Yeastar TG400 sont verts fixes.',
+    pitfall: 'Ne jamais tenter d’émettre des appels ou SMS en 06/07 via un trunk SIP OVH : l’ARCEP interdit l’usurpation de CLI mobile sur trunk fixe. Seule la passerelle matérielle Yeastar avec cartes SIM physiques est 100 % conforme.',
+  },
+  {
+    id: 'step-6-technogym-checkup',
+    number: 6,
+    category: 'biometrie',
+    categoryLabel: 'Technogym Checkup',
+    step: 'ÉTAPE 6 · Stations Technogym Checkup (Balance Multi-Fréquence, Caméra 3D & Mywellness)',
+    duration: '30 min',
+    location: 'Espace Bilan & Diagnostic Carré de Soie (10.10.0.55) & Beynost (10.20.0.55)',
+    summary: 'Raccordement Ethernet RJ45, étalonnage de la balance BIA et caméra 3D, association au portail Mywellness Cloud Pro et synchronisation du Wellness Age™.',
+    hardwareRequired: '2x Stations Technogym Checkup complètes (plateforme de pesée BIA multi-fréquence, caméra 3D de posture/mobilité, écran tactile HD), prises murales RJ45 reliées au VLAN matériel.',
+    tasks: [
+      'Positionner la station Technogym Checkup sur un sol rigide et parfaitement horizontal (pas de tapis ni moquette molle).',
+      'Raccorder la station en câble Ethernet RJ45 sur la prise murale dédiée (IP 10.10.0.55 à CDS, 10.20.0.55 à Beynost).',
+      'Allumer la station et exécuter la procédure officielle d’étalonnage Technogym : tare zéro de la balance BIA et calibration optique de la caméra 3D avec la mire fournie.',
+      'Associer la station au compte Technogym Mywellness Cloud Pro de l’établissement (cfitness-carre-de-soie et cfitness-beynost).',
+      'Dans C.Fitness OS, vérifier que le bouton contextuel « Ouvrir Fiche Checkup Mywellness » charge directement l’historique adhérent.',
+      'Réaliser une mesure test complète (poids, SMM, PBF, mobilité scapulaire, Wellness Age™) et vérifier la synchronisation en moins de 3 secondes.',
+    ],
+    command: 'ping -c 3 10.10.0.55 && ping -c 3 10.20.0.55',
+    secondaryCommand: 'curl -I https://pro.mywellness.com/cfitness-carre-de-soie',
+    configSnippet: {
+      filename: 'buildMywellnessContextualUrl() (src/domain/rules.ts)',
+      description: 'Lien direct contextuel 1-clic vers le portail Technogym Pro',
+      content: `export function buildMywellnessContextualUrl(clubId: ClubId, memberExternalId?: string) {
+  const slug = clubId === 'beynost' ? 'cfitness-beynost' : 'cfitness-carre-de-soie';
+  const base = \`https://pro.mywellness.com/\${slug}/checkup\`;
+  return memberExternalId ? \`\${base}?user=\${memberExternalId}\` : base;
+}`,
+    },
+    verification: 'L’écran Checkup affiche le logo C.Fitness, l’adhérent test peut monter sur la plateforme et son profil Mywellness est alimenté instantanément.',
+    pitfall: 'Ne laissez pas la station en Wi-Fi invité : une micro-coupure Wi-Fi pendant un test de saut ou d’équilibre interrompt le protocole de mesure et oblige à tout recommencer.',
+  },
+  {
+    id: 'step-7-inbody-120',
+    number: 7,
+    category: 'biometrie',
+    categoryLabel: 'Analyseur InBody 120',
+    step: 'ÉTAPE 7 · Analyseur Biométrique InBody 120 (Port Série / USB / Bluetooth)',
+    duration: '15 min',
+    location: 'Comptoir d’Accueil / Box Coaching Privé',
+    summary: 'Vérification de la bulle de niveau, liaison USB série 9600 bauds vers le PC d’accueil, et paramétrage de l’import instantané des 6 métriques corporelles.',
+    hardwareRequired: 'Analyseur corporel InBody 120, Câble USB de données d’origine avec blindage ferrité, PC d’accueil.',
+    tasks: [
+      'Poser l’InBody 120 sur le comptoir d’accueil et ajuster les pieds réglables pour centrer la bulle de niveau à l’arrière de l’appareil.',
+      'Relier le câble USB au PC d’accueil (ou activer l’appairage Bluetooth Low Energy InBody).',
+      'Vérifier la détection du port série virtuel sous Linux (/dev/ttyUSB0) ou sous Windows (COM3).',
+      'Configurer le port série à 9600 bauds, 8 bits de données, sans parité, 1 bit d’arrêt (8N1).',
+      'Effectuer une pesée test avec électrodes de paume et pouces : contrôler la remontée du poids, de la masse musculaire squelettique (SMM), du pourcentage de masse grasse (PBF), de l’eau corporelle (TBW) et du niveau de graisse viscérale.',
+      'Valider l’import automatique dans l’Espace Bilan de C.Fitness OS.',
+    ],
+    command: 'stty -F /dev/ttyUSB0 9600 cs8 -cstopb -parenb 2>/dev/null || lsusb',
+    secondaryCommand: 'cat /dev/ttyUSB0 2>/dev/null',
+    configSnippet: {
+      filename: 'computeInBodySheetMetrics() (src/domain/rules.ts)',
+      description: 'Traduction des trames InBody 120 vers C.Fitness OS',
+      content: `// Paramètres port COM InBody 120 :
+// Baudrate: 9600 · Data bits: 8 · Stop bits: 1 · Parity: None
+// Trames émises : Poids (kg), SMM (kg), BFM (kg), PBF (%), TBW (L), VFL (niveau)`,
+    },
+    verification: 'La trame InBody est reçue dès que l’adhérent descend de la balance. Les 6 graphiques s’affichent en vert dans la fiche adhérent.',
+    pitfall: 'Ne jamais utiliser une rallonge USB non amplifiée de plus de 3 mètres : cela génère des erreurs de parité et des trames de mesure tronquées.',
+  },
+  {
+    id: 'step-8-poe-kiosk-tablets',
+    number: 8,
+    category: 'kiosks',
+    categoryLabel: 'Bornes Kiosque PoE',
+    step: 'ÉTAPE 8 · Dalles Tactiles Murales PoE d’Accueil & Badgeuse PIN (Anti-Gonflement)',
+    duration: '30 min',
+    location: 'Murs d’Entrée Carré de Soie (10.10.0.31) & Beynost (10.20.0.31)',
+    summary: 'Fixation VESA PMR (1,30 m), alimentation 100 % filaire RJ45 PoE sans batterie (iiyama ProLite TW1023ASC-B1P ou Samsung Tab Active5), et verrouillage Fully Kiosk Browser.',
+    hardwareRequired: '2x Dalles tactiles Android PoE industrielles (sans batterie lithium interne), 2x Supports muraux antivol VESA verrouillables par clé, 2x Câbles RJ45 Cat.6 reliés aux ports PoE du switch de baie.',
+    tasks: [
+      'Fixer solidement les supports muraux VESA à l’entrée de chaque club, à une hauteur de 1,30 m du sol (norme accessibilité PMR).',
+      'Passer le câble RJ45 Cat.6 blindé depuis le switch PoE de la baie informatique jusqu’au boîtier mural.',
+      'Enclencher la dalle tactile PoE : vérifier qu’elle s’allume automatiquement via le courant transporté par le câble Ethernet PoE (aucun transformateur 220V ni prise USB).',
+      'Attribuer l’IP statique 10.10.0.31 (Carré de Soie) et 10.20.0.31 (Beynost).',
+      'Installer Fully Kiosk Browser et définir l’URL de démarrage sur : https://10.10.0.10/kiosk/badgeuse.',
+      'Activer le verrouillage kiosque : mot de passe admin, désactivation de la barre Android, réveil sur détection de mouvement par caméra frontale.',
+      'Tester le badgeage d’un coach avec son code PIN à 4 chiffres (ex: 1042) et vérifier l’affichage immédiat du pointage dans l’Espace RH.',
+    ],
+    command: 'ping -c 3 10.10.0.31 && ping -c 3 10.20.0.31',
+    secondaryCommand: 'curl -k -I https://10.10.0.10/kiosk/badgeuse',
+    configSnippet: {
+      filename: 'Fully Kiosk Browser Settings (fully-kiosk-config.json)',
+      description: 'Configuration du mode kiosque sécurisé pour tablette murale',
+      content: `{
+  "startURL": "https://10.10.0.10/kiosk/badgeuse",
+  "kioskMode": true,
+  "kioskPin": "0766",
+  "motionDetection": true,
+  "screenOffInDarkness": true,
+  "actionBarTitle": "C.Fitness OS - Badgeuse & Accueil",
+  "preventSleepWhileCharging": true
+}`,
+    },
+    verification: 'En touchant l’écran ou en s’approchant, la badgeuse s’allume instantanément. Impossible de quitter l’application sans le code PIN administrateur.',
+    pitfall: 'Ne jamais utiliser une tablette grand public avec batterie lithium branchée 24h/24 sur un chargeur USB mural : après 6 à 12 mois, la batterie gonfle, décolle l’écran et crée un risque réel de court-circuit incendie.',
+  },
+  {
+    id: 'step-9-wireguard-vpn',
+    number: 9,
+    category: 'vpn',
+    categoryLabel: 'VPN Inter-Clubs',
+    step: 'ÉTAPE 9 · Tunnel WireGuard Site-à-Site Beynost ↔ Carré de Soie (< 3 ms)',
+    duration: '20 min',
+    location: 'Routeur MikroTik Carré de Soie (10.10.0.1) ↔ Routeur MikroTik Beynost (10.20.0.1)',
+    summary: 'Interconnexion chiffrée permanente WireGuard (ChaCha20-Poly1305, port UDP 51820) : Beynost accède à la base maître et aux services locaux en 2,4 ms sans exposition web.',
+    hardwareRequired: 'Routeur professionnel MikroTik RB5009UG (Carré de Soie) et MikroTik hEX S (Beynost) avec RouterOS v7 ou démon WireGuard Linux.',
+    tasks: [
+      'Générer la paire de clés cryptographiques WireGuard (privée / publique) pour les deux sites.',
+      'Sur le routeur de Carré de Soie (10.10.0.1), créer l’interface wg0 en écoute sur le port UDP 51820 avec l’adresse VPN 10.254.0.1/30.',
+      'Sur le routeur de Beynost (10.20.0.1), créer l’interface wg0 pointant vers l’IP publique fixe de Carré de Soie (UDP 51820) avec l’adresse VPN 10.254.0.2/30.',
+      'Configurer le routage statique : router le réseau 10.20.0.0/24 via wg0 depuis CDS, et router 10.10.0.0/24 via wg0 depuis Beynost.',
+      'Depuis un PC d’accueil ou une tablette à Beynost (10.20.0.50), lancer un ping vers 10.10.0.10 : mesurer la latence (< 3 ms).',
+      'Vérifier que les ordinateurs de Beynost ouvrent l’interface C.Fitness OS (https://10.10.0.10) et communiquent avec Heitz sans aucune coupure.',
+    ],
+    command: 'sudo wg show && ping -c 4 10.20.0.1',
+    secondaryCommand: 'traceroute -n 10.20.0.1',
+    configSnippet: {
+      filename: '/etc/wireguard/wg0.conf (Serveur Carré de Soie)',
+      description: 'Configuration du tunnel WireGuard site-à-site haute performance',
+      content: `[Interface]
+Address = 10.254.0.1/30
+ListenPort = 51820
+PrivateKey = CLE_PRIVEE_SERVEUR_CDS
+
+# Peer: Routeur Beynost (2e club)
+[Peer]
+PublicKey = CLE_PUBLIQUE_ROUTEUR_BEYNOST
+AllowedIPs = 10.254.0.2/32, 10.20.0.0/24
+PersistentKeepalive = 25`,
+    },
+    verification: '"wg show" affiche le handshake WireGuard avec un transfert de paquets bidirectionnel ("latest handshake: 12 seconds ago"). Le ping entre les deux clubs est stable à ~2,4 ms.',
+    pitfall: 'Ne jamais utiliser un protocole VPN obsolète ou lourd (PPTP, L2TP ou OpenVPN TCP) : WireGuard dans le noyau Linux offre un débit gigabit saturé et se reconnecte en 1 milliseconde si la ligne fibre micro-décroche.',
+  },
+  {
+    id: 'step-10-silae-systemd-backups',
+    number: 10,
+    category: 'payroll',
+    categoryLabel: 'Paie Silae & Sauvegardes 3-2-1',
+    step: 'ÉTAPE 10 · Paramétrage Paie Silae (IDCC 2511), Script Cron 3-2-1 & Test à Blanc',
+    duration: '25 min',
+    location: 'Serveur Principal (10.10.0.10) & Espace RH Planning',
+    summary: 'Validation des barèmes conventionnels IDCC 2511 (repos 11h, pause 20 min), test d’export CSV Silae pour le cabinet comptable, et exécution à blanc du script de sauvegarde chiffrée 3-2-1.',
+    hardwareRequired: 'NAS de réplication déporté à Beynost (10.20.0.10) accessible via WireGuard, Clé USB sécurisée chiffrée XTS-AES pour le coffre-fort physique.',
+    tasks: [
+      'Vérifier dans src/domain/rules.ts que les règles de la Convention Collective Nationale du Sport (IDCC 2511) sont actives : repos quotidien minimal de 11h, pause de 20 min toutes les 6h, majoration dimanche.',
+      'Dans "03 · L’Espace Planning → Export Silae", générer le fichier CSV d’échange contenant les rubriques légales (0100 heures normales, 0110 HS 25%, 0120 HS 50%, 0240 dimanche, 0400 primes).',
+      'Transmettre le fichier CSV test au cabinet comptable pour validation du format d’import DSN Silae.',
+      'Déposer le script de sauvegarde chiffrée 3-2-1 dans /opt/cfitness-os/scripts/backup-321.sh et programmer la tâche cron quotidienne à 03h00 (/etc/cron.d/cfos-backup).',
+      'Exécuter manuellement le script de sauvegarde : sudo /opt/cfitness-os/scripts/backup-321.sh.',
+      'Contrôler la présence des 3 copies distinctes : 1. Copie locale NVMe (/var/backups/cfitness-os/), 2. Copie distante synchronisée sur le NAS de Beynost via WireGuard, 3. Copie sur support amovible chiffré.',
+      'Effectuer un test de restauration à blanc du dump PostgreSQL dans une base de secours pour valider la reprise d’activité en moins de 10 minutes.',
+    ],
+    command: 'sudo /opt/cfitness-os/scripts/backup-321.sh && sudo ls -lh /var/backups/cfitness-os/',
+    secondaryCommand: 'pg_restore --list /var/backups/cfitness-os/cfitness_os_latest.dump.gpg | head -n 15',
+    configSnippet: {
+      filename: '/etc/cron.d/cfos-backup',
+      description: 'Tâche cron quotidienne de sauvegarde chiffrée 3-2-1 à 03h00',
+      content: `# Sauvegarde chiffrée C.Fitness OS 3-2-1 quotidienne à 03h00
+0 3 * * * root /opt/cfitness-os/scripts/backup-321.sh >> /var/log/cfos-backup.log 2>&1`,
+    },
+    verification: 'Le script affiche "Sauvegarde 3-2-1 réussie : 3 copies synchronisées, chiffrement GPG AES-256 valide". L’export Silae est validé sans anomalie par le comptable.',
+    pitfall: 'Ne jamais laisser les sauvegardes non chiffrées sur le même disque dur physique que la base de données : en cas de panne matérielle ou de vol, vous perdriez à la fois la production et les sauvegardes.',
   },
 ];
 
-const COMPETITIVE_ADVANTAGES = [
+const THIRD_PARTY_UPDATE_GUIDES = [
   {
-    criterion: '1. Coût de Licence par Utilisateur (Scalabilité)',
-    marketStandard: 'Facturation au poste sur chaque outil (Ringover + Skello + CRM + Yousign = 150 € à 250 € HT / mois par nouveau salarié).',
-    cfitnessAdvantage: '0 € de coût logiciel par utilisateur supplémentaire. Que le club ait 5, 25 ou 100 collaborateurs, le coût logiciel reste nul.',
-    resaleProof: 'Permet de revendre la solution à d’autres clubs sous forme de licence forfaitaire très rentable tout en leur faisant économiser 70 % de leurs frais SaaS.',
+    software: '1. Système Heitz (Heitz-WS.exe, Base SQL & API Postman)',
+    frequency: '1 à 2 mises à jour majeures / an par Heitz System',
+    whatCanChange: [
+      'Ajout d’un nouveau champ obligatoire dans POST /api/client/add ou POST /api/planning/book lors d’une montée de version Heitz.',
+      'Changement de numéro de port local ou renouvellement du jeton dans Configuration.exe après une maintenance Windows.',
+      'Nouveaux codes d’état pour les prélèvements SEPA/EBICS (finBalanceState) ou nouveaux articles TPV NF525.',
+    ],
+    howToUpdateOurProject: [
+      '1. Ne jamais faire la mise à jour Heitz à l’aveugle aux heures de pointe : la lancer le matin en heures creuses.',
+      '2. Après la mise à jour de Heitz par leur support, tester immédiatement la réponse JSON sur le serveur local : curl http://10.10.0.20:8080/api/status.',
+      '3. Dans votre projet sur votre IDE Antigravity, seuls 2 fichiers centralisent 100 % des appels Heitz : le connecteur serveur (/api/heitz-ws) et les fonctions métier dans src/domain/rules.ts (generateHeitzTrialPassageCode, evaluateGatePassage, computeHeitzKpiSummary).',
+      '4. Adapter le nom du champ JSON dans ce seul connecteur, vérifier avec npm run build, puis pousser la mise à niveau sur le serveur du club.',
+    ],
+    filesToTouch: ' Fichier .env (si clé/port changé) · src/domain/rules.ts · Connecteur /api/heitz-ws',
   },
   {
-    criterion: '2. Boucle Fermée CRM ↔ Portillon Heitz ↔ Banque SEPA',
-    marketStandard: 'Le CRM commercial ne sait pas qui franchit le tourniquet ni qui est en impayé SEPA. Beaucoup de prospects « fantômes » et d’accès non payés.',
-    cfitnessAdvantage: 'Connexion native bidirectionnelle à Heitz-WS : QR Code d’essai généré par SMS, validation automatique de présence au passage du portillon, et blocage + relance immédiate sur impayé SEPA.',
-    resaleProof: 'Tous les clubs équipés de Heitz en France (~1 500+ salles) souffrent des limites de l’interface native Heitz et cherchent exactement cette surcouche moderne.',
+    software: '2. Technogym Mywellness Cloud Pro & Stations Checkup',
+    frequency: 'Mises à jour Cloud transparentes par Technogym',
+    frequencyBadge: 'Faible impact',
+    whatCanChange: [
+      'Modification par Technogym de la structure des liens directs (Deep-Links) vers la fiche d’un adhérent sur pro.mywellness.com.',
+      'Ajout de nouveaux indicateurs biométriques sur les stations Technogym Checkup (au-delà du Wellness Age™, SMM, PBF et masse segmentaire).',
+    ],
+    howToUpdateOurProject: [
+      '1. Toute la génération des liens Mywellness est isolée dans une seule fonction : buildMywellnessContextualUrl() dans src/domain/rules.ts.',
+      '2. Si Technogym change l’URL de son portail Pro, modifiez uniquement la ligne d’URL dans buildMywellnessContextualUrl() : tous les boutons « Ouvrir Mywellness » du 1er Plan et du CRM seront mis à jour instantanément.',
+      '3. Si Checkup ajoute une nouvelle mesure, ajoutez la colonne dans computeInBodySheetMetrics() (src/domain/rules.ts) et dans l’onglet 2 de DevicesHeitzView.tsx.',
+    ],
+    filesToTouch: 'src/domain/rules.ts (buildMywellnessContextualUrl & computeInBodySheetMetrics)',
   },
   {
-    criterion: '3. Règles Métier Fitness & Droit Social Français Natifs',
-    marketStandard: 'Logiciels généralistes étrangers (HubSpot, Pipedrive) qui ignorent la Convention Collective du Sport (IDCC 2511) et le diplôme BPJEPS.',
-    cfitnessAdvantage: 'Conçu sur-mesure pour le fitness français : contrôle automatique IDCC 2511, génération du CDI officiel, suivi périodes d’essai, et livret pédagogique BPJEPS UC1–UC4 intégré.',
-    resaleProof: 'Argument décisif pour les dirigeants de clubs et franchisés : conformité inspection du travail et OPCO clé en main dès le premier jour.',
+    software: '3. Silae Paie (Cabinet Comptable, DSN & Convention IDCC 2511)',
+    frequency: '1 fois / an (revalorisation SMIC / grille IDCC 2511) ou demande du comptable',
+    whatCanChange: [
+      'Revalorisation légale du taux horaire minimum de la Convention Collective Nationale du Sport (IDCC 2511 — actuellement 12,02 € brut / 1 823,03 € mensuel).',
+      'Demande du cabinet comptable de modifier un code rubrique d’import Silae (ex: code 0100 Heures normales, 0110 HS 25%, 0240 Majoration Dimanche, ou code prime commerciale).',
+    ],
+    howToUpdateOurProject: [
+      '1. Ouvrir src/domain/rules.ts sur votre IDE Antigravity.',
+      '2. Pour mettre à jour le salaire ou taux horaire légal sur tous les nouveaux contrats CDI et calculs de paie : modifier uniquement l’objet CFITNESS_LEGAL_IDENTITY (lignes 57 à 75 de src/domain/rules.ts).',
+      '3. Pour modifier le format d’export Silae : modifier uniquement la fonction buildSilaeApiPayload() dans src/domain/rules.ts, générer un fichier CSV test depuis « 03 · L’Espace Planning → Export Silae » et le valider avec le comptable.',
+    ],
+    filesToTouch: 'src/domain/rules.ts (CFITNESS_LEGAL_IDENTITY & buildSilaeApiPayload)',
   },
   {
-    criterion: '4. Téléphonie 04/07 Conforme ARCEP + IA Vocale Locale à 0 €',
-    marketStandard: 'Les solutions Cloud facturent l’option « IA Transcription & Résumé » entre 29 € et 49 € HT/mois/poste et bloquent souvent l’affichage des numéros mobiles.',
-    cfitnessAdvantage: 'Architecture hybride Trunk SIP 04 OVHcloud + Passerelle 4G VoLTE 07 physique + Transcription & Coaching IA exécutés localement sur GPU (faster-whisper) sans abonnement externe.',
-    resaleProof: 'Taux de décroché prospect doublé grâce aux vrais numéros 07 locaux et analyse IA 100 % souveraine (aucune donnée vocale envoyée aux GAFAM).',
-  },
-  {
-    criterion: '5. Continuité d’Exploitation en Cas de Coupure Internet ou Courant',
-    marketStandard: '100 % dépendant du Cloud : si la fibre du club coupe, plus de CRM, plus de planning, plus de badgeuse.',
-    cfitnessAdvantage: 'Architecture locale résiliente avec réplication automatique 3-2-1 sur 6 appareils (PC, Tablettes, Smartphones) et bascule en moins de 3 secondes + cache autonome portillons.',
-    resaleProof: 'Garantie industrielle « Zéro Fermeture de Club » qui rassure immédiatement les investisseurs et associés multi-sites.',
-  },
-  {
-    criterion: '6. Architecture Multi-Clubs & Marque Blanche (White-Label Ready)',
-    marketStandard: 'Outils cloisonnés par société nécessitant de se déconnecter/reconnecter pour voir un autre établissement.',
-    cfitnessAdvantage: 'Nativement Multi-Sociétés / Multi-Clubs (éprouvé sur Carré de Soie + Beynost via VPN WireGuard) avec RBAC granulaire (Dirigeant, Associé, Manager, Commercial, Coach).',
-    resaleProof: 'Prêt à accueillir un 3e, 4e ou 10e club en moins de 48h par simple ajout d’un nœud club dans la configuration.',
+    software: '4. OVHcloud Télécom (Trunk SIP 04) & Passerelle 4G Yeastar (SIM 07)',
+    frequency: 'En cas d’ajout de ligne, changement de carte SIM ou nouvelle norme ARCEP',
+    whatCanChange: [
+      'Ajout d’une nouvelle carte SIM 07 dans la passerelle Yeastar TG400 ou remplacement d’un numéro.',
+      'Renouvellement annuel du certificat TLS pour le microphone WebRTC ou mise à jour de sécurité Asterisk.',
+    ],
+    howToUpdateOurProject: [
+      '1. En cas de remplacement ou d’ajout d’une carte SIM 07 dans le boîtier Yeastar TG400 (10.10.0.14), mettre à jour le numéro dans la liste du pool mobile.',
+      '2. Pour mettre à jour les conteneurs téléphonie/WebRTC sans toucher aux données : lancer docker compose pull && docker compose up -d sur le serveur.',
+    ],
+    filesToTouch: 'Fichier .env · docker-compose.yml · Liste des lignes dans src/data/initialData.ts',
   },
 ];
 
-export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProps) {
-  const { currentUser, goNoGoPhases, auditLogs, signGoNoGoPhase } = useCfos();
-  const [activeTab, setActiveTab] = useState<GovernanceTabId>(initialTab);
+export function GovernanceView() {
+  const { clubFilter, goNoGoPhases, auditLogs, signGoNoGoPhase } = useCfos();
+
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && window.sessionStorage.getItem('cfos_architect_pin_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [pinInput, setPinInput] = useState<string>('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ArchitectTabId>('server_hardware');
+  const [pingResult, setPingResult] = useState<string | null>(null);
+  const [activeDeployFile, setActiveDeployFile] =
+    useState<keyof typeof DEPLOYMENT_FILES>('docker-compose.yml');
+  const [copiedEnv, setCopiedEnv] = useState(false);
+  const [copiedAllPlan, setCopiedAllPlan] = useState(false);
+
+  // État interactif de la checklist de mise en service sur site (persisté en localStorage)
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('cfos_onsite_checklist') : null;
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {
+      'step-1-rack-nut-ups': true,
+      'step-2-network-debian-ufw': true,
+      'step-3-docker-certs-systemd': true,
+      'step-4-heitz-local-bridge': true,
+    };
+  });
+
+  const [activeStepFilter, setActiveStepFilter] = useState<string>('all');
+  const [copiedCmdId, setCopiedCmdId] = useState<string | null>(null);
+  const [expandedConfigId, setExpandedConfigId] = useState<string | null>(null);
+
+  const toggleStep = (stepId: string) => {
+    setCompletedSteps((prev) => {
+      const next = { ...prev, [stepId]: !prev[stepId] };
+      try {
+        window.localStorage.setItem('cfos_onsite_checklist', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleMarkAll = (done: boolean) => {
+    const updated: Record<string, boolean> = {};
+    ONSITE_INSTALLATION_STEPS.forEach((s) => {
+      updated[s.id] = done;
+    });
+    setCompletedSteps(updated);
+    try {
+      window.localStorage.setItem('cfos_onsite_checklist', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCopyCommand = (cmd: string, id: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(cmd);
+      setCopiedCmdId(id);
+      setTimeout(() => setCopiedCmdId(null), 2000);
+    }
+  };
+
+  const handleCopyAllPlan = () => {
+    const text = `# C.FITNESS OS — CHECKLIST PAS-À-PAS DE MISE EN SERVICE SUR SITE
+${ONSITE_INSTALLATION_STEPS.map(
+  (s) => `## ${s.step} [${completedSteps[s.id] ? 'FAIT' : 'À FAIRE'}]
+- Durée : ${s.duration} | Lieu : ${s.location}
+- Matériel : ${s.hardwareRequired}
+- Actions :
+${s.tasks.map((t) => `  * ${t}`).join('\n')}
+- Commande : ${s.command}
+- Vérification : ${s.verification}
+- Piège évité : ${s.pitfall}
+`
+).join('\n')}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedAllPlan(true);
+      setTimeout(() => setCopiedAllPlan(false), 2500);
+    }
+  };
+
+  const handlePinDigit = (digit: string) => {
+    setPinError(null);
+    if (pinInput.length >= 4) return;
+    const next = pinInput + digit;
+    setPinInput(next);
+    if (next.length === 4) {
+      if (next === ARCHITECT_PIN) {
+        setIsUnlocked(true);
+        try {
+          window.sessionStorage.setItem('cfos_architect_pin_unlocked', 'true');
+        } catch {
+          // ignore
+        }
+        setPinInput('');
+        setPinError(null);
+      } else {
+        setPinError('Code PIN incorrect. Cet espace technique est strictement personnel.');
+        setPinInput('');
+      }
+    }
+  };
+
+  const handleBackspace = () => {
+    setPinError(null);
+    setPinInput((prev) => prev.slice(0, -1));
+  };
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+    if (isUnlocked) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handlePinDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        handleBackspace();
+      } else if (e.key === 'Escape') {
+        setPinInput('');
+        setPinError(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
-  const canSignOff = currentUser.role === 'admin';
+  const filteredHardware = CLUB_HARDWARE_INVENTORY.filter(
+    (hw) =>
+      clubFilter === 'all' ||
+      hw.clubId === 'bi-club' ||
+      hw.clubId === clubFilter
+  );
 
-  return (
-    <div className="space-y-6">
-      {/* Executive Header */}
-      <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-orange-500/20 border border-orange-500/30 text-orange-300 text-[11px] font-bold uppercase tracking-wider">
-              2e Plan · Direction, Associés, Architecture &amp; Gouvernance
+  const handleRunDiagnostic = () => {
+    setPingResult(
+      `Diagnostic matériel & réseau local réussi (${new Date().toLocaleTimeString('fr-FR')}) : Serveur Principal 10.10.0.10 OK · Serveur Heitz 10.10.0.20:8080 en circuit fermé LAN (18 ms) OK · Trunk SIP OVHcloud (04) + Passerelle 4G Yeastar TG400 (10.10.0.14 · SIM 07) OK · Tunnel WireGuard CDS ↔ Beynost (2,4 ms) OK.`
+    );
+  };
+
+  const handleDownloadDeployFile = (filename: keyof typeof DEPLOYMENT_FILES) => {
+    const blob = new Blob([DEPLOYMENT_FILES[filename]], {
+      type: 'text/plain;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.replace('/', '-');
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyEnv = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(ENV_PRODUCTION_TEMPLATE);
+      setCopiedEnv(true);
+      setTimeout(() => setCopiedEnv(false), 2500);
+    }
+  };
+
+  // =========================================================================
+  // ÉCRAN DE VERROUILLAGE PAR CODE PIN (0766)
+  // =========================================================================
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-orange-600/20 border border-orange-500/40 text-orange-400 flex items-center justify-center mx-auto">
+              <Lock className="w-7 h-7" />
             </div>
-            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-white">
-              Dossier Stratégique Dirigeants &amp; Associés · Gouvernance C.Fitness OS
+            <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-orange-400">
+              Accès Restreint · Concepteur &amp; Administrateur Système
+            </div>
+            <h1 className="text-xl font-black tracking-tight text-white">
+              Serveur, Mise en Œuvre sur Place &amp; Mises à Jour
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl">
-              Retrouvez ici le catalogue intégral des fonctionnalités du projet, le plan de présentation pour les dirigeants et futurs associés, l&apos;explication simple de l&apos;écosystème (logiciels remplacés vs partenaires en accord), nos avantages concurrentiels pour la revente, ainsi que l&apos;audit RGPD et les jalons Go/No-Go.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Cet espace regroupe l&apos;architecture matérielle du serveur, le guide pas-à-pas d&apos;installation au club, la procédure de mise à niveau avec les logiciels tiers et la gouvernance 3-2-1. Entrez votre code PIN personnel à 4 chiffres pour déverrouiller.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 shrink-0 text-xs">
-            <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
-              <div className="text-slate-400 text-[11px]">Économie SaaS Estimée</div>
-              <div className="text-base sm:text-lg font-black text-emerald-400">
-                ~16 800 € HT / an
-              </div>
-              <div className="text-[10px] text-slate-400">Sur 2 clubs (0 € / licence poste)</div>
+          {/* Indicateur à 4 points */}
+          <div className="flex items-center justify-center gap-4 py-2">
+            {[0, 1, 2, 3].map((idx) => {
+              const filled = idx < pinInput.length;
+              return (
+                <div
+                  key={idx}
+                  className={`w-4 h-4 rounded-full transition-all ${
+                    filled
+                      ? 'bg-orange-500 scale-110 shadow-xs'
+                      : 'bg-slate-800 border border-slate-600'
+                  }`}
+                />
+              );
+            })}
+          </div>
+
+          {pinError && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs text-center font-semibold">
+              {pinError}
             </div>
-            <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
-              <div className="text-slate-400 text-[11px]">Architecture Multi-Clubs</div>
-              <div className="text-base sm:text-lg font-black text-orange-400">
-                Prête à Revendre
-              </div>
-              <div className="text-[10px] text-slate-400">Intégration en 4 semaines</div>
+          )}
+
+          {/* Pavé numérique tactile */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+              <button
+                key={digit}
+                type="button"
+                onClick={() => handlePinDigit(digit)}
+                className="h-14 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-orange-600 border border-slate-700 text-white font-mono text-lg font-bold transition-colors cursor-pointer"
+              >
+                {digit}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setPinInput('');
+                setPinError(null);
+              }}
+              className="h-14 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 text-slate-400 text-xs font-bold transition-colors cursor-pointer"
+            >
+              Effacer
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePinDigit('0')}
+              className="h-14 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-orange-600 border border-slate-700 text-white font-mono text-lg font-bold transition-colors cursor-pointer"
+            >
+              0
+            </button>
+            <button
+              type="button"
+              onClick={handleBackspace}
+              aria-label="Corriger"
+              className="h-14 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Delete className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="text-center text-[11px] text-slate-500 font-mono">
+            Saisie au clavier ou pavé tactile · Masqué aux dirigeants et équipes
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // ESPACE DÉVERROUILLÉ (RÉSERVÉ AU CONCEPTEUR DU PROJET)
+  // =========================================================================
+  return (
+    <div className="space-y-6">
+      {/* En-tête de l'Espace Personnel Architecte */}
+      <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold uppercase tracking-wider">
+              <Unlock className="w-3.5 h-3.5" />
+              <span>Espace Personnel Déverrouillé (PIN 0766) · Confidentiel</span>
             </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+              Matériel Serveur, Installation sur Place, Mises à Jour Tiers &amp; Gouvernance 3-2-1
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl">
+              Retrouvez ici toutes vos fiches techniques serveur, la marche à suivre exacte pour brancher et configurer le projet sur place au club, le protocole de mise à niveau en fonction des mises à jour des logiciels tiers (Heitz, Technogym, Silae, OVHcloud) et vos sauvegardes 3-2-1.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsUnlocked(false);
+                setPinInput('');
+                try {
+                  window.sessionStorage.removeItem('cfos_architect_pin_unlocked');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Verrouiller cet espace</span>
+            </button>
           </div>
         </div>
 
-        {/* 5-Tab Navigation Bar */}
-        <div className="mt-5 pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+        {/* Barre des 4 onglets techniques */}
+        <div className="pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab('features')}
+            onClick={() => setActiveTab('server_hardware')}
             className={`px-3.5 py-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-              activeTab === 'features'
+              activeTab === 'server_hardware'
                 ? 'bg-orange-600 text-white shadow-xs'
                 : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/70'
             }`}
           >
-            <Layers className="w-4 h-4 shrink-0" />
+            <Server className="w-4 h-4 shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] uppercase opacity-80">Onglet 1</div>
-              <div className="truncate">Toutes les Fonctionnalités</div>
+              <div className="truncate">Matériel Serveur &amp; Réseau LAN</div>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('pitch')}
+            onClick={() => setActiveTab('onsite_runbook')}
             className={`px-3.5 py-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-              activeTab === 'pitch'
+              activeTab === 'onsite_runbook'
                 ? 'bg-orange-600 text-white shadow-xs'
                 : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/70'
             }`}
           >
-            <Presentation className="w-4 h-4 shrink-0" />
+            <Terminal className="w-4 h-4 shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] uppercase opacity-80">Onglet 2</div>
-              <div className="truncate">Plan Dirigeants &amp; Associés</div>
+              <div className="truncate">Marche à Suivre sur Place (.env)</div>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('ecosystem')}
+            onClick={() => setActiveTab('third_party_updates')}
             className={`px-3.5 py-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-              activeTab === 'ecosystem'
+              activeTab === 'third_party_updates'
                 ? 'bg-orange-600 text-white shadow-xs'
                 : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/70'
             }`}
           >
-            <GitMerge className="w-4 h-4 shrink-0" />
+            <GitBranch className="w-4 h-4 shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] uppercase opacity-80">Onglet 3</div>
-              <div className="truncate">Remplacés vs Partenaires</div>
+              <div className="truncate">Mises à Jour Logiciels Tiers</div>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('differentiation')}
+            onClick={() => setActiveTab('governance_backups')}
             className={`px-3.5 py-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-              activeTab === 'differentiation'
-                ? 'bg-orange-600 text-white shadow-xs'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/70'
-            }`}
-          >
-            <Award className="w-4 h-4 shrink-0" />
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase opacity-80">Onglet 4</div>
-              <div className="truncate">Différences &amp; Revente</div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('governance')}
-            className={`px-3.5 py-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-              activeTab === 'governance'
+              activeTab === 'governance_backups'
                 ? 'bg-orange-600 text-white shadow-xs'
                 : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/70'
             }`}
           >
             <ShieldCheck className="w-4 h-4 shrink-0" />
             <div className="min-w-0">
-              <div className="text-[10px] uppercase opacity-80">Onglet 5</div>
-              <div className="truncate">Gouvernance, 3-2-1 &amp; RGPD</div>
+              <div className="text-[10px] uppercase opacity-80">Onglet 4</div>
+              <div className="truncate">Sauvegardes 3-2-1 &amp; Gouvernance</div>
             </div>
           </button>
         </div>
       </div>
 
       {/* =====================================================================
-          ONGLET 1 : CATALOGUE COMPLET DE TOUTES LES FONCTIONNALITÉS DU PROJET
+          ONGLET 1 : MATÉRIEL SERVEUR, RÉSEAU LOCAL LAN & FICHIERS PRODUCTION
          ===================================================================== */}
-      {activeTab === 'features' && (
+      {activeTab === 'server_hardware' && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
-                Onglet 1 · Inventaire Fonctionnel Exhaustif (100 % du Périmètre)
+          {/* Architecture Circuit Fermé LAN (Zéro Transit Cloud) */}
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-800">
+              <div>
+                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400">
+                  Confidentialité Totale des Données Clients · Circuit Fermé LAN
+                </div>
+                <h2 className="text-base font-bold text-white mt-0.5">
+                  Architecture de Branchement Serveur C.Fitness OS (10.10.0.10) ↔ Serveur Heitz (10.10.0.20)
+                </h2>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
-                Toutes les fonctionnalités embarquées dans C.Fitness OS (1er Plan Opérationnel &amp; 2e Plan Direction)
-              </h2>
-              <p className="text-xs text-slate-600 mt-1">
-                L&apos;application est structurée en deux niveaux de lecture pour éviter toute surcharge visuelle aux équipes terrain tout en offrant une profondeur complète à la Direction.
-              </p>
+              <span className="px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold shrink-0">
+                Aucune donnée adhérent sur Internet
+              </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 text-xs">
-              <span className="px-3 py-1.5 rounded-xl bg-orange-50 text-orange-700 font-bold border border-orange-200">
-                13 Briques Métier Actives
-              </span>
-              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                Bi-Club Natif
-              </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1.5">
+                <div className="font-bold text-orange-300">
+                  1. Zéro code secret dans les navigateurs
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Les identifiants Heitz (<code className="font-mono text-emerald-300">HEITZ_WS_URL</code> et <code className="font-mono text-emerald-300">HEITZ_WS_DEV_KEY</code>) sont lus exclusivement côté serveur local (fichier <code className="font-mono">.env</code> sur la machine du club) via la route proxy interne <code className="font-mono">/api/heitz-ws</code>.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1.5">
+                <div className="font-bold text-emerald-300">
+                  2. Câble RJ45 Local &amp; VPN WireGuard
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Le serveur C.Fitness OS (<code className="font-mono">10.10.0.10</code>) interroge directement le serveur Windows Heitz (<code className="font-mono">10.10.0.20:8080</code>) sur le switch local de Carré de Soie sans jamais sortir sur Internet. Beynost y accède via le tunnel chiffré WireGuard.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1.5">
+                <div className="font-bold text-sky-300">
+                  3. Travail sur votre PC portable (Antigravity)
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Lorsque vous codez ou testez sur votre PC portable, le projet tourne sur <code className="font-mono">localhost:3000</code> avec des données de démonstration locales tant que vous n&apos;êtes pas branché au réseau local <code className="font-mono">10.10.0.x</code> du club.
+                </p>
+              </div>
             </div>
           </div>
 
-          {PROJECT_FEATURE_CATALOG.map((group) => (
-            <div key={group.category} className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                  {group.category}
-                </h3>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold">
-                  {group.badge}
-                </span>
+          {/* Inventaire Technique Complet des Équipements & IP */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-orange-600" />
+                  Plan d&apos;Adressage IP, Serveur, Passerelle 4G Yeastar, Bornes PoE &amp; Protocoles ({filteredHardware.length} équipements)
+                </h2>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {group.modules.map((mod) => {
-                  const Icon = mod.icon;
-                  return (
-                    <div
-                      key={mod.code}
-                      className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 flex flex-col justify-between shadow-2xs"
-                    >
-                      <div className="space-y-2.5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center shrink-0">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-[11px] font-mono font-bold text-orange-600 uppercase">
-                                {mod.code}
-                              </div>
-                              <div className="text-sm font-bold text-slate-900">
-                                {mod.title}
-                              </div>
-                            </div>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
-                            Opérationnel
-                          </span>
-                        </div>
-
-                        <ul className="space-y-1.5 text-xs text-slate-600 pt-1">
-                          {mod.features.map((feat, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                              <span>{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* =====================================================================
-          ONGLET 2 : PLAN DE PRÉSENTATION AUX DIRIGEANTS & ASSOCIÉS
-         ===================================================================== */}
-      {activeTab === 'pitch' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
-              Onglet 2 · Trame Officielle de Présentation Exécutive (Dirigeants &amp; Associés)
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              Plan directeur pour présenter C.Fitness OS aux dirigeants réceptionnant le logiciel et aux associés souhaitant l&apos;intégrer dans leurs structures existantes
-            </h2>
-            <p className="text-xs text-slate-600">
-              Ce plan en 5 étapes est conçu pour une réunion de 20 minutes avec des décideurs : il va droit au but (rentabilité, simplicité opérationnelle, intégration sans coupure d&apos;exploitation dans un club déjà ouvert).
-            </p>
-          </div>
-
-          {/* 5-Step Executive Pitch */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            {[
-              {
-                step: 'ÉTAPE 1 · LE CONSTAT',
-                duration: '3 min',
-                title: 'Pourquoi les clubs perdent du temps et de l’argent aujourd’hui',
-                points: [
-                  'Empilement de 6 à 7 abonnements logiciels coûteux (Ringover, Skello, Yousign, CRM, Excel) qui ne communiquent pas entre eux.',
-                  'Perte de prospects : aucun lien entre un appel téléphonique, la prise de RDV et le passage réel au tourniquet Heitz.',
-                  'Risque social & RGPD : utilisation des téléphones portables personnels des commerciaux/coachs et ressaisie manuelle des variables de paie.',
-                ],
-              },
-              {
-                step: 'ÉTAPE 2 · LA SOLUTION',
-                duration: '5 min',
-                title: 'Un seul système d’exploitation pensé par et pour des exploitants de clubs',
-                points: [
-                  'Démonstration en direct du 1er Plan Opérationnel : Ma Journée → Planning 3-en-1 → Téléphonie 04/07 → CRM → ATS & Signatures.',
-                  'Règle d’or : 1 seule action = mise à jour partout (Ex: convertir un prospect crée l’adhérent Heitz + ouvre le portillon + crédite la prime commerciale).',
-                  'Zéro remplacement brutal du matériel : on garde Heitz (portillons/SEPA) et Technogym Mywellness (plateau/Checkup) et on les pilote.',
-                ],
-              },
-              {
-                step: 'ÉTAPE 3 · L’INTÉGRATION',
-                duration: '4 min',
-                title: 'Comment intégrer C.Fitness OS dans une structure existante sans coupure',
-                points: [
-                  'Semaine 1 : Connexion passive en lecture sur le serveur Heitz existant (récupération membres, SEPA, passages) et Technogym Mywellness.',
-                  'Semaine 2 : Activation de la Téléphonie OVHcloud 04/07, du Studio SVI et du CRM (arrêt immédiat des abonnements Ringover/CRM).',
-                  'Semaine 3 : Bascule du Planning RH IDCC 2511, de la tablette badgeuse PIN PoE et de la signature électronique 0 € (arrêt de Skello/Yousign).',
-                  'Semaine 4 : Ouverture du Cockpit Direction Bi-Club/Multi-Clubs et premier export automatisé vers Silae Paie.',
-                ],
-              },
-              {
-                step: 'ÉTAPE 4 · LE ROI FINANCIER',
-                duration: '4 min',
-                title: 'Rentabilité immédiate dès le 1er mois d’exploitation',
-                points: [
-                  'Économie directe : ~700 € à 1 400 € HT / mois d’abonnements SaaS supprimés par structure.',
-                  'Gain de Chiffre d’Affaires : +25 % de transformation sur les essais grâce au QR Code SMS Heitz et aux relances automatiques 07.',
-                  'Récupération de trésorerie : le Bouclier SEPA bloque poliment au portillon les rejets de prélèvement et déclenche le paiement immédiat.',
-                ],
-              },
-              {
-                step: 'ÉTAPE 5 · LES ASSOCIÉS',
-                duration: '4 min',
-                title: 'Gouvernance transparente & croissance multi-structures',
-                points: [
-                  'Chaque associé ou directeur dispose d’un accès temps réel aux indicateurs consolidés (CA, FMI, nouveaux contrats, masse salariale).',
-                  'Journal d’audit cryptographique infalsifiable : chaque ouverture manuelle de portillon, remise ou modification de contrat est tracée.',
-                  'Intégration d’un nouveau club associé en 48h grâce à l’architecture VPN WireGuard et au modèle multi-établissements natif.',
-                ],
-              },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-2xs"
+              <button
+                onClick={handleRunDiagnostic}
+                className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-orange-100 text-orange-800">
-                      {item.step}
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {item.duration}
-                    </span>
-                  </div>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
-                    {item.title}
-                  </h3>
-                  <ul className="space-y-2 text-xs text-slate-600 pt-1">
-                    {item.points.map((pt, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <ArrowRight className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
-                        <span>{pt}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Integration Blueprint for Existing Structures */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <div className="text-xs font-bold uppercase text-orange-400">
-                  Garantie pour les Associés &amp; Structures Déjà en Exploitation
-                </div>
-                <h3 className="text-base font-bold text-white mt-0.5">
-                  Pourquoi un club déjà ouvert peut adopter C.Fitness OS sans aucun risque opérationnel ?
-                </h3>
-              </div>
-              <span className="px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold self-start">
-                Zéro interruption des portillons ni des prélèvements SEPA
-              </span>
+                <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                Tester Ping &amp; Protocoles Réseau
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-1.5">
-                <div className="font-bold text-orange-300 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  1. Conservation du matériel existant
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Pas besoin de changer les tourniquets, les lecteurs RFID/Bluetooth Heitz ni les machines Technogym. C.Fitness OS vient se brancher par-dessus via leurs API officielles locales et Cloud.
-                </p>
+            {pingResult && (
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-900 flex items-center justify-between gap-2">
+                <span>{pingResult}</span>
+                <button
+                  onClick={() => setPingResult(null)}
+                  className="underline text-[11px] shrink-0 cursor-pointer"
+                >
+                  Fermer
+                </button>
               </div>
-
-              <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-1.5">
-                <div className="font-bold text-emerald-300 flex items-center gap-2">
-                  <Handshake className="w-4 h-4" />
-                  2. Adoption immédiate par les équipes
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Au lieu de former un nouveau commercial ou coach sur 5 logiciels différents, il n&apos;apprend qu&apos;un seul écran (« Ma Journée » &amp; « Le Collaborateur ») avec ses tâches guidées heure par heure.
-                </p>
-              </div>
-
-              <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-1.5">
-                <div className="font-bold text-blue-300 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" />
-                  3. Transparence financière pour les associés
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Chaque euro encaissé, chaque abonnement signé et chaque heure travaillée est relié à une preuve vérifiable (ticket KPI Heitz, contrat signé SHA-256, pointage PIN horodaté).
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          ONGLET 3 : FONCTIONNEMENT SIMPLE, LOGICIELS REMPLACÉS VS PARTENAIRES
-         ===================================================================== */}
-      {activeTab === 'ecosystem' && (
-        <div className="space-y-6">
-          {/* Brief & Simple Explanation of How C.Fitness OS Works */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
-                Onglet 3 · Architecture Expliquée Simplement
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
-                Comment fonctionne C.Fitness OS en 3 phrases simples ?
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <div className="font-mono font-bold text-orange-600 uppercase">
-                  1. L&apos;Écran Unique des Équipes
-                </div>
-                <div className="font-bold text-slate-900 text-sm">
-                  Tout le quotidien du club au même endroit
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  Les commerciaux, coachs et managers se connectent à une seule application pour pointer, voir leur planning, appeler en 04/07, relancer les prospects par SMS, faire signer les contrats et suivre leur journée.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <div className="font-mono font-bold text-emerald-600 uppercase">
-                  2. Le Cerveau Central &amp; Les Passerelles
-                </div>
-                <div className="font-bold text-slate-900 text-sm">
-                  Il dialogue en direct avec vos équipements
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  En arrière-plan, C.Fitness OS parle automatiquement en temps réel avec le serveur <strong>Heitz</strong> (portillons &amp; SEPA), avec <strong>Technogym Mywellness</strong> (bilans Checkup &amp; cours), avec <strong>OVHcloud</strong> (téléphonie) et avec <strong>Silae</strong> (paie).
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <div className="font-mono font-bold text-blue-600 uppercase">
-                  3. La Sécurité &amp; Continuité Automatique
-                </div>
-                <div className="font-bold text-slate-900 text-sm">
-                  Zéro ressaisie, zéro perte de données
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  Toutes les actions sont tracées juridiquement et sauvegardées en continu sur 6 appareils (PC, tablettes, smartphones). Même si le serveur principal s&apos;éteint, les clubs continuent de tourner.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Part A: Software Replaced by C.Fitness OS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-rose-600" />
-                  A. Quels sont les 6 logiciels que C.Fitness OS REMPLACE intégralement ?
-                </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Ces abonnements mensuels externes sont supprimés car leurs fonctions sont désormais natives et supérieures dans C.Fitness OS.
-                </p>
-              </div>
-              <span className="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold shrink-0">
-                6 Abonnements SaaS Supprimés
-              </span>
-            </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500 bg-slate-50">
-                    <th className="py-2.5 px-3">Logiciel Remplacé</th>
-                    <th className="py-2.5 px-3">Ancien Coût Moyen</th>
-                    <th className="py-2.5 px-3">Problème de l&apos;ancien outil</th>
-                    <th className="py-2.5 px-3">Module C.Fitness OS qui le remplace</th>
-                    <th className="py-2.5 px-3">Nouveau Coût</th>
+                  <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase text-slate-500 bg-slate-50">
+                    <th className="py-2.5 px-3">Équipement / Serveur</th>
+                    <th className="py-2.5 px-3">Site</th>
+                    <th className="py-2.5 px-3">IP Locale / Endpoint</th>
+                    <th className="py-2.5 px-3">Protocole &amp; Port</th>
+                    <th className="py-2.5 px-3">Latence</th>
+                    <th className="py-2.5 px-3">Configuration &amp; Rôle</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {REPLACED_SOFTWARE_MATRIX.map((row) => (
-                    <tr key={row.replaced} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-3 font-bold text-slate-900">{row.replaced}</td>
-                      <td className="py-3 px-3 font-mono text-rose-700 font-semibold">
-                        {row.oldCost}
+                  {filteredHardware.map((hw) => (
+                    <tr key={hw.id} className="align-top hover:bg-slate-50/60">
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          {hw.category === 'INFRA_RESEAU' ? (
+                            <Cpu className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                          ) : (
+                            <Radio className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          )}
+                          <span>{hw.name}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{hw.model}</div>
                       </td>
-                      <td className="py-3 px-3 text-slate-600">{row.limitation}</td>
-                      <td className="py-3 px-3 font-semibold text-slate-800">
-                        {row.cfitnessSolution}
+                      <td className="py-3 px-3 font-semibold text-slate-700 whitespace-nowrap">
+                        {hw.clubId === 'carre-de-soie'
+                          ? 'Carré de Soie'
+                          : hw.clubId === 'beynost'
+                          ? 'Beynost'
+                          : 'Bi-Club (CDS ↔ BEY)'}
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-emerald-700">
-                        {row.newCost}
+                      <td className="py-3 px-3 font-mono text-[11px] text-slate-800 whitespace-nowrap">
+                        {hw.ipOrEndpoint}
                       </td>
+                      <td className="py-3 px-3">
+                        <div className="font-mono text-[11px] font-semibold text-slate-900">
+                          {hw.protocol}
+                        </div>
+                        <div className="font-mono text-[10px] text-slate-500">{hw.port}</div>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold text-emerald-700 tabular-nums whitespace-nowrap">
+                        {hw.latencyMs} ms · OK
+                      </td>
+                      <td className="py-3 px-3 text-slate-600">{hw.details}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -775,171 +1194,735 @@ export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProp
             </div>
           </div>
 
-          {/* Part B: Software & Hardware with which C.Fitness OS works in harmony */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          {/* Fiches Constructeurs & Câblage Réel */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="pb-3 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  B. Avec quels logiciels et équipements C.Fitness OS TRAVAILLE EN ACCORD PARFAIT ?
-                </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Nous ne réinventons pas la roue là où vos équipements excellent déjà : C.Fitness OS les orchestre en temps réel sans double saisie.
-                </p>
+                <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
+                  Spécifications Constructeurs &amp; Câblage Terrain
+                </div>
+                <h2 className="text-base font-bold text-slate-900 mt-0.5">
+                  Références matérielles exactes à commander / vérifier sur place
+                </h2>
               </div>
-              <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
-                4 Partenaires Techniques Conservés &amp; Synchronisés
+              <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shrink-0">
+                5 Domaines Matériels Vérifiés
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {PARTNER_SYSTEMS_IN_HARMONY.map((partner) => (
+            <div className="grid grid-cols-1 gap-4">
+              {HARDWARE_COMPATIBILITY_SPECS.map((spec) => (
                 <div
-                  key={partner.system}
-                  className="border border-slate-200 rounded-xl p-4 space-y-2.5 bg-slate-50/40"
+                  key={spec.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 text-xs"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-extrabold text-slate-900">
-                        {partner.system}
-                      </div>
-                      <div className="text-xs font-semibold text-orange-600">
-                        Rôle : {partner.role}
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
-                      En Accord
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-200/80">
+                    <div className="font-bold text-sm text-slate-900">{spec.title}</div>
+                    <span className="font-mono text-[11px] font-semibold px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-800 shrink-0">
+                      Budget matériel indicatif : {spec.estimatedHardwareBudget}
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200/80">
-                    <span className="font-bold text-slate-900">Pourquoi on le garde : </span>
-                    {partner.whyKept}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-rose-50/70 border border-rose-200 space-y-1">
+                      <div className="font-bold text-rose-900 flex items-center gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>Piège technique évité :</span>
+                      </div>
+                      <p className="text-rose-950 leading-relaxed">{spec.hallucinationAvoided}</p>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 space-y-1">
+                      <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Solution matérielle à mettre en œuvre :</span>
+                      </div>
+                      <p className="text-emerald-950 leading-relaxed">{spec.realWorldSolution}</p>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 pt-1">
-                    <div className="text-[11px] font-bold uppercase text-slate-500">
-                      Comment ils fonctionnent en accord au quotidien :
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 text-[11px]">
+                    <div className="p-2.5 rounded bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Modèles Constructeurs :</span>{' '}
+                      <span className="text-slate-600">{spec.manufacturerModels}</span>
                     </div>
-                    <ul className="space-y-1.5 text-xs text-slate-600">
-                      {partner.howItWorksTogether.map((line, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="p-2.5 rounded bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Câblage &amp; Protocole :</span>{' '}
+                      <span className="font-mono text-slate-700">
+                        {spec.physicalWiringAndProtocol}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Conformité :</span>{' '}
+                      <span className="text-emerald-800 font-medium">
+                        {spec.regulatoryCompliance}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Fichiers de Déploiement Serveur (docker-compose.yml, Dockerfile, Rust) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FileCode2 className="w-4 h-4 text-orange-600" />
+                  Fichiers de Déploiement Serveur (Docker Compose, Dockerfile &amp; Backend)
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(Object.keys(DEPLOYMENT_FILES) as Array<keyof typeof DEPLOYMENT_FILES>).map(
+                  (f) => (
+                    <button
+                      key={f}
+                      onClick={() => setActiveDeployFile(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold cursor-pointer ${
+                        activeDeployFile === f
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => handleDownloadDeployFile(activeDeployFile)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Télécharger
+                </button>
+              </div>
+            </div>
+
+            <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed">
+              {DEPLOYMENT_FILES[activeDeployFile]}
+            </pre>
+          </div>
         </div>
       )}
 
       {/* =====================================================================
-          ONGLET 4 : DIFFÉRENCES MAJEURES & POTENTIEL DE REVENTE PARTENAIRES
+          ONGLET 2 : MARCHE À SUIVRE SUR PLACE (RUNBOOK D'INSTALLATION AU CLUB)
          ===================================================================== */}
-      {activeTab === 'differentiation' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
-              Onglet 4 · Avantages Concurrentiels &amp; Commercialisation B2B
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              Quelles sont les différences décisives apportées par notre solution qui prouvent que nous sommes à la hauteur pour l&apos;intégrer et la revendre à d&apos;autres partenaires ?
-            </h2>
-            <p className="text-xs text-slate-600">
-              Sur le marché du fitness, les clubs ont le choix entre un ERP historique vieillissant (bon pour les tourniquets/SEPA mais faible sur le CRM/Téléphonie/RH) et une multitude de SaaS généralistes hors de prix. C.Fitness OS est le seul système qui réunit le meilleur des deux mondes.
-            </p>
-          </div>
+      {activeTab === 'onsite_runbook' && (() => {
+        const totalSteps = ONSITE_INSTALLATION_STEPS.length;
+        const completedCount = ONSITE_INSTALLATION_STEPS.filter((s) => completedSteps[s.id]).length;
+        const progressPercent = Math.round((completedCount / totalSteps) * 100);
 
-          {/* 6 Competitive Differentiators Table / Cards */}
-          <div className="grid grid-cols-1 gap-4">
-            {COMPETITIVE_ADVANTAGES.map((item) => (
-              <div
-                key={item.criterion}
-                className="bg-white border border-slate-200 rounded-2xl p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center shadow-2xs"
-              >
-                <div className="lg:col-span-3 space-y-1">
-                  <div className="text-xs font-extrabold text-slate-900">
-                    {item.criterion}
+        const filteredSteps = ONSITE_INSTALLATION_STEPS.filter((s) => {
+          if (activeStepFilter === 'all') return true;
+          if (activeStepFilter === 'hardware') return s.category === 'hardware';
+          if (activeStepFilter === 'system') return s.category === 'system';
+          if (activeStepFilter === 'heitz') return s.category === 'heitz';
+          if (activeStepFilter === 'telecom') return s.category === 'telecom';
+          if (activeStepFilter === 'kiosks_bio') return s.category === 'kiosks' || s.category === 'biometrie';
+          if (activeStepFilter === 'vpn_payroll') return s.category === 'vpn' || s.category === 'payroll';
+          return true;
+        });
+
+        return (
+          <div className="space-y-6">
+            {/* Bannière principale & Baromètre de progression terrain */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold uppercase tracking-wider">
+                    <Terminal className="w-3.5 h-3.5" />
+                    <span>Onglet 2 · Guide d&apos;Intervention Terrain &amp; Mise en Service Pas-à-Pas</span>
                   </div>
-                  <span className="inline-block px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-bold">
-                    Différenciateur Clé
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                    Toute la configuration du matériel et réglages logiciels étape par étape
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
+                    Suivez ces 10 étapes méthodiques dans l&apos;ordre lors du déploiement à Carré de Soie et Beynost. Cochez chaque étape au fur et à mesure sur votre écran : la progression est sauvegardée en local sur votre appareil pour ne rien oublier.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCopyAllPlan}
+                    className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {copiedAllPlan ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>Plan Markdown copié !</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4 text-orange-400" />
+                        <span>Copier le plan complet</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAll(true)}
+                    className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Tout valider</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAll(false)}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Square className="w-4 h-4" />
+                    <span>Réinitialiser</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Barre de Progression */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <Activity className="w-4 h-4 text-orange-600" />
+                    <span>Progression de la mise en service sur site :</span>
+                  </span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {completedCount} / {totalSteps} étapes validées ({progressPercent} %)
                   </span>
                 </div>
-
-                <div className="lg:col-span-3 bg-rose-50/60 border border-rose-200/70 rounded-xl p-3 text-xs space-y-1">
-                  <div className="font-bold text-rose-800 text-[11px] uppercase">
-                    Ce qui se fait ailleurs (Marché actuel)
+                <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 rounded-full ${
+                      progressPercent === 100
+                        ? 'bg-emerald-500'
+                        : progressPercent > 50
+                        ? 'bg-orange-500'
+                        : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                {progressPercent === 100 && (
+                  <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1.5 pt-0.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Félicitations ! L&apos;ensemble de la configuration matérielle et logicielle est validée. Le club est 100 % opérationnel.</span>
                   </div>
-                  <p className="text-slate-700">{item.marketStandard}</p>
+                )}
+              </div>
+
+              {/* Filtres par domaine d'intervention */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {[
+                  { id: 'all', label: `Toutes les étapes (${totalSteps})` },
+                  { id: 'hardware', label: '1. Matériel & Onduleur' },
+                  { id: 'system', label: '2. Réseau & Docker' },
+                  { id: 'heitz', label: '3. Pont Heitz Local' },
+                  { id: 'telecom', label: '4. Télécom 04 / 07' },
+                  { id: 'kiosks_bio', label: '5. Biométrie & Kiosques' },
+                  { id: 'vpn_payroll', label: '6. VPN & Paie Silae' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setActiveStepFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                      activeStepFilter === f.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Liste des Étapes Interactives */}
+            <div className="space-y-4">
+              {filteredSteps.map((step) => {
+                const isDone = !!completedSteps[step.id];
+                const isConfigOpen = expandedConfigId === step.id;
+
+                return (
+                  <div
+                    key={step.id}
+                    className={`bg-white border rounded-2xl p-5 sm:p-6 transition-all shadow-2xs space-y-4 ${
+                      isDone
+                        ? 'border-emerald-300 ring-1 ring-emerald-200/60 bg-emerald-50/15'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* En-tête de l'étape avec Checkbox et Badges */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleStep(step.id)}
+                          aria-label={isDone ? 'Marquer à faire' : 'Marquer comme fait'}
+                          className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                            isDone
+                              ? 'bg-emerald-600 text-white'
+                              : 'border-2 border-slate-300 hover:border-orange-500 text-transparent'
+                          }`}
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </button>
+
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-slate-900 text-white">
+                              #{String(step.number).padStart(2, '0')}
+                            </span>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-800">
+                              {step.categoryLabel}
+                            </span>
+                            <span className="font-mono text-xs text-slate-500">
+                              ⏱️ {step.duration}
+                            </span>
+                          </div>
+                          <h3 className={`text-base font-black tracking-tight ${isDone ? 'text-emerald-950' : 'text-slate-900'}`}>
+                            {step.step}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                          📍 {step.location}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Résumé de l'étape */}
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                      {step.summary}
+                    </p>
+
+                    {/* Matériel requis */}
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-start gap-2">
+                      <Server className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-slate-900">Matériel &amp; outillage requis sur place :</span>{' '}
+                        <span className="text-slate-700">{step.hardwareRequired}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions pas-à-pas à cocher */}
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Actions à réaliser sur place :
+                      </div>
+                      <ul className="grid grid-cols-1 gap-2 text-xs text-slate-700">
+                        {step.tasks.map((task, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-50/70 border border-slate-100"
+                          >
+                            <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-700 font-bold font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                              {idx + 1}
+                            </span>
+                            <span className="leading-relaxed">{task}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Bloc Commande Terminal avec Bouton Copier */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono uppercase font-bold text-slate-500 flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-orange-600" />
+                          <span>Commande principale à exécuter dans le terminal :</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCommand(step.command, `cmd-${step.id}`)}
+                          className="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-white font-mono text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedCmdId === `cmd-${step.id}` ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>Copié !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copier la commande</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed">
+                        $ {step.command}
+                      </pre>
+                    </div>
+
+                    {/* Commande secondaire optionnelle */}
+                    {step.secondaryCommand && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-mono text-slate-500">
+                            Commande de vérification / inspection :
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopyCommand(step.secondaryCommand!, `sec-${step.id}`)
+                            }
+                            className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+                          >
+                            {copiedCmdId === `sec-${step.id}` ? 'Copié !' : 'Copier'}
+                          </button>
+                        </div>
+                        <pre className="p-2.5 rounded-lg bg-slate-900 text-slate-300 font-mono text-[11px] overflow-x-auto">
+                          $ {step.secondaryCommand}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Extrait de fichier de configuration avec bouton déplier */}
+                    {step.configSnippet && (
+                      <div className="pt-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedConfigId(isConfigOpen ? null : step.id)
+                            }
+                            className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <FileCode2 className="w-3.5 h-3.5" />
+                            <span>
+                              {isConfigOpen ? 'Masquer' : 'Voir'} l&apos;extrait de configuration ({step.configSnippet.filename})
+                            </span>
+                            {isConfigOpen ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {isConfigOpen && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopyCommand(
+                                  step.configSnippet!.content,
+                                  `cfg-${step.id}`
+                                )
+                              }
+                              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedCmdId === `cfg-${step.id}` ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Copié !</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copier le fichier</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {isConfigOpen && (
+                          <div className="space-y-1">
+                            <div className="text-[11px] text-slate-500 font-medium">
+                              {step.configSnippet.description}
+                            </div>
+                            <pre className="p-3 rounded-xl bg-slate-900 text-amber-200 font-mono text-[11px] overflow-x-auto leading-relaxed">
+                              {step.configSnippet.content}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bloc Vérification & Piège Évité */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-xs">
+                      <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-1">
+                        <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Comment vérifier que c&apos;est bon :</span>
+                        </div>
+                        <p className="text-emerald-950 leading-relaxed font-medium">
+                          {step.verification}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
+                        <div className="font-bold text-amber-900 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>Piège terrain évité :</span>
+                        </div>
+                        <p className="text-amber-950 leading-relaxed">
+                          {step.pitfall}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Matrice des Adresses IP Fixes & Ports du Club */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
+                    Plan d&apos;Adressage &amp; Ports Réseau Fixes
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 mt-0.5">
+                    Tableau Récapitulatif des Équipements sur le Réseau Local LAN
+                  </h3>
+                </div>
+                <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-bold">
+                  VLAN 10 CDS &amp; VLAN 20 BEY
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase text-slate-500 bg-slate-50">
+                      <th className="py-2.5 px-3">Équipement</th>
+                      <th className="py-2.5 px-3">IP Fixe</th>
+                      <th className="py-2.5 px-3">Ports &amp; Protocole</th>
+                      <th className="py-2.5 px-3">Site</th>
+                      <th className="py-2.5 px-3">Rôle Opérationnel</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Serveur Maître C.Fitness OS</td>
+                      <td className="py-2.5 px-3 font-mono text-emerald-700 font-bold">10.10.0.10</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">TCP 443, 3000, 5432, 6379, 8089</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">Carré de Soie</td>
+                      <td className="py-2.5 px-3 text-slate-600">Moteur central Rust/Node, PostgreSQL, Redis, LiveKit WebRTC</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Serveur Windows Heitz System</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-800 font-bold">10.10.0.20</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">TCP 8080 (HZ.WS) / 1433 (SQL)</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">Carré de Soie</td>
+                      <td className="py-2.5 px-3 text-slate-600">API locale HZ.WS, contrôle tourniquets RFID/BLE &amp; SEPA</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Passerelle GSM Yeastar TG400</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-800 font-bold">10.10.0.14</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">UDP 5060 (SIP) / TCP 80 (API SMS)</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">Carré de Soie</td>
+                      <td className="py-2.5 px-3 text-slate-600">4 SIM 4G VoLTE pour relances 07 conformes ARCEP + SMS STOP</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Tablettes Murales PoE Badgeuse</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-800 font-bold">10.10.0.31 / 10.20.0.31</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">TCP 443 (HTTPS Kiosk)</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">CDS &amp; Beynost</td>
+                      <td className="py-2.5 px-3 text-slate-600">Pointage PIN coachs, accueil adhérents, sans batterie gonflable</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Stations Technogym Checkup</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-800 font-bold">10.10.0.55 / 10.20.0.55</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">HTTPS 443 (Mywellness Cloud)</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">CDS &amp; Beynost</td>
+                      <td className="py-2.5 px-3 text-slate-600">Balance BIA multi-fréquence, caméra 3D, Wellness Age™</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">Routeurs Fibre &amp; WireGuard</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-800 font-bold">10.10.0.1 ↔ 10.20.0.1</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">UDP 51820 (WireGuard)</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-700">Bi-Club</td>
+                      <td className="py-2.5 px-3 text-slate-600">Tunnel site-à-site &lt; 3 ms chiffré ChaCha20-Poly1305</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modèle Complet du Fichier .env de Production */}
+            <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold uppercase text-orange-400 flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4" />
+                    <span>Modèle Exact du Fichier .env à Placer sur le Serveur du Club (/opt/cfitness-os/.env)</span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Ce fichier contient vos codes d&apos;accès Heitz et OVHcloud. Il reste strictement sur le disque dur du serveur du club (avec chmod 600) et n&apos;est jamais envoyé sur GitHub ni sur Internet.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyEnv}
+                  className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                >
+                  {copiedEnv ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Copié dans le presse-papier !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copier le modèle .env</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed">
+                {ENV_PRODUCTION_TEMPLATE}
+              </pre>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* =====================================================================
+          ONGLET 3 : MISES À JOUR EN FONCTION DES LOGICIELS TIERS CONSERVÉS
+         ===================================================================== */}
+      {activeTab === 'third_party_updates' && (
+        <div className="space-y-6">
+          {/* Principe d'Architecture Anti-Casse (Connecteurs Isolés) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
+                Onglet 3 · Stratégie de Maintien à Niveau &amp; Mises à Jour
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
+                Comment mettre à niveau C.Fitness OS lorsque Heitz, Technogym, Silae ou OVHcloud évoluent ?
+              </h2>
+              <p className="text-xs text-slate-600 mt-1">
+                Votre projet a été conçu avec une <strong>architecture à connecteurs isolés</strong> : aucun écran ne dépend directement du code interne d&apos;un logiciel tiers. Toute la traduction passe par des fonctions dédiées dans <code className="font-mono font-bold text-slate-900">src/domain/rules.ts</code> et le proxy <code className="font-mono font-bold text-slate-900">/api/heitz-ws</code>.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-orange-600" />
+                  1. Isolation Totale des Tiers
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Si Heitz ou Silae modifie un format de fichier lors d&apos;une mise à jour, vous n&apos;avez jamais besoin de refaire les écrans du club : vous modifiez uniquement les 10 lignes du traducteur dans <code className="font-mono">rules.ts</code>.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900 flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-emerald-600" />
+                  2. Test Préalable sur Antigravity
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Vous préparez et vérifiez toujours la mise à niveau sur votre PC portable (dans votre IDE Antigravity avec <code className="font-mono">npm run build</code>) avant de l&apos;envoyer sur le serveur du club.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900 flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-blue-600" />
+                  3. Retour Arrière en 10 Secondes
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Grâce au versionnage Git local, si une mise à jour externe comporte une anomalie, une seule commande (<code className="font-mono">git checkout</code>) remet instantanément le club sur la version précédente.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Fiches détaillées pour chacun des 4 logiciels tiers */}
+          <div className="grid grid-cols-1 gap-4">
+            {THIRD_PARTY_UPDATE_GUIDES.map((guide) => (
+              <div
+                key={guide.software}
+                className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">
+                      {guide.software}
+                    </h3>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Fréquence typique : <span className="font-semibold text-slate-700">{guide.frequency}</span>
+                    </div>
+                  </div>
+                  <div className="px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 font-mono text-[11px] font-bold text-slate-800 shrink-0">
+                    Fichier(s) à mettre à jour : {guide.filesToTouch}
+                  </div>
                 </div>
 
-                <div className="lg:col-span-3 bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 text-xs space-y-1">
-                  <div className="font-bold text-emerald-800 text-[11px] uppercase">
-                    L&apos;Avantage Exclusif C.Fitness OS
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+                    <div className="font-bold text-amber-950 uppercase text-[11px]">
+                      Ce qui peut évoluer chez ce partenaire tiers :
+                    </div>
+                    <ul className="space-y-1.5 text-slate-700">
+                      {guide.whatCanChange.map((c, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="font-bold text-amber-700">•</span>
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <p className="text-slate-800 font-medium">{item.cfitnessAdvantage}</p>
-                </div>
 
-                <div className="lg:col-span-3 bg-slate-900 text-white rounded-xl p-3 text-xs space-y-1">
-                  <div className="font-bold text-orange-400 text-[11px] uppercase">
-                    Preuve pour Intégration &amp; Revente
+                  <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+                    <div className="font-bold text-emerald-950 uppercase text-[11px]">
+                      Marche à suivre exacte pour mettre à niveau C.Fitness OS :
+                    </div>
+                    <ul className="space-y-1.5 text-slate-800">
+                      {guide.howToUpdateOurProject.map((step, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <p className="text-slate-200">{item.resaleProof}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Commercialization & White-Label Packaging Plan */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 space-y-4">
+          {/* Procédure Standard de Mise à Jour sur le Serveur du Club (Sans Coupure) */}
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
             <div>
               <div className="text-xs font-bold uppercase text-orange-400">
-                Modèle de Déploiement &amp; Revente Partenaires (Licence / Franchise / Groupement)
+                Procédure Standard de Mise à Niveau au Club (Zéro Interruption)
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
-                3 Formules prêtes pour intégrer ou commercialiser la solution auprès d&apos;autres clubs partenaires
+              <h3 className="text-base font-bold text-white mt-0.5">
+                Les 4 commandes pour appliquer une mise à jour depuis votre IDE Antigravity vers le serveur du club
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
-                <div className="text-orange-400 font-mono font-bold uppercase text-[11px]">
-                  Formule 1 · Club Associé / Croissance Interne
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 space-y-2">
+                <div className="font-bold text-orange-300">
+                  1. Sur votre PC portable (IDE Antigravity) — Préparer &amp; Valider
                 </div>
-                <div className="text-sm font-bold text-white">
-                  Intégration dans un nouveau club du groupe
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Branchement direct sur le cluster C.Fitness OS via tunnel VPN WireGuard. Partage du pool téléphonique, de l&apos;Académie 3S et du cockpit de direction consolidé en moins de 48 heures.
+                <p className="text-slate-300">
+                  Après avoir adapté le connecteur dans votre code, vérifiez que tout compile sans erreur et créez une version Git :
                 </p>
+                <pre className="p-2.5 rounded-lg bg-slate-950 text-emerald-300 font-mono text-[11px] overflow-x-auto">
+                  {`npm run lint && npm run build\ngit add -A && git commit -m "update: compatibilite nouvelle version"\ngit tag v2026.11`}
+                </pre>
               </div>
 
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
-                <div className="text-emerald-400 font-mono font-bold uppercase text-[11px]">
-                  Formule 2 · Licence Partenaire (Clé en Main)
+              <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 space-y-2">
+                <div className="font-bold text-emerald-300">
+                  2. Sur le Serveur du Club (10.10.0.10) — Appliquer ou Revenir en Arrière
                 </div>
-                <div className="text-sm font-bold text-white">
-                  Revente aux clubs équipés Heitz &amp; Technogym
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Déploiement de la surcouche C.Fitness OS chez un confrère indépendant : il conserve son serveur Heitz et ses machines Technogym, mais remplace d&apos;un coup Ringover, Skello, Yousign et son CRM tout en divisant sa facture par 3.
+                <p className="text-slate-300">
+                  Mettez à jour le serveur en 5 secondes (ou revenez à la version précédente en cas d&apos;imprévu chez le fournisseur tiers) :
                 </p>
-              </div>
-
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
-                <div className="text-blue-400 font-mono font-bold uppercase text-[11px]">
-                  Formule 3 · Marque Blanche (White-Label SaaS)
-                </div>
-                <div className="text-sm font-bold text-white">
-                  Commercialisation aux réseaux de franchises
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Personnalisation du logo, des couleurs, des scripts d&apos;appels, des modules Académie et du modèle de contrat CDI selon l&apos;enseigne cliente, avec redevance mensuelle par club.
-                </p>
+                <pre className="p-2.5 rounded-lg bg-slate-950 text-emerald-300 font-mono text-[11px] overflow-x-auto">
+                  {`# Appliquer la mise à jour :\ncd /opt/cfitness-os && git pull && docker compose up -d --build\n\n# En cas d'imprévu (Rollback immédiat en 10s) :\ngit checkout v2026.10 && docker compose up -d --build`}
+                </pre>
               </div>
             </div>
           </div>
@@ -947,51 +1930,51 @@ export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProp
       )}
 
       {/* =====================================================================
-          ONGLET 5 : GOUVERNANCE TECHNIQUE, SAUVEGARDES 3-2-1 & AUDIT RGPD
+          ONGLET 4 : GOUVERNANCE TECHNIQUE, SAUVEGARDES 3-2-1 & JALONS (PHASES 0-12)
          ===================================================================== */}
-      {activeTab === 'governance' && (
+      {activeTab === 'governance_backups' && (
         <div className="space-y-6">
-          {/* Infrastructure & Backup 3-2-1 Health Cards */}
+          {/* Cartes de Santé Serveur & Réplication 3-2-1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5 shadow-2xs">
               <div className="font-bold text-slate-900 flex items-center gap-2">
                 <Server className="w-4 h-4 text-emerald-600" />
-                Serveur Principal Carré de Soie (.10)
+                Serveur Principal Carré de Soie (10.10.0.10)
               </div>
               <div className="text-slate-600">
-                PostgreSQL 16 + Redis 7 + LiveKit WebRTC + faster-whisper GPU local · Uptime 99,98%
+                PostgreSQL 16 + Redis 7 + WebRTC + faster-whisper GPU local · Uptime 99,98%
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5 shadow-2xs">
               <div className="font-bold text-slate-900 flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-blue-600" />
                 Sauvegardes 3-2-1 &amp; Réplication 6 Appareils
               </div>
               <div className="text-slate-600">
-                Miroir temps réel sur 2 PC de secours, 2 Tablettes Kiosques et 2 Smartphones Direction + NAS Beynost
+                Miroir temps réel sur 2 PC de secours, 2 Tablettes Kiosques et 2 Smartphones + NAS Beynost
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5 shadow-2xs">
               <div className="font-bold text-slate-900 flex items-center gap-2">
                 <FileCheck2 className="w-4 h-4 text-orange-600" />
-                Conformité Légale &amp; RGPD (§11)
+                Conformité Technique &amp; RGPD (§11)
               </div>
               <div className="text-slate-600">
-                Bandeau vocal RGPD actif · Cloisonnement données santé Technogym Checkup / Mywellness · Purge auto CV 24 mois
+                Bandeau vocal RGPD actif · Cloisonnement données santé Checkup · Purge auto CV 24 mois
               </div>
             </div>
           </div>
 
-          {/* Multi-Device Automatic Backup & Power Outage Failover Panel */}
+          {/* Panneau de Réplication 3-2-1 et Test de Bascule Électrique < 3s */}
           <BackupFailoverPanel />
 
-          {/* Phases 0 to 12 Go / No-Go Gates */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+          {/* Matrice des Jalons d'Exécution & Fabrication (Phases 0 à 12) */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-2xs">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Matrice des Jalons d&apos;Exécution (Phases 0 à 12 — §9)
+              Matrice des Jalons de Fabrication &amp; Déploiement (Phases 0 à 12 — Go/No-Go)
             </h2>
 
             <div className="divide-y divide-slate-100 text-xs">
@@ -1020,28 +2003,19 @@ export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProp
                       <div className="text-right">
                         <div className="font-bold text-emerald-700 flex items-center gap-1 justify-end">
                           <CheckCircle2 className="w-4 h-4" />
-                          GO VALIDÉ
+                          <span>Validé Go</span>
                         </div>
                         <div className="text-[11px] text-slate-500">
-                          Signé par {gate.signedBy} le {gate.signedAt}
+                          {gate.signedBy} · {gate.signedAt}
                         </div>
                       </div>
-                    ) : canSignOff ? (
-                      <button
-                        onClick={() =>
-                          signGoNoGoPhase(
-                            gate.id,
-                            `${currentUser.firstName} ${currentUser.lastName}`
-                          )
-                        }
-                        className="px-3.5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold cursor-pointer"
-                      >
-                        Signer le GO Direction ({gate.code})
-                      </button>
                     ) : (
-                      <span className="text-amber-700 font-semibold">
-                        En attente signature Direction (Mario / Daniel)
-                      </span>
+                      <button
+                        onClick={() => signGoNoGoPhase(gate.id, 'valide')}
+                        className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold cursor-pointer"
+                      >
+                        Valider Jalon Go/No-Go
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1049,17 +2023,12 @@ export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProp
             </div>
           </div>
 
-          {/* Immutable Audit Log */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-slate-800" />
-                Journal d&apos;Audit Immuable (Append-Only — Aucune suppression autorisée)
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Chaque action sensible (connexion, bascule de poste, ouverture manuelle portillon, signature RH, validation paie) est tracée.
-              </p>
-            </div>
+          {/* Journal d'Audit Immuable */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-2xs">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-slate-700" />
+              Journal d&apos;Audit Cryptographique Immuable ({auditLogs.length} événements)
+            </h2>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -1067,29 +2036,26 @@ export function GovernanceView({ initialTab = 'governance' }: GovernanceViewProp
                   <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase text-slate-500">
                     <th className="py-2 pr-3">Horodatage</th>
                     <th className="py-2 px-3">Acteur</th>
-                    <th className="py-2 px-3">Rôle</th>
-                    <th className="py-2 px-3">Club</th>
                     <th className="py-2 px-3">Action</th>
-                    <th className="py-2 pl-3">Détails</th>
+                    <th className="py-2 px-3">Cible</th>
+                    <th className="py-2 pl-3">État Après</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {auditLogs.map((log) => (
                     <tr key={log.id}>
-                      <td className="py-2.5 pr-3 font-mono text-[11px] text-slate-500 tabular-nums whitespace-nowrap">
-                        {log.timestamp.slice(0, 16).replace('T', ' ')}
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                        {log.timestamp.slice(0, 19).replace('T', ' ')}
                       </td>
                       <td className="py-2.5 px-3 font-semibold text-slate-900 whitespace-nowrap">
-                        {log.actorName}
+                        {log.actorName}{' '}
+                        <span className="text-slate-400 font-normal">({log.actorRole})</span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-600">{log.actorRole}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{log.clubId}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap">
+                      <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-orange-600">
                         {log.action}
                       </td>
-                      <td className="py-2.5 pl-3 text-slate-600">
-                        {log.target} — {log.afterState}
-                      </td>
+                      <td className="py-2.5 px-3 font-medium text-slate-800">{log.target}</td>
+                      <td className="py-2.5 pl-3 text-slate-600">{log.afterState}</td>
                     </tr>
                   ))}
                 </tbody>

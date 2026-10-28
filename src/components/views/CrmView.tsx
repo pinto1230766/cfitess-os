@@ -186,86 +186,76 @@ export function CrmView() {
   return (
     <div className="space-y-4">
       {/* ===================================================================== */}
-      {/* AUTHENTIC PIPEDRIVE + HUBSPOT CRM APPLICATION SHELL                   */}
+      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — CRM PROSPECTS & ADHÉSIONS               */}
       {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-300 shadow-xs bg-white">
-        {/* Pipedrive Dark Charcoal Top Navigation Bar (#1F242D) */}
-        <div className="bg-[#1F242D] text-white px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-white">
+        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
-            {/* Pipedrive + HubSpot Brand Identity */}
-            <div className="flex items-center gap-2.5 pr-3 border-r border-white/15">
-              <div className="w-8 h-8 rounded-lg bg-[#017737] text-white font-black text-lg flex items-center justify-center shadow-xs">
-                p
+            <div className="pr-4 border-r border-slate-800">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
+                06 · Le CRM Prospects &amp; Adhésions
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base tracking-tight text-white">
-                    pipedrive
-                  </span>
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#FF7A59] text-white">
-                    + HubSpot 360° (Remplace LEADS)
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  Remplace LEADS · Synchronisé API Heitz (Passages RFID/BT) &amp; Liens Mywellness
-                </div>
+              <h2 className="font-black text-lg tracking-tight text-white">
+                Pipeline Commercial, Relances &amp; Parrainages
+              </h2>
+              <div className="text-xs text-slate-400">
+                Synchronisé avec les passages portillons Heitz &amp; bilans coach Mywellness
               </div>
             </div>
 
-            {/* View Switcher (Pipedrive Kanban / HubSpot 3-Pane Fiche / HubSpot Spreadsheet) */}
-            <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg text-xs">
+            {/* Sélecteur de vue */}
+            <div className="flex items-center gap-1.5 bg-slate-800 p-1 rounded-lg text-xs">
               <button
                 onClick={() => setViewMode('KANBAN')}
-                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'KANBAN'
-                    ? 'bg-[#017737] text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <Columns3 className="w-3.5 h-3.5" />
-                Deals Kanban (Pipedrive)
+                Vue Kanban
               </button>
               <button
                 onClick={() => setViewMode('HUBSPOT_360')}
-                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'HUBSPOT_360'
-                    ? 'bg-[#FF7A59] text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                Fiche Contact 3-Volets (HubSpot)
+                Fiche Prospect Détaillée
               </button>
               <button
                 onClick={() => setViewMode('TABLE')}
-                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'TABLE'
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <Table2 className="w-3.5 h-3.5" />
-                Liste Contacts ({filteredProspects.length})
+                Liste ({filteredProspects.length})
               </button>
             </div>
           </div>
 
-          {/* Right Pipeline Value & "+ Offre / Prospect" Green Pipedrive Button */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-right font-mono text-xs hidden sm:block">
-              <span className="text-slate-400">Valeur Pipeline : </span>
+              <span className="text-slate-400">Potentiel annuel : </span>
               <span className="font-bold text-emerald-400 tabular-nums">
                 {totalPipelineValueEur.toLocaleString('fr-FR')} €
               </span>
-              <span className="text-slate-400"> · {filteredProspects.length} offres</span>
+              <span className="text-slate-400"> · {filteredProspects.length} dossiers</span>
             </div>
 
             <button
               onClick={() => setShowNewModal(true)}
-              className="px-3.5 py-2 rounded-lg bg-[#017737] hover:bg-[#01632d] text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <UserPlus className="w-4 h-4" />
-              + Offre / Prospect
+              + Nouveau Prospect
             </button>
           </div>
         </div>

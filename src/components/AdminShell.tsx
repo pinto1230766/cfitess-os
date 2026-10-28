@@ -24,7 +24,7 @@ import {
   FileSignature,
   ChevronDown,
   ChevronRight,
-  Layers,
+  Lock,
 } from 'lucide-react';
 import { AdminSection } from '../types/cfos';
 import { isSectionAllowedForRole } from '../domain/rules';
@@ -109,20 +109,38 @@ const PRIMARY_OPERATIONAL_ITEMS: NavEntry[] = [
     shortLabel: 'ATS Signatures',
     icon: FileSignature,
   },
+  {
+    key: 'op-devices',
+    sectionId: 'devices',
+    stepNum: '08',
+    label: 'Matériel Heitz & Checkup',
+    shortLabel: 'Heitz & Checkup',
+    icon: QrCode,
+  },
+  {
+    key: 'op-kiosk',
+    shellTarget: 'tablette',
+    stepNum: '09',
+    label: 'Tablette Kiosque Badgeuse PIN',
+    shortLabel: 'Kiosque PIN',
+    icon: Tablet,
+  },
 ];
 
-// DEUXIÈME PLAN : Pilotage, Orchestration IA, Académie, Gouvernance & Équipements (consultés en second temps)
+// DEUXIÈME PLAN : Pilotage & Dossier Dirigeants regroupés, Orchestration IA, Académie & Espace Architecte (PIN 0766)
 const SECONDARY_BACKOFFICE_ITEMS: NavEntry[] = [
   {
     key: 'sec-dashboard',
     sectionId: 'dashboard',
-    label: 'Pilotage Bi-Club & Indicateurs',
-    shortLabel: 'Pilotage',
+    stepNum: '10',
+    label: 'Pilotage & Dossier Dirigeants',
+    shortLabel: 'Pilotage & Dirigeants',
     icon: LayoutDashboard,
   },
   {
     key: 'sec-orchestrator',
     sectionId: 'orchestrator',
+    stepNum: '11',
     label: 'Orchestration IA (6 Agents) & Maintenance',
     shortLabel: 'Orchestration IA',
     icon: BrainCircuit,
@@ -130,37 +148,18 @@ const SECONDARY_BACKOFFICE_ITEMS: NavEntry[] = [
   {
     key: 'sec-academy',
     sectionId: 'academy',
+    stepNum: '12',
     label: 'Académie 3S & Livret BPJEPS',
     shortLabel: 'Académie',
     icon: GraduationCap,
   },
   {
-    key: 'sec-executive-dossier',
-    sectionId: 'executive-dossier',
-    label: 'Dossier Dirigeants, Associés & Fonctionnalités',
-    shortLabel: 'Dossier & Fonctions',
-    icon: Layers,
-  },
-  {
     key: 'sec-governance',
     sectionId: 'governance',
-    label: 'Gouvernance & Audit RGPD',
-    shortLabel: 'Gouvernance',
-    icon: ShieldCheck,
-  },
-  {
-    key: 'sec-devices',
-    sectionId: 'devices',
-    label: 'Matériel Heitz & Technogym Checkup',
-    shortLabel: 'Heitz & Checkup',
-    icon: QrCode,
-  },
-  {
-    key: 'sec-kiosk',
-    shellTarget: 'tablette',
-    label: 'Tablette Kiosque Badgeuse PIN',
-    shortLabel: 'Kiosque PIN',
-    icon: Tablet,
+    stepNum: 'PIN',
+    label: 'Mon Espace : Serveur & Config (0766)',
+    shortLabel: 'Mon Espace (PIN 0766)',
+    icon: Lock,
   },
 ];
 
@@ -170,12 +169,12 @@ const ALL_SECTION_TITLES: Record<AdminSection, { title: string; plan: '1er Plan 
   telephony: { title: 'La Téléphonie & Supervision WebRTC (OVHcloud 04/07)', plan: '1er Plan · Opérations Club' },
   crm: { title: 'Le CRM Acquisition & Relances Adhérents', plan: '1er Plan · Opérations Club' },
   ats: { title: 'Les ATS Recrutement & Signatures Électroniques (0 €)', plan: '1er Plan · Opérations Club' },
-  dashboard: { title: 'Pilotage Bi-Club & Synthèse Direction', plan: '2e Plan · Direction & Gouvernance' },
+  devices: { title: 'Matériel Club : Portillons Heitz, Caisse TPV & Technogym Checkup', plan: '1er Plan · Opérations Club' },
+  dashboard: { title: 'Pilotage Bi-Club, Dossier Dirigeants & Associés', plan: '2e Plan · Direction & Gouvernance' },
+  'executive-dossier': { title: 'Pilotage Bi-Club, Dossier Dirigeants & Associés', plan: '2e Plan · Direction & Gouvernance' },
   orchestrator: { title: 'Orchestration IA (6 Agents Métier) & Maintenance', plan: '2e Plan · Direction & Gouvernance' },
   academy: { title: 'Académie 3S & Livret BPJEPS', plan: '2e Plan · Direction & Gouvernance' },
-  'executive-dossier': { title: 'Dossier Dirigeants, Associés, Fonctionnalités & Écosystème', plan: '2e Plan · Direction & Gouvernance' },
-  governance: { title: 'Gouvernance, Dossier Stratégique & Audit RGPD', plan: '2e Plan · Direction & Gouvernance' },
-  devices: { title: 'Passerelles Heitz RFID/Bluetooth & Technogym Checkup', plan: '2e Plan · Direction & Gouvernance' },
+  governance: { title: 'Mon Espace Personnel : Matériel Serveur, Config Club & Mises à Jour (PIN 0766)', plan: '2e Plan · Direction & Gouvernance' },
 };
 
 export function AdminShell() {
@@ -199,10 +198,11 @@ export function AdminShell() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const isSecondarySectionActive = ['dashboard', 'orchestrator', 'academy', 'executive-dossier', 'governance', 'devices'].includes(
+  const isSecondarySectionActive = ['dashboard', 'orchestrator', 'academy', 'executive-dossier', 'governance'].includes(
     activeSection
   );
-  const [secondaryPlanExpanded, setSecondaryPlanExpanded] = useState<boolean>(false);
+  // Toujours ouvert par défaut pour que le 2e Plan et l'onglet personnel (PIN 0766) soient immédiatement visibles
+  const [secondaryPlanExpanded, setSecondaryPlanExpanded] = useState<boolean>(true);
 
   const showSecondaryMenu = secondaryPlanExpanded || isSecondarySectionActive;
 
@@ -211,9 +211,12 @@ export function AdminShell() {
     backupReplicas.find((r) => r.id === activeFailoverNodeId) ?? backupReplicas[0];
 
   const filterAllowed = (items: NavEntry[]) =>
-    items.filter((item) =>
-      item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true
-    );
+    items.filter((item) => {
+      // L'espace personnel du concepteur (governance) est protégé par le code PIN 0766 :
+      // il reste donc toujours visible dans le menu quel que soit le rôle testé.
+      if (item.sectionId === 'governance') return true;
+      return item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true;
+    });
 
   const visiblePrimaryItems = filterAllowed(PRIMARY_OPERATIONAL_ITEMS);
   const visibleSecondaryItems = filterAllowed(SECONDARY_BACKOFFICE_ITEMS);
@@ -231,9 +234,9 @@ export function AdminShell() {
   const currentHeaderMeta = ALL_SECTION_TITLES[activeSection];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row overflow-x-hidden">
       {/* Desktop Left Sidebar */}
-      <aside className="hidden lg:flex lg:w-68 lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-white border-r border-slate-800">
+      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-white border-r border-slate-800 z-40">
         {/* Brand Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
@@ -248,7 +251,7 @@ export function AdminShell() {
         </div>
 
         {/* Navigation Links Split into 1er Plan (Prioritaire) & 2e Plan (Secondaire) */}
-        <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
           {/* 1ER PLAN : OPÉRATIONS CLUB AU QUOTIDIEN */}
           <div className="space-y-1">
             <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center justify-between">
@@ -263,7 +266,7 @@ export function AdminShell() {
                 <button
                   key={item.key}
                   onClick={() => handleNavClick(item)}
-                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                     active
                       ? 'bg-orange-600 text-white shadow-2xs'
                       : 'text-slate-200 hover:bg-slate-800 hover:text-white'
@@ -291,14 +294,14 @@ export function AdminShell() {
             })}
           </div>
 
-          {/* 2E PLAN : PILOTAGE, ORCHESTRATION IA, ACADÉMIE & GOUVERNANCE */}
-          <div className="pt-3 border-t border-slate-800/90 space-y-1">
+          {/* 2E PLAN : PILOTAGE, ORCHESTRATION IA, ACADÉMIE & MON ESPACE (PIN 0766) */}
+          <div className="pt-2.5 border-t border-slate-800/90 space-y-1">
             <button
               type="button"
               onClick={() => setSecondaryPlanExpanded((prev) => !prev)}
-              className="w-full px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-between cursor-pointer transition-colors"
+              className="w-full px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-between cursor-pointer transition-colors"
             >
-              <span>2e Plan · Pilotage, IA &amp; Gouvernance</span>
+              <span>2e Plan · Direction &amp; Mon Espace</span>
               {showSecondaryMenu ? (
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               ) : (
@@ -311,18 +314,44 @@ export function AdminShell() {
                 {visibleSecondaryItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.sectionId ? activeSection === item.sectionId : false;
+                  const isArchitectPinTab = item.sectionId === 'governance';
                   return (
                     <button
                       key={item.key}
                       onClick={() => handleNavClick(item)}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                         active
-                          ? 'bg-slate-800 text-orange-400 font-semibold border border-slate-700'
-                          : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
+                          ? 'bg-orange-600 text-white shadow-2xs'
+                          : isArchitectPinTab
+                          ? 'bg-orange-500/15 text-orange-300 border border-orange-500/40 hover:bg-orange-500/25 hover:text-white'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`w-4 h-4 shrink-0 ${
+                            active
+                              ? 'text-white'
+                              : isArchitectPinTab
+                              ? 'text-orange-400'
+                              : 'text-slate-400'
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.stepNum && (
+                        <span
+                          className={`font-mono text-[10px] shrink-0 px-1.5 py-0.5 rounded ${
+                            active
+                              ? 'bg-orange-700 text-white'
+                              : isArchitectPinTab
+                              ? 'bg-orange-500/30 text-orange-200 font-bold'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {item.stepNum}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -366,8 +395,8 @@ export function AdminShell() {
         </div>
       </aside>
 
-      {/* Main Workspace Container */}
-      <div className="flex-1 lg:pl-68 flex flex-col min-h-screen">
+      {/* Main Workspace Container (min-w-0 prevents wide tables from overflowing flex container) */}
+      <div className="flex-1 min-w-0 lg:pl-72 flex flex-col min-h-screen">
         {/* Single Top Sticky Header (No duplicate horizontal nav bar) */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
           <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
@@ -395,10 +424,10 @@ export function AdminShell() {
               </div>
             </div>
 
-            {/* Right Global Controls: Single Club Filter + Single Mywellness Quick Connect + Profile */}
+            {/* Right Global Controls: Single Club Filter + Direct PIN Space Button + Mywellness Quick Connect + Profile */}
             <div className="flex items-center gap-2 shrink-0">
               {/* Global Club Scope Selector (Single place for the whole app) */}
-              <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+              <div className="hidden xl:flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
                 {(
                   [
                     { id: 'all', label: 'Tous les clubs (2)' },
@@ -420,6 +449,19 @@ export function AdminShell() {
                   </button>
                 ))}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveSection('governance')}
+                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                  activeSection === 'governance'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span>Mon Espace Config (PIN 0766)</span>
+              </button>
 
               <MywellnessQuickConnect variant="header" />
 
@@ -471,12 +513,13 @@ export function AdminShell() {
           {activeSection === 'telephony' && <TelephonyView />}
           {activeSection === 'crm' && <CrmView />}
           {activeSection === 'ats' && <AtsView />}
-          {activeSection === 'dashboard' && <DashboardView />}
+          {activeSection === 'devices' && <DevicesHeitzView />}
+          {(activeSection === 'dashboard' || activeSection === 'executive-dossier') && (
+            <DashboardView />
+          )}
           {activeSection === 'orchestrator' && <OrchestratorMaintenanceView />}
           {activeSection === 'academy' && <AcademyView />}
-          {activeSection === 'devices' && <DevicesHeitzView />}
-          {activeSection === 'executive-dossier' && <GovernanceView initialTab="features" />}
-          {activeSection === 'governance' && <GovernanceView initialTab="governance" />}
+          {activeSection === 'governance' && <GovernanceView />}
         </main>
       </div>
 

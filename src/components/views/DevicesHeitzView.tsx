@@ -9,13 +9,6 @@ import {
   WifiOff,
   Flame,
   Lock,
-  CheckCircle2,
-  Server,
-  Cpu,
-  Radio,
-  RefreshCw,
-  FileCode2,
-  Download,
   Search,
   CreditCard,
   DoorOpen,
@@ -32,225 +25,10 @@ import {
 } from 'lucide-react';
 import { AccessEvent, ClubId } from '../../types/cfos';
 import {
-  HARDWARE_COMPATIBILITY_SPECS,
   canAccessFeature,
   computeInBodySheetMetrics,
   formatClubName,
 } from '../../domain/rules';
-import { BackupFailoverPanel } from '../BackupFailoverPanel';
-import { MywellnessQuickConnect } from '../MywellnessQuickConnect';
-import dockerComposeRaw from '../../../docker-compose.yml?raw';
-import dockerfileRaw from '../../../Dockerfile?raw';
-import cargoTomlRaw from '../../../Cargo.toml?raw';
-import mainRsRaw from '../../../src-rust/main.rs?raw';
-
-interface HardwareNode {
-  id: string;
-  clubId: ClubId | 'bi-club';
-  category:
-    | 'ACCES_HEITZ'
-    | 'MACHINES_FITNESS'
-    | 'BIOMETRIE_INBODY'
-    | 'TELEPHONIE_VOIP'
-    | 'INFRA_RESEAU';
-  name: string;
-  model: string;
-  ipOrEndpoint: string;
-  protocol: string;
-  port: string;
-  latencyMs: number;
-  status: 'ONLINE' | 'STANDBY';
-  details: string;
-}
-
-const CLUB_HARDWARE_INVENTORY: HardwareNode[] = [
-  {
-    id: 'hw-heitz-srv',
-    clubId: 'carre-de-soie',
-    category: 'ACCES_HEITZ',
-    name: 'Serveur Windows Heitz System & Service HZ.WS / FITNESS KPI (Token Configuration.exe)',
-    model:
-      'Windows Server SQL + API HZ.WS (SVfMUAnB) & FITNESS KPI (2sA35D6jFP) : POST /api/developer/getToken?v=2',
-    ipOrEndpoint: '10.10.0.20 (LAN CDS · idCenter 5052 & 5053)',
-    protocol:
-      'HTTP/REST JSON Local : /api/users/search, /api/userPassages/browse, /api/passageCode/generate, /api/ticket, /api/planning/browse, /api/employee/list',
-    port: 'TCP 8080 / 1433',
-    latencyMs: 18,
-    status: 'ONLINE',
-    details:
-      'Conforme aux 2 docs Postman Heitz : vérification finBalance SEPA, génération QR Code Séance d’Essai (/api/passageCode/generate), jauge FMI (/api/fmi/date/:date) et remontée KPI (/api/ticket & /api/userPassages/browse).',
-  },
-  {
-    id: 'hw-turnstiles-cds',
-    clubId: 'carre-de-soie',
-    category: 'ACCES_HEITZ',
-    name: 'Tourniquets & Lecteurs RFID + Bluetooth Heitz Récents (Carré de Soie — Conservés)',
-    model:
-      'Lecteurs Heitz RFID MIFARE + Bluetooth Low Energy (BLE) existants + Contrôleur local Heitz (< 50 ms)',
-    ipOrEndpoint: '10.10.0.21–22 (Pilotés en local par Heitz System · idCenter 5052)',
-    protocol:
-      'Ouverture physique locale par Heitz + Remontée GET /api/userPassages/browse & QR /api/passageCode/generate',
-    port: 'TCP 8080 (API Heitz)',
-    latencyMs: 12,
-    status: 'ONLINE',
-    details:
-      'Matériel existant conservé : lecteurs RFID récents avec Bluetooth. L’impulsion électrique (< 50 ms) est gérée localement par Heitz ; C.Fitness OS lit /api/userPassages/browse et génère les QR Codes d’essai via /api/passageCode/generate.',
-  },
-  {
-    id: 'hw-turnstiles-bey',
-    clubId: 'beynost',
-    category: 'ACCES_HEITZ',
-    name: 'Tourniquets & Lecteurs RFID + Bluetooth Heitz Récents (Beynost — Conservés)',
-    model:
-      'Lecteurs Heitz RFID MIFARE + Bluetooth Low Energy (BLE) existants + API Heitz (via VPN)',
-    ipOrEndpoint: '10.20.0.15 → 10.20.0.21–22 (via WireGuard · idCenter 5053)',
-    protocol:
-      'Contrôle d’accès Heitz natif + GET /api/userPassages/browse & /api/planning/browse?viewAs=EMPLOYEE',
-    port: 'UDP 51820 / TCP 8080',
-    latencyMs: 26,
-    status: 'ONLINE',
-    details:
-      'Lecteurs RFID/Bluetooth gérés par Heitz. C.Fitness OS consomme GET /api/userPassages/browse pour l’assiduité >15j et GET /api/planning/browse (bookingQueueStats & paymentAttendanceStats) pour le planning centralisé.',
-  },
-  {
-    id: 'hw-asterisk-webrtc',
-    clubId: 'bi-club',
-    category: 'TELEPHONIE_VOIP',
-    name: 'Centrale IPBX Asterisk 20 LTS + Trunk SIP Fixe OVHcloud (Numéros 04 — Remplace Ringover)',
-    model: '12 Canaux SIP OVHcloud (sip.ovh.fr) + Postes WebRTC WSS TLS / Yealink SIP-T33G PoE',
-    ipOrEndpoint: '10.10.0.10 ↔ sip.ovh.fr (Fixes 04 26 22 55 30 & 04 22 91 36 82)',
-    protocol: 'PJSIP TLS/SRTP + WebRTC WSS (Certificat TLS Let’s Encrypt requis pour micro)',
-    port: 'TCP 8089 (WSS) / TCP 5061 (SIP TLS)',
-    latencyMs: 11,
-    status: 'ONLINE',
-    details:
-      'Conforme ARCEP n° 2022-1583 : émet exclusivement les numéros fixes géographiques 04 certifiés MAN STIR/SHAKEN (~1,20 € HT/mois/ligne) + Casques USB-C Jabra Evolve2 40 SE.',
-  },
-  {
-    id: 'hw-yeastar-gsm-07',
-    clubId: 'bi-club',
-    category: 'TELEPHONIE_VOIP',
-    name: 'Passerelle GSM 4G VoLTE Yeastar TG400 (Pool Mobiles 07 & SMS STOP — Conformité ARCEP)',
-    model: 'Passerelle Matérielle SIP ↔ 4 Cartes SIM Physiques 4G VoLTE (07 55 52 ...)',
-    ipOrEndpoint: '10.10.0.14 (LAN Asterisk RJ45)',
-    protocol: 'SIP PJSIP Local (5060) + API HTTP SMS locale ↔ Réseau Cellulaire 4G VoLTE',
-    port: 'UDP 5060 / TCP 80',
-    latencyMs: 14,
-    status: 'ONLINE',
-    details:
-      'INDISPENSABLE (Décision ARCEP n° 2022-1583) : les opérateurs bloquant tout Caller ID 06/07 sur un Trunk SIP fixe, la passerelle Yeastar TG400 émet les appels 07 et SMS via de vraies cartes SIM 4G VoLTE.',
-  },
-  {
-    id: 'hw-kiosk-poe-tablets',
-    clubId: 'bi-club',
-    category: 'INFRA_RESEAU',
-    name: 'Bornes Tactiles Murales Accueil & Badgeuse PIN (Alimentation PoE RJ45 Anti-Gonflement)',
-    model:
-      'Dalles Android PoE iiyama ProLite TW1023ASC-B1P (sans batterie) / Samsung Tab Active5 PoE + Fully Kiosk Browser',
-    ipOrEndpoint: '10.10.0.31 (CDS) & 10.20.0.31 (Beynost)',
-    protocol: 'Ethernet PoE IEEE 802.3af (Onduleur) + HTTPS PWA + IndexedDB Offline',
-    port: 'TCP 443 (LAN Filaire RJ45)',
-    latencyMs: 4,
-    status: 'ONLINE',
-    details:
-      'Élimine le gonflement des batteries lithium branchées 24h/24 sur USB et les pertes Wi-Fi : alimentation + réseau filaire via câble unique RJ45 PoE et verrouillage MDM Fully Kiosk Browser.',
-  },
-  {
-    id: 'hw-checkup-cds',
-    clubId: 'carre-de-soie',
-    category: 'BIOMETRIE_INBODY',
-    name: 'Station Technogym Checkup (Balance Révolutionnaire & Capteurs 3D) — Carré de Soie',
-    model: 'Technogym Checkup Dernière Génération (Balance BIA Multi-Fréquence, Caméra 3D, Wellness Age™) intégrée à Mywellness',
-    ipOrEndpoint: '10.10.0.55 ↔ Technogym Mywellness Cloud Pro',
-    protocol: 'Intégration native Technogym Mywellness + Lien contextuel direct depuis C.Fitness OS',
-    port: 'HTTPS 443 (Mywellness)',
-    latencyMs: 9,
-    status: 'ONLINE',
-    details:
-      'Balance révolutionnaire Technogym Checkup synchronisée nativement avec Mywellness (Wellness Age™, composition corporelle BIA, mobilité, équilibre, force et tests cognitifs). Ouverture 1-clic dans Mywellness.',
-  },
-  {
-    id: 'hw-checkup-inbody770-bey',
-    clubId: 'beynost',
-    category: 'BIOMETRIE_INBODY',
-    name: 'Station Technogym Checkup (Balance Révolutionnaire & Capteurs 3D) — Beynost',
-    model: 'Technogym Checkup Dernière Génération (Balance BIA Multi-Fréquence, Caméra 3D, Wellness Age™) intégrée à Mywellness',
-    ipOrEndpoint: '10.20.0.55 ↔ Technogym Mywellness Cloud Pro',
-    protocol: 'Intégration native Technogym Mywellness + Lien contextuel direct depuis C.Fitness OS',
-    port: 'HTTPS 443 (Mywellness)',
-    latencyMs: 14,
-    status: 'ONLINE',
-    details:
-      'Remplace définitivement l’ancien InBody par la dernière station Technogym Checkup (balance révolutionnaire) intégrée nativement à Mywellness. Le suivi sportif reste à 100 % sur Mywellness avec accès rapide 1-clic depuis C.Fitness OS.',
-  },
-  {
-    id: 'hw-biocircuit-cds',
-    clubId: 'carre-de-soie',
-    category: 'MACHINES_FITNESS',
-    name: 'Écosystème Technogym Mywellness & Biocircuit (Carré de Soie — Conservé à 100 %)',
-    model: 'Technogym Mywellness Cloud Pro + Biocircuit + Technogym Checkup (Suivi sportif conservé)',
-    ipOrEndpoint: 'https://pro.mywellness.com/cloud/cfitness-carre-de-soie/',
-    protocol: 'API / Liens contextuels directs depuis C.Fitness OS vers la fiche sportive Mywellness',
-    port: 'HTTPS 443',
-    latencyMs: 18,
-    status: 'ONLINE',
-    details:
-      'Décision stratégique : Mywellness est conservé pour 100 % du suivi sportif des adhérents. C.Fitness OS intègre les boutons contextuels pour ouvrir directement la fiche Mywellness.',
-  },
-  {
-    id: 'hw-biocircuit-bey',
-    clubId: 'beynost',
-    category: 'MACHINES_FITNESS',
-    name: 'Écosystème Technogym Mywellness & Biocircuit (Beynost — Conservé à 100 %)',
-    model: 'Technogym Mywellness Cloud Pro + Biocircuit + Technogym Checkup (Suivi sportif conservé)',
-    ipOrEndpoint: 'https://pro.mywellness.com/cloud/cfitness-beynost/',
-    protocol: 'API / Liens contextuels directs depuis C.Fitness OS vers la fiche sportive Mywellness',
-    port: 'HTTPS 443',
-    latencyMs: 24,
-    status: 'ONLINE',
-    details:
-      'Suivi sportif, programmes d’entraînement Biocircuit et bilans Technogym Checkup (Wellness Age™) consultables en 1 clic dans Mywellness depuis C.Fitness OS.',
-  },
-  {
-    id: 'hw-ai-gpu-server',
-    clubId: 'carre-de-soie',
-    category: 'INFRA_RESEAU',
-    name: 'Serveur Physique Local C.Fitness OS (Linux Debian 12 + Rust + Onduleur UPS)',
-    model:
-      'Debian 12 + Rust (Axum API) + PostgreSQL 16 + Redis 7 + GPU RTX 4060 Ti + Onduleur Eaton',
-    ipOrEndpoint: '10.10.0.10 (2 Rue Jacquard, Carré de Soie)',
-    protocol: 'Rust Axum HTTPS (TLS) + PostgreSQL 16 + whisper-rs GPU',
-    port: 'TCP 443 / 5432 / 6379',
-    latencyMs: 2,
-    status: 'ONLINE',
-    details:
-      'Binaire Rust hébergé à Carré de Soie sur onduleur Line-Interactive, répliqué en continu sur les PC/Tablettes/Smartphones des 2 clubs.',
-  },
-  {
-    id: 'hw-ovh-wireguard-router',
-    clubId: 'beynost',
-    category: 'INFRA_RESEAU',
-    name: 'Routeur Fibre Pro & Passerelle VPN WireGuard (< 3 ms) + Switch PoE — Beynost',
-    model: 'Routeur Fibre Entreprise (Data/VPN IP Fixe) + Switch PoE 8 ports IEEE 802.3af',
-    ipOrEndpoint: '10.20.0.1 (Centre Commercial Beynost – ZAC des Baterses)',
-    protocol: 'WireGuard VPN (ChaCha20-Poly1305) + Alimentation PoE Tablettes/Yealink',
-    port: 'UDP 51820 / TCP 443',
-    latencyMs: 2,
-    status: 'ONLINE',
-    details:
-      'Dédié à la Fibre optique, à l’IP Fixe et au tunnel VPN permanent 2,4 ms (< 3 ms) entre Beynost et Carré de Soie (téléphonie fixe 04 et communications mobiles 07 intégralement gérées via OVHcloud).',
-  },
-];
-
-const DEPLOYMENT_FILES: Record<
-  'docker-compose.yml' | 'Dockerfile' | 'Cargo.toml' | 'src-rust/main.rs',
-  string
-> = {
-  'docker-compose.yml': dockerComposeRaw,
-  Dockerfile: dockerfileRaw,
-  'Cargo.toml': cargoTomlRaw,
-  'src-rust/main.rs': mainRsRaw,
-};
 
 export function DevicesHeitzView() {
   const {
@@ -272,7 +50,7 @@ export function DevicesHeitzView() {
   } = useCfos();
 
   const [activeSoftwareTab, setActiveSoftwareTab] = useState<
-    'HEITZ_DESKTOP' | 'INBODY_LB120' | 'INFRA_BACKUP'
+    'HEITZ_DESKTOP' | 'INBODY_LB120'
   >('HEITZ_DESKTOP');
 
   const [selectedClubGate, setSelectedClubGate] = useState<ClubId>('carre-de-soie');
@@ -286,10 +64,7 @@ export function DevicesHeitzView() {
     accessEvents[0] || null
   );
   const [memberSearch, setMemberSearch] = useState('');
-  const [pingResult, setPingResult] = useState<string | null>(null);
   const [mywellnessToast, setMywellnessToast] = useState<string | null>(null);
-  const [activeDeployFile, setActiveDeployFile] =
-    useState<keyof typeof DEPLOYMENT_FILES>('docker-compose.yml');
 
   // New InBody Scan Form state
   const [showNewScanForm, setShowNewScanForm] = useState(false);
@@ -324,13 +99,6 @@ export function DevicesHeitzView() {
     heitzMembers.find((m) => m.id === selectedMemberId) ||
     filteredMembers[0] ||
     heitzMembers[0];
-
-  const filteredHardware = CLUB_HARDWARE_INVENTORY.filter(
-    (hw) =>
-      clubFilter === 'all' ||
-      hw.clubId === 'bi-club' ||
-      hw.clubId === clubFilter
-  );
 
   const activeGateClub =
     clubs.find((c) => c.id === selectedClubGate) || clubs[0];
@@ -383,110 +151,84 @@ export function DevicesHeitzView() {
     setMywellnessToast(`${res.label} → ${res.url}`);
   };
 
-  const handleRunDiagnostic = () => {
-    setPingResult(
-      `Diagnostic matériel & conformité réussi (${new Date().toLocaleTimeString('fr-FR')}) : Serveur Debian 12 (Rust Axum) OK · Trunk SIP OVHcloud (sip.ovh.fr · Fixes 04) + Passerelle 4G VoLTE Yeastar TG400 (10.10.0.14 · Cartes SIM 07 conformes ARCEP n° 2022-1583) OK · Lecteurs RFID/Bluetooth Heitz & Heitz-WS.exe (18 ms) OK · Bornes PoE RJ45 & 2× Stations Technogym Checkup (Mywellness) OK.`
-    );
-  };
-
-  const handleDownloadDeployFile = (filename: keyof typeof DEPLOYMENT_FILES) => {
-    const blob = new Blob([DEPLOYMENT_FILES[filename]], {
-      type: 'text/plain;charset=utf-8;',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.replace('/', '-');
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-5">
-      {/* Mywellness Quick Connect & Technogym Checkup Live Connection Indicator */}
-      <MywellnessQuickConnect variant="card" defaultClubId={selectedClubGate} />
+      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — 08. MATÉRIEL HEITZ & TECHNOGYM CHECKUP */}
+      <div className="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="pr-4 border-r border-slate-800">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
+                08 · Le Matériel Club (1er Plan)
+              </div>
+              <h2 className="font-black text-lg tracking-tight text-white">
+                Portillons Heitz, Caisse TPV &amp; Bilans Technogym Checkup
+              </h2>
+              <div className="text-xs text-slate-400">
+                Contrôle d&apos;accès RFID/Bluetooth, caisse comptoir, fidélité et bilans biométriques Mywellness
+              </div>
+            </div>
 
-      {/* Top Application Switcher: Heitz System Desktop vs InBody Lookin'Body 120 vs Infrastructure */}
-      <div className="bg-white border border-slate-300 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setActiveSoftwareTab('HEITZ_DESKTOP')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-              activeSoftwareTab === 'HEITZ_DESKTOP'
-                ? 'bg-[#1E3A5F] text-white shadow-2xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Monitor className="w-4 h-4 text-sky-300" />
-            <span>1. Heitz System v12.4 (API Passages RFID/Bluetooth &amp; CRM)</span>
-          </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setActiveSoftwareTab('HEITZ_DESKTOP')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                  activeSoftwareTab === 'HEITZ_DESKTOP'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <Monitor className="w-4 h-4" />
+                <span>1. Portillons, Caisse &amp; Fidélité Heitz</span>
+              </button>
 
-          <button
-            onClick={() => setActiveSoftwareTab('INBODY_LB120')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-              activeSoftwareTab === 'INBODY_LB120'
-                ? 'bg-slate-900 text-amber-400 shadow-2xs border border-amber-400/40'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>2. Technogym Checkup (Balance Révolutionnaire · 2 Clubs) &amp; Sync Mywellness</span>
-          </button>
+              <button
+                onClick={() => setActiveSoftwareTab('INBODY_LB120')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                  activeSoftwareTab === 'INBODY_LB120'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <Activity className="w-4 h-4" />
+                <span>2. Bilans Technogym Checkup &amp; Mywellness</span>
+              </button>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setActiveSoftwareTab('INFRA_BACKUP')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-              activeSoftwareTab === 'INFRA_BACKUP'
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Server className="w-4 h-4 text-emerald-400" />
-            <span>3. Sauvegarde Multi-Appareils &amp; Fiches Constructeurs (12 équipements)</span>
-          </button>
-        </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => toggleClubMode(selectedClubGate, 'degradedMode')}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
+                activeGateClub.degradedMode
+                  ? 'bg-amber-600 text-white border-amber-500'
+                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              {activeGateClub.degradedMode ? (
+                <WifiOff className="w-3.5 h-3.5" />
+              ) : (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              {activeGateClub.degradedMode
+                ? 'Mode Autonome Actif'
+                : 'Réseau Club Nominal'}
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => toggleClubMode(selectedClubGate, 'degradedMode')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
-              activeGateClub.degradedMode
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
-          >
-            {activeGateClub.degradedMode ? (
-              <WifiOff className="w-3.5 h-3.5" />
-            ) : (
-              <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-            )}
-            {activeGateClub.degradedMode
-              ? 'Cache Local Dégradé Actif'
-              : 'VPN WireGuard Nominal (2,4 ms)'}
-          </button>
-
-          <button
-            onClick={() => toggleClubMode(selectedClubGate, 'fireAlarmOpen')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
-              activeGateClub.fireAlarmOpen
-                ? 'bg-rose-600 text-white border-rose-600'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-rose-600" />
-            {activeGateClub.fireAlarmOpen
-              ? 'Portillons en Libre Passage (SSI)'
-              : 'Test Coupure Incendie SSI'}
-          </button>
-
-          <button
-            onClick={() => handleOpenMywellness()}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer bg-amber-400 hover:bg-amber-300 text-slate-950"
-          >
-            <Dumbbell className="w-3.5 h-3.5" />
-            <span>Ouvrir Technogym Mywellness</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
+            <button
+              onClick={() => toggleClubMode(selectedClubGate, 'fireAlarmOpen')}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
+                activeGateClub.fireAlarmOpen
+                  ? 'bg-rose-600 text-white border-rose-500'
+                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5 text-rose-400" />
+              {activeGateClub.fireAlarmOpen
+                ? 'Portillons en Libre Passage (SSI)'
+                : 'Ouverture Urgence SSI'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1175,59 +917,6 @@ export function DevicesHeitzView() {
               </div>
             </div>
           </div>
-
-          {/* 100% Air-Gapped Local LAN Proxy & Zero-Network Privacy Guarantee Panel */}
-          <div className="m-2 p-4 bg-slate-900 text-white border border-slate-700 rounded space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-800">
-              <div>
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">
-                  Protection Totale des Données Clients · Circuit Fermé LAN (Zéro Transit Cloud)
-                </div>
-                <h3 className="text-sm font-black text-white">
-                  Architecture de Branchement Heitz 100 % Locale (Proxy Interne /api/heitz-ws &amp; Fichier .env Privé sur le Serveur du Club)
-                </h3>
-              </div>
-              <span className="px-2.5 py-1 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold shrink-0">
-                Aucune donnée adhérent sur Internet
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded bg-slate-800/90 border border-slate-700 space-y-1">
-                <div className="font-bold text-orange-300">
-                  1. Zéro code secret dans le navigateur
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Les identifiants Heitz (<code className="font-mono text-emerald-300">HEITZ_WS_URL</code> et <code className="font-mono text-emerald-300">HEITZ_WS_TOKEN</code>) sont lus exclusivement côté serveur local (fichier <code className="font-mono">.env</code> sur la machine Debian 12 du club) via la route proxy interne <code className="font-mono">/api/heitz-ws</code>.
-                </p>
-              </div>
-
-              <div className="p-3 rounded bg-slate-800/90 border border-slate-700 space-y-1">
-                <div className="font-bold text-emerald-300">
-                  2. Câble RJ45 LAN &amp; Tunnel WireGuard Privé
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Le serveur C.Fitness OS (<code className="font-mono">10.10.0.10</code>) interroge directement le serveur Windows Heitz (<code className="font-mono">10.10.0.20:8080</code>) sur le réseau local du club sans jamais passer par Internet.
-                </p>
-              </div>
-
-              <div className="p-3 rounded bg-slate-800/90 border border-slate-700 space-y-1.5">
-                <div className="font-bold text-sky-300">
-                  3. Procédure de mise en route sur site (2 min)
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Sur le PC serveur du club uniquement : ouvrir <code className="font-mono">docker-compose.yml</code> / <code className="font-mono">.env</code> (disponibles dans l&apos;onglet 3 ci-dessus), renseigner l&apos;IP locale Heitz et lancer <code className="font-mono">docker compose up -d</code>.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setActiveSoftwareTab('INFRA_BACKUP')}
-                  className="px-2.5 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-bold text-[11px] cursor-pointer"
-                >
-                  Voir les fichiers serveur locaux (docker-compose.yml &amp; Rust)
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1634,211 +1323,6 @@ export function DevicesHeitzView() {
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* ===================================================================== */}
-      {/* WINDOW 3: MULTI-DEVICE FAILOVER, MANUFACTURER SPECS & RUST DEPLOYMENT */}
-      {/* ===================================================================== */}
-      {activeSoftwareTab === 'INFRA_BACKUP' && (
-        <div className="space-y-6">
-          <BackupFailoverPanel />
-
-          {/* Manufacturer Datasheet & Real-World Compatibility Audit (Zero Hallucination) */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-            <div className="pb-3 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>
-                    Vérification Constructeurs, Câblage Réel &amp; Réglementation ARCEP / ERP (Zéro Hallucination)
-                  </span>
-                </div>
-                <h2 className="text-base font-bold text-slate-900 mt-1">
-                  Matrice de Faisabilité Technique &amp; Fiches Constructeurs (Téléphones, Tablettes, Tourniquets, Technogym Checkup, Machines)
-                </h2>
-              </div>
-              <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shrink-0">
-                5 / 5 Domaines Matériels Certifiés Terrain
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {HARDWARE_COMPATIBILITY_SPECS.map((spec) => (
-                <div
-                  key={spec.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 text-xs"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-200/80">
-                    <div className="font-bold text-sm text-slate-900">{spec.title}</div>
-                    <span className="font-mono text-[11px] font-semibold px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-800 shrink-0">
-                      Budget matériel : {spec.estimatedHardwareBudget}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-rose-50/70 border border-rose-200 space-y-1">
-                      <div className="font-bold text-rose-900 flex items-center gap-1.5">
-                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                        <span>Piège / Hallucination technique ou légale évitée :</span>
-                      </div>
-                      <p className="text-rose-950 leading-relaxed">{spec.hallucinationAvoided}</p>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 space-y-1">
-                      <div className="font-bold text-emerald-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>Solution constructeur 100 % réelle &amp; fonctionnelle :</span>
-                      </div>
-                      <p className="text-emerald-950 leading-relaxed">{spec.realWorldSolution}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 text-[11px]">
-                    <div className="p-2.5 rounded bg-white border border-slate-200">
-                      <span className="font-bold text-slate-800">Matériel &amp; Références :</span>{' '}
-                      <span className="text-slate-600">{spec.manufacturerModels}</span>
-                    </div>
-                    <div className="p-2.5 rounded bg-white border border-slate-200">
-                      <span className="font-bold text-slate-800">Câblage &amp; Protocole :</span>{' '}
-                      <span className="font-mono text-slate-700">
-                        {spec.physicalWiringAndProtocol}
-                      </span>
-                    </div>
-                    <div className="p-2.5 rounded bg-white border border-slate-200">
-                      <span className="font-bold text-slate-800">Conformité Légale :</span>{' '}
-                      <span className="text-emerald-800 font-medium">
-                        {spec.regulatoryCompliance}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Complete Club Hardware Inventory */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-orange-600" />
-                  Inventaire Complet des Machines, Téléphones, Passerelle 4G Yeastar, Bornes PoE &amp; Protocoles (12 équipements)
-                </h2>
-              </div>
-              <button
-                onClick={handleRunDiagnostic}
-                className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
-                Tester Ping &amp; Protocoles (12 équipements)
-              </button>
-            </div>
-
-            {pingResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-900 flex items-center justify-between gap-2">
-                <span>{pingResult}</span>
-                <button
-                  onClick={() => setPingResult(null)}
-                  className="underline text-[11px] shrink-0 cursor-pointer"
-                >
-                  Fermer
-                </button>
-              </div>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase text-slate-500">
-                    <th className="py-2.5 pr-3">Équipement / Machine</th>
-                    <th className="py-2.5 px-3">Club</th>
-                    <th className="py-2.5 px-3">IP / Endpoint</th>
-                    <th className="py-2.5 px-3">Protocole &amp; Port</th>
-                    <th className="py-2.5 px-3">Latence</th>
-                    <th className="py-2.5 pl-3">Rôle &amp; Sécurité</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredHardware.map((hw) => (
-                    <tr key={hw.id} className="align-top">
-                      <td className="py-3 pr-3">
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                          {hw.category === 'INFRA_RESEAU' ? (
-                            <Cpu className="w-3.5 h-3.5 text-orange-600 shrink-0" />
-                          ) : (
-                            <Radio className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          )}
-                          <span>{hw.name}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">{hw.model}</div>
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-slate-700 whitespace-nowrap">
-                        {hw.clubId === 'carre-de-soie'
-                          ? 'Carré de Soie'
-                          : hw.clubId === 'beynost'
-                          ? 'Beynost'
-                          : 'Bi-Club (CDS ↔ BEY)'}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-[11px] text-slate-800 whitespace-nowrap">
-                        {hw.ipOrEndpoint}
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="font-mono text-[11px] font-semibold text-slate-900">
-                          {hw.protocol}
-                        </div>
-                        <div className="font-mono text-[10px] text-slate-500">{hw.port}</div>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-bold text-emerald-700 tabular-nums whitespace-nowrap">
-                        {hw.latencyMs} ms · OK
-                      </td>
-                      <td className="py-3 pl-3 text-slate-600">{hw.details}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Linux Debian 12 + Rust (Axum) Deployment Files Viewer */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <FileCode2 className="w-4 h-4 text-orange-600" />
-                  Fichiers de Déploiement Production Linux Debian 12 &amp; Rust (Axum)
-                </h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(Object.keys(DEPLOYMENT_FILES) as Array<keyof typeof DEPLOYMENT_FILES>).map(
-                  (f) => (
-                    <button
-                      key={f}
-                      onClick={() => setActiveDeployFile(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold cursor-pointer ${
-                        activeDeployFile === f
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  )
-                )}
-                <button
-                  onClick={() => handleDownloadDeployFile(activeDeployFile)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Télécharger
-                </button>
-              </div>
-            </div>
-
-            <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed">
-              {DEPLOYMENT_FILES[activeDeployFile]}
-            </pre>
-          </div>
         </div>
       )}
     </div>

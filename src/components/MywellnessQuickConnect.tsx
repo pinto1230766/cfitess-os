@@ -191,7 +191,7 @@ export function MywellnessQuickConnect({
           onClick={() => setSimulatedOffline((prev) => !prev)}
           title="Indicateur de statut Technogym Checkup (Vert = Connecté / Rouge = Hors ligne) — Cliquer pour tester"
           data-testid="mywellness-header-status-pill"
-          className={`hidden md:flex min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-semibold items-center gap-2 border cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
+          className={`hidden 2xl:flex min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold items-center gap-2 border cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
             isCheckupConnected
               ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
               : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200'

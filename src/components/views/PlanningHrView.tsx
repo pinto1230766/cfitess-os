@@ -80,33 +80,33 @@ function getSkelloShiftBlockStyle(roleLabel: string, clubId: ClubId): {
     lower.includes('cours')
   ) {
     return {
-      card: 'bg-emerald-50/95 border border-emerald-200 border-l-4 border-l-emerald-500 text-emerald-950',
+      card: 'bg-emerald-50 border border-emerald-200 text-emerald-950',
       pill: 'bg-emerald-600 text-white',
       tagText: 'Coaching / Plateau',
     };
   }
   if (lower.includes('direction') || lower.includes('pilotage') || lower.includes('audit')) {
     return {
-      card: 'bg-indigo-50/95 border border-indigo-200 border-l-4 border-l-indigo-600 text-indigo-950',
-      pill: 'bg-indigo-600 text-white',
+      card: 'bg-slate-100 border border-slate-300 text-slate-900',
+      pill: 'bg-slate-800 text-white',
       tagText: 'Direction',
     };
   }
   if (lower.includes('bpjeps') || lower.includes('alternance')) {
     return {
-      card: 'bg-sky-50/95 border border-sky-200 border-l-4 border-l-sky-500 text-sky-950',
+      card: 'bg-sky-50 border border-sky-200 text-sky-950',
       pill: 'bg-sky-600 text-white',
       tagText: 'Alternant BPJEPS',
     };
   }
   return clubId === 'carre-de-soie'
     ? {
-        card: 'bg-amber-50/95 border border-amber-200 border-l-4 border-l-orange-500 text-slate-900',
-        pill: 'bg-orange-500 text-white',
+        card: 'bg-orange-50 border border-orange-200 text-slate-900',
+        pill: 'bg-orange-600 text-white',
         tagText: 'Accueil & Vente',
       }
     : {
-        card: 'bg-blue-50/95 border border-blue-200 border-l-4 border-l-blue-600 text-slate-900',
+        card: 'bg-blue-50 border border-blue-200 text-slate-900',
         pill: 'bg-blue-600 text-white',
         tagText: 'Accueil & Vente',
       };
@@ -319,32 +319,25 @@ export function PlanningHrView() {
   return (
     <div className="space-y-4">
       {/* ===================================================================== */}
-      {/* AUTHENTIC SKELLO / SILAE TOP APPLICATION CHROME (#1B2559 Navy Bar)    */}
+      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — PLANNING, POINTEUSE & PAIE              */}
       {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-300 shadow-xs bg-white">
-        {/* Skello Top Dark Indigo Navigation Header */}
-        <div className="bg-[#1B2559] text-white px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-white">
+        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
-            {/* Skello Brand Mark */}
-            <div className="flex items-center gap-2.5 pr-3 border-r border-white/15">
-              <div className="w-8 h-8 rounded-lg bg-[#4318FF] flex items-center justify-center font-black text-base tracking-tighter text-white shadow-xs">
-                S
+            <div className="pr-4 border-r border-slate-800">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
+                03 · L’Espace Planning &amp; RH
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base tracking-tight text-white">skello</span>
-                  <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    + Silae Paie
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-300">
-                  Convention Sport IDCC 2511 · SAS C.FITNESS
-                </div>
+              <h2 className="font-black text-lg tracking-tight text-white">
+                Planning Équipes, Pointeuse &amp; Export Paie
+              </h2>
+              <div className="text-xs text-slate-400">
+                Convention Collective Nationale du Sport (IDCC 2511) · SAS C.FITNESS
               </div>
             </div>
 
-            {/* Primary Skello Navigation Tabs (4 focused tabs, contracts/signatures grouped in ATS & Signatures) */}
-            <nav className="flex flex-wrap items-center gap-1">
+            {/* Onglets principaux */}
+            <nav className="flex flex-wrap items-center gap-1.5">
               {[
                 { id: 'PLANNING', label: '1. Planning Semaine' },
                 { id: 'POINTAGES', label: `2. La Pointeuse (${timeEntries.length})` },
@@ -358,15 +351,15 @@ export function PlanningHrView() {
                 <button
                   key={t.id}
                   onClick={() => setSubTab(t.id as typeof subTab)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
                     subTab === t.id
-                      ? 'bg-[#4318FF] text-white shadow-2xs'
-                      : 'text-slate-200 hover:bg-[#2B3674] hover:text-white'
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
                   }`}
                 >
                   <span>{t.label}</span>
                   {t.badge !== undefined && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-mono text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono text-[10px] font-bold">
                       {t.badge}
                     </span>
                   )}
@@ -375,15 +368,14 @@ export function PlanningHrView() {
             </nav>
           </div>
 
-          {/* Right Single Redirect to Contracts & Signatures */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setActiveSection('ats')}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              <FileSignature className="w-3.5 h-3.5 text-[#00C48C]" />
-              <span>Contrats &amp; Signatures (0 €) →</span>
+              <FileSignature className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Contrats &amp; Signatures →</span>
             </button>
           </div>
         </div>

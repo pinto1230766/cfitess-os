@@ -206,67 +206,54 @@ export function AtsView() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* ===================================================================== */}
-      {/* AUTHENTIC FLATCHR ATS + YOUSIGN APPLICATION CHROME                    */}
-      {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-300 shadow-xs bg-white">
-        {/* Flatchr Royal Blue & Yousign Green Top Header */}
-        <div className="bg-[#1E3A8A] text-white px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+    <div className="space-y-5">
+      <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white">
+        {/* Clean Unified C.Fitness OS Header */}
+        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2.5 pr-3 border-r border-white/15">
-              <div className="w-8 h-8 rounded-lg bg-[#3B82F6] text-white font-black text-base flex items-center justify-center shadow-xs">
-                F
+            <div>
+              <div className="text-xs font-semibold text-orange-400">
+                07. Recrutement &amp; Contrats RH
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base tracking-tight text-white">
-                    flatchr
-                  </span>
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">
-                    + Signature Interne C.Fitness OS (0 €)
-                  </span>
-                </div>
-                <div className="text-[10px] text-blue-200">
-                  Multiposting Offres, CVthèque &amp; Signature Électronique Interne (Sans abonnement)
-                </div>
-              </div>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5">
+                Candidatures, Embauche 1-Clic &amp; Signature Électronique (0 €)
+              </h1>
             </div>
 
-            {/* Switch between Flatchr ATS Board and Internal Electronic Signature Room */}
-            <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-lg text-xs">
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-1.5 bg-slate-800 p-1 rounded-xl text-xs border border-slate-700">
               <button
                 onClick={() => setAtsMode('FLATCHR_KANBAN')}
-                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
                   atsMode === 'FLATCHR_KANBAN'
-                    ? 'bg-white text-[#1E3A8A]'
-                    : 'text-blue-100 hover:text-white'
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <Briefcase className="w-3.5 h-3.5" />
-                Pipeline Candidats Flatchr ({filteredCandidates.length})
+                <Briefcase className="w-4 h-4" />
+                <span>1. Suivi des Candidats ({filteredCandidates.length})</span>
               </button>
               <button
                 onClick={() => setAtsMode('YOUSIGN_PARAPHEUR')}
-                className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
                   atsMode === 'YOUSIGN_PARAPHEUR'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'text-blue-100 hover:text-white'
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <FileSignature className="w-3.5 h-3.5" />
-                Parapheur Signature Interne Contrats &amp; Avenants ({contractDocs.length})
+                <FileSignature className="w-4 h-4" />
+                <span>2. Contrats à Signer ({contractDocs.length})</span>
               </button>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-xs font-medium text-blue-100 cursor-pointer shrink-0">
+          <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-300 cursor-pointer shrink-0">
             <input
               type="checkbox"
               checked={simulateRollback}
               onChange={(e) => setSimulateRollback(e.target.checked)}
             />
-            <span>Simuler panne Phase 6 (Test Rollback Atomique)</span>
+            <span>Mode test sécurité transactionnelle</span>
           </label>
         </div>
 
@@ -316,25 +303,12 @@ export function AtsView() {
             {/* Multiposting Job Offers Strip with Brand Job-Board Pills */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b border-slate-100">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-extrabold text-slate-900">
-                    Diffusion Multiposting Flatchr active :
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                  <span className="font-bold text-slate-900">
+                    Offres d&apos;emploi actives ({filteredOffers.length})
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#003A9B] text-white">
-                    Indeed
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-[#FFCD00] text-slate-950">
-                    Welcome to the Jungle
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1E3A8A] text-white">
-                    France Travail
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0A66C2] text-white">
-                    LinkedIn Jobs
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-orange-600 text-white">
-                    recrutement@c.fitness
-                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>Diffusion automatique : Indeed, Welcome to the Jungle, France Travail, LinkedIn &amp; recrutement@c.fitness</span>
                 </div>
 
                 <form
@@ -345,13 +319,13 @@ export function AtsView() {
                     type="text"
                     value={offerTitle}
                     onChange={(e) => setOfferTitle(e.target.value)}
-                    placeholder="Intitulé de l'offre..."
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 w-52 bg-white"
+                    placeholder="Intitulé du poste..."
+                    className="px-3 py-2 rounded-xl border border-slate-200 w-56 bg-white"
                   />
                   <select
                     value={offerClub}
                     onChange={(e) => setOfferClub(e.target.value as ClubId)}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white"
                   >
                     <option value="carre-de-soie">Carré de Soie</option>
                     <option value="beynost">Beynost</option>
@@ -359,17 +333,17 @@ export function AtsView() {
                   <select
                     value={offerContract}
                     onChange={(e) => setOfferContract(e.target.value as ContractType)}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
+                    className="px-3 py-2 rounded-xl border border-slate-200 bg-white"
                   >
                     <option value="CDI">CDI 35h</option>
                     <option value="Apprentissage">Alternance BPJEPS</option>
                   </select>
                   <button
                     type="submit"
-                    className="px-3 py-1.5 rounded-lg bg-[#1E3A8A] hover:bg-[#172e6e] text-white font-bold flex items-center gap-1 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    Multiposter l&apos;annonce
+                    <Plus className="w-4 h-4" />
+                    <span>Publier l&apos;offre</span>
                   </button>
                 </form>
               </div>
