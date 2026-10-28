@@ -229,14 +229,25 @@ export function AcademyView() {
 
                   <div className="flex items-center gap-3 shrink-0">
                     {uc.tutorValidated ? (
-                      <div className="text-right">
-                        <div className="font-bold text-emerald-700">Validé Tuteur</div>
-                        <div className="text-[11px] text-slate-500">
-                          Par {uc.validatedBy} ({uc.validatedAt})
+                      <div className="flex items-center gap-2.5">
+                        <div className="text-right">
+                          <div className="font-bold text-emerald-700">Validé Tuteur</div>
+                          <div className="text-[11px] text-slate-500">
+                            Par {uc.validatedBy} ({uc.validatedAt})
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleBpjepsMilestoneValidation(uc.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] cursor-pointer"
+                          title="Cliquer pour annuler la validation tuteur et repasser en cours"
+                        >
+                          Remettre en cours
+                        </button>
                       </div>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => toggleBpjepsMilestoneValidation(uc.id)}
                         className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer"
                       >

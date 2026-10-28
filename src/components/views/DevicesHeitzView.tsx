@@ -47,6 +47,7 @@ export function DevicesHeitzView() {
     toggleClubMode,
     addInBodyScan,
     openMywellnessLink,
+    setActiveSection,
   } = useCfos();
 
   const [activeSoftwareTab, setActiveSoftwareTab] = useState<
@@ -277,13 +278,63 @@ export function DevicesHeitzView() {
 
           {/* Classic Windows Menu Strip + Function Keys Toolbar */}
           <div className="bg-[#F1F5F9] border-b border-slate-300 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700">
-            <div className="flex flex-wrap items-center gap-4 font-semibold">
-              <span className="text-[#1E3A5F] font-bold underline">Fichier</span>
-              <span>Fiches Adhérents ({heitzMembers.length})</span>
-              <span>Contrôle d&apos;Accès Tripodes</span>
-              <span>Caisse / TPV Comptoir</span>
-              <span>Prélèvements SEPA (finBalance)</span>
-              <span>Statistiques FMI</span>
+            <div className="flex flex-wrap items-center gap-2 font-semibold">
+              <button
+                type="button"
+                onClick={() => setHeitzStatusFilter('ALL')}
+                className="px-2 py-0.5 rounded hover:bg-slate-200 text-[#1E3A5F] font-bold underline cursor-pointer"
+              >
+                Fichier
+              </button>
+              <button
+                type="button"
+                onClick={() => setHeitzStatusFilter('ALL')}
+                className={`px-2 py-0.5 rounded cursor-pointer ${
+                  heitzStatusFilter === 'ALL'
+                    ? 'bg-[#1E3A5F] text-white font-bold'
+                    : 'hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                Fiches Adhérents ({heitzMembers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScanBadge(selectedMember.id)}
+                className="px-2 py-0.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
+              >
+                Contrôle d&apos;Accès Tripodes
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTpvDrawer((prev) => !prev)}
+                className={`px-2 py-0.5 rounded cursor-pointer ${
+                  showTpvDrawer
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                Caisse / TPV Comptoir
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setHeitzStatusFilter((prev) => (prev === 'IMPAYE' ? 'ALL' : 'IMPAYE'))
+                }
+                className={`px-2 py-0.5 rounded cursor-pointer ${
+                  heitzStatusFilter === 'IMPAYE'
+                    ? 'bg-rose-600 text-white font-bold'
+                    : 'hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                Prélèvements SEPA (finBalance)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection('dashboard')}
+                className="px-2 py-0.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
+              >
+                Statistiques FMI →
+              </button>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500">Club pupitre :</span>
@@ -826,94 +877,148 @@ export function DevicesHeitzView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">1. Contrôle d&apos;Accès Sécurisé</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">1. Contrôle d&apos;Accès Sécurisé</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> Badges RFID longue portée, QR codes, biométrie, ouverture mobile smartphone (badge virtuel), obstacles piétons, tripodes, portes PMR &amp; bornes autonomes.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Pilotage relais F5/F6 (Tripodes 1 &amp; 2) et F7 (Portillon PMR), lecteurs RFID MIFARE + Bluetooth BLE conservés, génération QR Code essai (<code className="font-mono">/api/passageCode/generate</code>) et mode incendie SSI.
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> Badges RFID longue portée, QR codes, biométrie, ouverture mobile smartphone (badge virtuel), obstacles piétons, tripodes, portes PMR &amp; bornes autonomes.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Pilotage relais F5/F6 (Tripodes 1 &amp; 2) et F7 (Portillon PMR), lecteurs RFID MIFARE + Bluetooth BLE conservés, génération QR Code essai (<code className="font-mono">/api/passageCode/generate</code>) et mode incendie SSI.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => handleScanBadge(selectedMember.id)}
+                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Tester le passage portillon ({selectedMember.firstName}) →
+                </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">2. Plannings &amp; Anti-Surbooking</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">2. Plannings &amp; Anti-Surbooking</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> Réservation d&apos;espaces, cours collectifs, accès équipements, optimisation du taux d&apos;occupation et limitation du surbooking / files d&apos;attente.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Synchronisation bidirectionnelle via <code className="font-mono">/api/planning/browse</code> (<code className="font-mono">bookingQueueStats</code>) et <code className="font-mono">/api/program/makeReservation</code> directement dans « 03 · L&apos;Espace Planning » et « 06 · Le CRM ».
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> Réservation d&apos;espaces, cours collectifs, accès équipements, optimisation du taux d&apos;occupation et limitation du surbooking / files d&apos;attente.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Synchronisation bidirectionnelle via <code className="font-mono">/api/planning/browse</code> (<code className="font-mono">bookingQueueStats</code>) et <code className="font-mono">/api/program/makeReservation</code> directement dans « 03 · L&apos;Espace Planning » et « 06 · Le CRM ».
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('planning-hr')}
+                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Ouvrir 03 · L&apos;Espace Planning Unifié →
+                </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">3. Caisse NF525, SEPA &amp; EBICS</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">3. Caisse NF525, SEPA &amp; EBICS</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> Logiciel de caisse certifié <strong>NF525</strong>, ventes à l&apos;unité/produits dérivés, abonnements (mois / semaine / 4 semaines), prélèvements <strong>SEPA</strong> et protocole bancaire <strong>EBICS</strong>.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Pavé tactile TPV Comptoir [F9], écriture comptable conforme NF525 (<code className="font-mono">/api/financial/addCheckDetail</code> &amp; <code className="font-mono">/api/ticket</code>), contrôle temps réel du solde SEPA/EBICS (<code className="font-mono">finBalance</code>) et régularisation CB/SEPA 1-clic.
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> Logiciel de caisse certifié <strong>NF525</strong>, ventes à l&apos;unité/produits dérivés, abonnements (mois / semaine / 4 semaines), prélèvements <strong>SEPA</strong> et protocole bancaire <strong>EBICS</strong>.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Pavé tactile TPV Comptoir [F9], écriture comptable conforme NF525 (<code className="font-mono">/api/financial/addCheckDetail</code> &amp; <code className="font-mono">/api/ticket</code>), contrôle temps réel du solde SEPA/EBICS (<code className="font-mono">finBalance</code>) et régularisation CB/SEPA 1-clic.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowTpvDrawer(true)}
+                  className="w-full py-1.5 px-2 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Ouvrir Caisse TPV NF525 [F9] →
+                </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">4. Automatisation &amp; Fidélisation</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">4. Automatisation &amp; Fidélisation</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> Programme de fidélité (points, parrainage, récompenses, messages d&apos;anniversaire), adhésions en ligne et relance automatique des inactifs au bon moment.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Détection automatique des inactifs (&gt;14j / &gt;15j sans passage via <code className="font-mono">/api/userPassages/browse</code>) et déclenchement des campagnes SMS 07 OVHcloud (relance absence, impayé SEPA, parrainage &amp; anniversaire).
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> Programme de fidélité (points, parrainage, récompenses, messages d&apos;anniversaire), adhésions en ligne et relance automatique des inactifs au bon moment.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Détection automatique des inactifs (&gt;14j / &gt;15j sans passage via <code className="font-mono">/api/userPassages/browse</code>) et déclenchement des campagnes SMS 07 OVHcloud (relance absence, impayé SEPA, parrainage &amp; anniversaire).
-                </p>
+                <button
+                  type="button"
+                  onClick={() => rewardMemberLoyaltyOrReferral(selectedMember.id, 'parrainage')}
+                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Créditer +150 pts Parrainage ({selectedMember.firstName}) →
+                </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">5. Statistiques, FMI &amp; KPI</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">5. Statistiques, FMI &amp; KPI</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> Suivi de performance en temps réel, fréquentation instantanée, traçabilité comptable complète et indicateurs-clés de rentabilité multi-sites.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Connecteur <code className="font-mono">FITNESS KPI</code> actif (<code className="font-mono">GET /api/fmi/date/:date</code>, <code className="font-mono">GET /api/ticket</code>, <code className="font-mono">idCenter 5052 &amp; 5053</code>) alimentant le tableau de bord Bi-Club.
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> Suivi de performance en temps réel, fréquentation instantanée, traçabilité comptable complète et indicateurs-clés de rentabilité multi-sites.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Connecteur <code className="font-mono">FITNESS KPI</code> actif (<code className="font-mono">GET /api/fmi/date/:date</code>, <code className="font-mono">GET /api/ticket</code>, <code className="font-mono">idCenter 5052 &amp; 5053</code>) alimentant le tableau de bord Bi-Club.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('dashboard')}
+                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Voir Tableau de Bord FMI &amp; KPI →
+                </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[#1E3A5F]">6. API Ouvertes &amp; Badge Mobile</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
-                    100 % OK
-                  </span>
+              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#1E3A5F]">6. API Ouvertes &amp; Badge Mobile</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
+                      100 % OK
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    <strong>Site Heitz :</strong> « Connectez facilement HEITZ System à vos outils grâce à des API ouvertes sans interrompre votre activité » + carte d&apos;accès digitale smartphone.
+                  </p>
+                  <p className="text-slate-800 text-[11px] font-medium">
+                    <strong>Dans C.Fitness OS :</strong> Authentification officielle <code className="font-mono">POST /api/developer/getToken?v=2</code> (clé générée dans <code className="font-mono">Configuration.exe</code>) + envoi du badge QR Code sur le smartphone du client.
+                  </p>
                 </div>
-                <p className="text-slate-600 text-[11px]">
-                  <strong>Site Heitz :</strong> « Connectez facilement HEITZ System à vos outils grâce à des API ouvertes sans interrompre votre activité » + carte d&apos;accès digitale smartphone.
-                </p>
-                <p className="text-slate-800 text-[11px] font-medium">
-                  <strong>Dans C.Fitness OS :</strong> Authentification officielle <code className="font-mono">POST /api/developer/getToken?v=2</code> (clé générée dans <code className="font-mono">Configuration.exe</code>) + envoi du badge QR Code sur le smartphone du client.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('crm')}
+                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                >
+                  Générer un QR Code d&apos;essai dans le CRM →
+                </button>
               </div>
             </div>
           </div>

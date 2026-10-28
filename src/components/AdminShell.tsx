@@ -157,8 +157,8 @@ const SECONDARY_BACKOFFICE_ITEMS: NavEntry[] = [
     key: 'sec-governance',
     sectionId: 'governance',
     stepNum: 'PIN',
-    label: 'Mon Espace : Serveur & Config (0766)',
-    shortLabel: 'Mon Espace (PIN 0766)',
+    label: 'Mon Espace : Serveur & Config',
+    shortLabel: 'Mon Espace',
     icon: Lock,
   },
 ];
@@ -174,7 +174,7 @@ const ALL_SECTION_TITLES: Record<AdminSection, { title: string; plan: '1er Plan 
   'executive-dossier': { title: 'Pilotage Bi-Club, Dossier Dirigeants & Associés', plan: '2e Plan · Direction & Gouvernance' },
   orchestrator: { title: 'Orchestration IA (6 Agents Métier) & Maintenance', plan: '2e Plan · Direction & Gouvernance' },
   academy: { title: 'Académie 3S & Livret BPJEPS', plan: '2e Plan · Direction & Gouvernance' },
-  governance: { title: 'Mon Espace Personnel : Matériel Serveur, Config Club & Mises à Jour (PIN 0766)', plan: '2e Plan · Direction & Gouvernance' },
+  governance: { title: 'Mon Espace Personnel : Matériel Serveur, Config Club & Mises à Jour', plan: '2e Plan · Direction & Gouvernance' },
 };
 
 export function AdminShell() {
@@ -184,6 +184,8 @@ export function AdminShell() {
     currentUser,
     activeSection,
     setActiveSection,
+    isArchitectUnlocked,
+    lockArchitectSpace,
     setShellMode,
     logoutSession,
     resetDemoData,
@@ -201,7 +203,7 @@ export function AdminShell() {
   const isSecondarySectionActive = ['dashboard', 'orchestrator', 'academy', 'executive-dossier', 'governance'].includes(
     activeSection
   );
-  // Toujours ouvert par défaut pour que le 2e Plan et l'onglet personnel (PIN 0766) soient immédiatement visibles
+  // Toujours ouvert par défaut pour que le 2e Plan et l'onglet personnel soient immédiatement visibles
   const [secondaryPlanExpanded, setSecondaryPlanExpanded] = useState<boolean>(true);
 
   const showSecondaryMenu = secondaryPlanExpanded || isSecondarySectionActive;
@@ -212,8 +214,6 @@ export function AdminShell() {
 
   const filterAllowed = (items: NavEntry[]) =>
     items.filter((item) => {
-      // L'espace personnel du concepteur (governance) est protégé par le code PIN 0766 :
-      // il reste donc toujours visible dans le menu quel que soit le rôle testé.
       if (item.sectionId === 'governance') return true;
       return item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true;
     });
@@ -224,6 +224,10 @@ export function AdminShell() {
   const handleNavClick = (item: NavEntry) => {
     if (item.shellTarget) {
       setShellMode(item.shellTarget);
+      return;
+    }
+    if (item.sectionId === 'governance' && activeSection === 'governance' && isArchitectUnlocked) {
+      lockArchitectSpace();
       return;
     }
     if (item.sectionId) {
@@ -342,14 +346,16 @@ export function AdminShell() {
                       {item.stepNum && (
                         <span
                           className={`font-mono text-[10px] shrink-0 px-1.5 py-0.5 rounded ${
-                            active
+                            isArchitectPinTab && isArchitectUnlocked
+                              ? 'bg-rose-600 text-white font-bold'
+                              : active
                               ? 'bg-orange-700 text-white'
                               : isArchitectPinTab
                               ? 'bg-orange-500/30 text-orange-200 font-bold'
                               : 'text-slate-500'
                           }`}
                         >
-                          {item.stepNum}
+                          {isArchitectPinTab && isArchitectUnlocked ? 'VERROUILLER' : item.stepNum}
                         </span>
                       )}
                     </button>
@@ -450,18 +456,29 @@ export function AdminShell() {
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveSection('governance')}
-                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
-                  activeSection === 'governance'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5 shrink-0" />
-                <span>Mon Espace Config (PIN 0766)</span>
-              </button>
+              {activeSection === 'governance' && isArchitectUnlocked ? (
+                <button
+                  type="button"
+                  onClick={() => lockArchitectSpace()}
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors bg-rose-600 hover:bg-rose-700 text-white shadow-2xs"
+                >
+                  <Lock className="w-3.5 h-3.5 shrink-0" />
+                  <span>Verrouiller Mon Espace</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('governance')}
+                  className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                    activeSection === 'governance'
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
+                  }`}
+                >
+                  <Lock className="w-3.5 h-3.5 shrink-0" />
+                  <span>Mon Espace Config</span>
+                </button>
+              )}
 
               <MywellnessQuickConnect variant="header" />
 

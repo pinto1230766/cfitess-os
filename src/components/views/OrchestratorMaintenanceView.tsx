@@ -454,9 +454,19 @@ export function OrchestratorMaintenanceView() {
         const nextStatus: MaintenanceTicket['status'] =
           t.status === 'Signalé (Agent Maintenance)'
             ? 'Technicien planifié'
-            : 'Résolu';
+            : t.status === 'Technicien planifié'
+            ? 'Résolu'
+            : 'Signalé (Agent Maintenance)';
         return { ...t, status: nextStatus };
       })
+    );
+  };
+
+  const handleResetDecision = (id: string) => {
+    setDecisions((prev) =>
+      prev.map((d) =>
+        d.id === id ? { ...d, status: 'en_attente_validation' } : d
+      )
     );
   };
 
@@ -468,6 +478,20 @@ export function OrchestratorMaintenanceView() {
               ...s,
               currentQty: s.currentQty + 25,
               autoOrderPrepared: false,
+            }
+          : s
+      )
+    );
+  };
+
+  const handleConsumeStock = (id: string) => {
+    setStocks((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              currentQty: Math.max(1, s.minThreshold - 3),
+              autoOrderPrepared: true,
             }
           : s
       )
@@ -822,14 +846,32 @@ export function OrchestratorMaintenanceView() {
                         </button>
                       </>
                     ) : item.status === 'execute' ? (
-                      <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-[11px] flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Exécuté &amp; Tracé</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-[11px] flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Exécuté &amp; Tracé</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleResetDecision(item.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer"
+                        >
+                          Remettre en attente
+                        </button>
+                      </div>
                     ) : (
-                      <span className="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-[11px]">
-                        Refusé par l&apos;humain
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-[11px]">
+                          Refusé par l&apos;humain
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleResetDecision(item.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer"
+                        >
+                          Remettre en attente
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -951,44 +993,65 @@ export function OrchestratorMaintenanceView() {
                   title: 'Heitz System',
                   badge: 'Source de vérité Accès & SEPA',
                   desc: 'Contrôle d’accès RFID/Bluetooth · Passages adhérents · Solde finBalance SEPA & RDV',
+                  action: () => setActiveSection('devices'),
+                  actionLabel: 'Ouvrir Portillons Heitz →',
                 },
                 {
                   title: 'Technogym Mywellness',
                   badge: 'Source de vérité Suivi Sportif',
                   desc: 'Programmes Biocircuit · MOVEs · Cours collectifs & ouverture directe 1-clic',
+                  action: () => setActiveSection('planning-hr'),
+                  actionLabel: 'Ouvrir Planning Unifié →',
                 },
                 {
                   title: 'Technogym Checkup™',
                   badge: 'Remplace InBody (2 Clubs)',
                   desc: 'Balance BIA révolutionnaire & capteurs 3D intégrés nativement à Mywellness (Wellness Age™)',
+                  action: () => setActiveSection('devices'),
+                  actionLabel: 'Ouvrir Stations Checkup →',
                 },
                 {
                   title: 'Silae Paie',
                   badge: 'Source de vérité Paie',
                   desc: 'Transmission des éléments variables de paie RH (Export CSV compatible + API REST)',
+                  action: () => setActiveSection('planning-hr'),
+                  actionLabel: 'Ouvrir Pré-Paie Silae →',
                 },
                 {
                   title: 'Outils Téléphonie',
                   badge: '04 OVHcloud + 07 Yeastar 4G',
                   desc: 'Appels entrants/sortants conformes ARCEP · Enregistrements & transcription locale',
+                  action: () => setActiveSection('telephony'),
+                  actionLabel: 'Ouvrir Téléphonie 04/07 →',
                 },
                 {
                   title: 'Fournisseurs & Externe',
                   badge: 'Stocks & Veille Marché',
                   desc: 'Commandes consommables, interventions SAV et veille concurrence locale',
+                  action: () => setActiveTab('MODULE_MAINTENANCE'),
+                  actionLabel: 'Ouvrir Stocks & SAV →',
                 },
               ].map((tool) => (
                 <div
                   key={tool.title}
-                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5"
+                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2"
                 >
-                  <div className="font-extrabold text-slate-900">{tool.title}</div>
-                  <div className="inline-block px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[10px]">
-                    {tool.badge}
+                  <div className="space-y-1.5">
+                    <div className="font-extrabold text-slate-900">{tool.title}</div>
+                    <div className="inline-block px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[10px]">
+                      {tool.badge}
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      {tool.desc}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    {tool.desc}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={tool.action}
+                    className="w-full py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-900 font-bold text-[11px] cursor-pointer text-center"
+                  >
+                    {tool.actionLabel}
+                  </button>
                 </div>
               ))}
             </div>
@@ -1121,15 +1184,17 @@ export function OrchestratorMaintenanceView() {
                       >
                         {t.status}
                       </span>
-                      {t.status !== 'Résolu' && (
-                        <button
-                          type="button"
-                          onClick={() => handleAdvanceTicketStatus(t.id)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[11px] cursor-pointer"
-                        >
-                          Avancer statut
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleAdvanceTicketStatus(t.id)}
+                        className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] cursor-pointer ${
+                          t.status === 'Résolu'
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            : 'bg-slate-900 hover:bg-slate-800 text-white'
+                        }`}
+                      >
+                        {t.status === 'Résolu' ? 'Réouvrir ticket' : 'Avancer statut'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1178,7 +1243,7 @@ export function OrchestratorMaintenanceView() {
                         </span>
                       </div>
 
-                      {isLow && (
+                      {isLow ? (
                         <div className="flex items-center justify-between gap-2 pt-1">
                           <span className="text-[11px] text-rose-800 font-semibold flex items-center gap-1">
                             <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
@@ -1191,6 +1256,19 @@ export function OrchestratorMaintenanceView() {
                           >
                             <ShoppingCart className="w-3.5 h-3.5" />
                             <span>Valider commande</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <span className="text-[11px] text-emerald-800 font-medium">
+                            Stock suffisant en réserve club
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleConsumeStock(s.id)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-[11px] cursor-pointer"
+                          >
+                            Simuler seuil bas
                           </button>
                         </div>
                       )}

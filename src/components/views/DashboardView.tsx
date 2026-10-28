@@ -28,7 +28,9 @@ import {
   ArrowRight,
   Handshake,
   ShieldCheck,
+  Power,
 } from 'lucide-react';
+import { NavSection, ShellMode } from '../../types/cfos';
 import { computeHeitzKpiSummary } from '../../domain/rules';
 
 const SAAS_REPLACED_COMPARISON = [
@@ -54,7 +56,19 @@ const SAAS_REPLACED_COMPARISON = [
   },
 ];
 
-const PROJECT_FEATURE_CATALOG = [
+const PROJECT_FEATURE_CATALOG: Array<{
+  category: string;
+  badge: string;
+  modules: Array<{
+    code: string;
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+    targetSection?: NavSection;
+    targetShell?: ShellMode;
+    actionLabel: string;
+    features: string[];
+  }>;
+}> = [
   {
     category: '1er Plan · Opérations Quotidiennes en Club (Front-Office)',
     badge: '9 Modules Opérationnels',
@@ -63,6 +77,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '01 · Ma Journée',
         title: 'Cockpit Collaborateur & Raccourcis Comptoir',
         icon: Sparkles,
+        targetSection: 'my-day',
+        actionLabel: 'Ouvrir 01 · Ma Journée',
         features: [
           'Feuille de route individuelle dès la prise de poste (tâches urgentes, RDV du jour, objectifs mensuels d’abonnements).',
           'Pointage d’entrée / pause / sortie horodaté en 1 clic.',
@@ -73,6 +89,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '02 · Le Collaborateur',
         title: 'Grille d’Exécution Horaire & Application Terrain Mobile',
         icon: Smartphone,
+        targetShell: 'employe',
+        actionLabel: 'Ouvrir 02 · App Collaborateur',
         features: [
           'Grille horaire de la journée tranche par tranche (ouverture club, tour de salle, relances téléphoniques, accueil essais).',
           'Validation en 1 clic des tâches exécutées avec suivi manager en temps réel.',
@@ -83,6 +101,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '03 · L’Espace Planning',
         title: 'Planning Centralisé 3-Sources (RH + Mywellness + Heitz) & Pré-Paie Silae',
         icon: Calendar,
+        targetSection: 'planning-hr',
+        actionLabel: 'Ouvrir 03 · L’Espace Planning',
         features: [
           'Fusion sans doublon sur un seul écran : Shifts RH collaborateurs + Cours/Bilans Technogym Mywellness + RDV Heitz.',
           'Contrôle automatique Convention Collective Nationale du Sport (IDCC 2511) et suivi des périodes d’essai.',
@@ -93,6 +113,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '04 & 05 · Téléphonie & WebRTC',
         title: 'Standard 12 Lignes OVHcloud (04/07), Studio SVI & Supervision',
         icon: PhoneCall,
+        targetSection: 'telephony',
+        actionLabel: 'Ouvrir 04 · Téléphonie & WebRTC',
         features: [
           'Double identité d’appel conforme ARCEP : Lignes fixes 04 + Pool mobiles 07 à fort taux de décroché.',
           'Power-Dialer, Voicemail Drop 1-clic et Boîte SMS Collaborative 07 (avec gestion automatique STOP 36111).',
@@ -103,6 +125,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '06 · Le CRM',
         title: 'Acquisition Prospects, Conversion Heitz 1-Clic & Parrainage',
         icon: Users,
+        targetSection: 'crm',
+        actionLabel: 'Ouvrir 06 · Le CRM',
         features: [
           'Capture omnicanale avec déduplication automatique et vérification Bloctel / RGPD.',
           'Réservation de séance d’essai synchronisée dans Heitz + envoi SMS du QR Code d’ouverture portillon.',
@@ -113,6 +137,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '07 · Les ATS & Signatures (0 €)',
         title: 'Recrutement Automatisé, Contrats CDI Légaux & Signature SHA-256 Gratuite',
         icon: FileSignature,
+        targetSection: 'ats',
+        actionLabel: 'Ouvrir 07 · ATS & Signatures',
         features: [
           'Réception des candidatures sur recrutement@c.fitness avec accusé de réception RGPD.',
           'Générateur automatique du Contrat CDI officiel C.Fitness (IDCC 2511, objectif 20 abonnements/mois).',
@@ -123,6 +149,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '08 · Matériel Heitz & Checkup',
         title: 'Portillons RFID/Bluetooth, Caisse TPV NF525 & Bilans Technogym Checkup',
         icon: QrCode,
+        targetSection: 'devices',
+        actionLabel: 'Ouvrir 08 · Matériel Heitz & Checkup',
         features: [
           'Pilotage en direct des portillons Heitz (Carré de Soie & Beynost), caisse TPV comptoir et programme fidélité/anniversaire.',
           'Bouclier SEPA automatique : blocage du tourniquet si impayé + alerte écran accueil + régularisation CB/SEPA 1-clic.',
@@ -133,6 +161,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: '09 · Tablette Kiosque Badgeuse PIN',
         title: 'Borne Tactile Murale d’Entrée du Personnel',
         icon: Tablet,
+        targetShell: 'tablette',
+        actionLabel: 'Ouvrir 09 · Tablette Kiosque PIN',
         features: [
           'Interface tactile grand format dédiée au pointage par code PIN personnel à 4 chiffres.',
           'Continuité hors-ligne automatique : aucun pointage perdu même en cas de coupure réseau passagère.',
@@ -148,6 +178,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: 'Pilotage & Dossier Dirigeants',
         title: 'Tableau de Bord Exécutif Bi-Club & Dossier Associés',
         icon: TrendingUp,
+        targetSection: 'dashboard',
+        actionLabel: 'Aller à la Synthèse Temps Réel',
         features: [
           'Jauge FMI en direct sur Carré de Soie et Beynost, suivi du Chiffre d’Affaires Heitz, des abonnements et des impayés SEPA.',
           'Dossier complet de présentation aux dirigeants et associés (ROI financier, logiciels remplacés vs partenaires, potentiel de revente).',
@@ -157,6 +189,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: 'Orchestration IA (6 Agents)',
         title: 'Agents IA Métier Spécialisés & Maintenance Prédictive',
         icon: BrainCircuit,
+        targetSection: 'orchestrator',
+        actionLabel: 'Ouvrir Orchestration IA & Maintenance',
         features: [
           '6 Agents IA dédiés : RH & Conformité IDCC 2511, CRM & Conversion, Recouvrement SEPA, Téléphonie & Résumé d’appel, Maintenance Parc, et Pilotage.',
           'Module de suivi de la maintenance préventive des machines et des stocks de consommables des 2 clubs.',
@@ -166,6 +200,8 @@ const PROJECT_FEATURE_CATALOG = [
         code: 'Académie 3S & Livret BPJEPS',
         title: 'Formation Interne Certifiante & Suivi des Apprentis UC1–UC4',
         icon: GraduationCap,
+        targetSection: 'academy',
+        actionLabel: 'Ouvrir Académie 3S & Livret BPJEPS',
         features: [
           '11 modules e-learning internes (méthode de vente C.Fitness, accueil, sécurité ERP, téléphonie, hygiène) avec QCM auto-corrigés.',
           'Livret numérique de suivi des apprentis BPJEPS AF (validation des compétences UC1 à UC4 par le tuteur).',
@@ -175,13 +211,23 @@ const PROJECT_FEATURE_CATALOG = [
   },
 ];
 
-const REPLACED_SOFTWARE_MATRIX = [
+const REPLACED_SOFTWARE_MATRIX: Array<{
+  replaced: string;
+  oldCost: string;
+  limitation: string;
+  cfitnessSolution: string;
+  newCost: string;
+  targetSection: NavSection;
+  targetLabel: string;
+}> = [
   {
     replaced: 'Ringover / Aircall (SaaS Téléphonie)',
     oldCost: '45 € à 65 € HT / mois / utilisateur (~720 € HT/mois pour 12 postes)',
     limitation: 'Coût par licence prohibitif et aucun lien natif avec le solde SEPA Heitz.',
     cfitnessSolution: 'Softphone WebRTC 12 lignes + Trunk Fixe 04 OVHcloud + Pool Mobiles 07 + Résumé IA.',
     newCost: '~14,40 € HT / mois au total (coût télécom OVHcloud pur, 0 € de licence logicielle)',
+    targetSection: 'telephony',
+    targetLabel: 'Tester 04 · Téléphonie',
   },
   {
     replaced: 'Skello / Combo (Planning RH & Badgeuse)',
@@ -189,6 +235,8 @@ const REPLACED_SOFTWARE_MATRIX = [
     limitation: 'Séparé du planning des cours Technogym et des RDV commerciaux Heitz.',
     cfitnessSolution: 'Espace Planning Unifié 3-en-1 (RH IDCC 2511 + Mywellness + Heitz) + Kiosque Tablette Badgeuse PIN.',
     newCost: '0 € / mois (intégré nativement)',
+    targetSection: 'planning-hr',
+    targetLabel: 'Tester 03 · Planning RH',
   },
   {
     replaced: 'Yousign / DocuSign (Signature Électronique)',
@@ -196,6 +244,8 @@ const REPLACED_SOFTWARE_MATRIX = [
     limitation: 'Obligation de ressaisir les coordonnées du candidat et de payer à chaque contrat.',
     cfitnessSolution: 'Moteur interne de signature électronique SHA-256 avec OTP SMS et génération automatique du CDI.',
     newCost: '0 € / mois (illimité)',
+    targetSection: 'ats',
+    targetLabel: 'Tester 07 · Signatures 0 €',
   },
   {
     replaced: 'HubSpot / Pipedrive / Logiciel LEADS (CRM)',
@@ -203,6 +253,8 @@ const REPLACED_SOFTWARE_MATRIX = [
     limitation: 'Aucune connexion native avec les portillons Heitz pour vérifier la venue réelle en séance d’essai.',
     cfitnessSolution: 'CRM Fitness C.Fitness OS connecté en temps réel aux portillons Heitz (QR Code essai, conversion 1-clic, parrainage).',
     newCost: '0 € / mois (intégré nativement)',
+    targetSection: 'crm',
+    targetLabel: 'Tester 06 · Le CRM',
   },
   {
     replaced: 'Outils ATS Recrutement (Flatchr / WelcomeKit)',
@@ -210,6 +262,8 @@ const REPLACED_SOFTWARE_MATRIX = [
     limitation: 'Déconnecté de la création du salarié dans le planning et de la formation interne.',
     cfitnessSolution: 'ATS intégré branché sur recrutement@c.fitness avec Onboarding en 1 clic.',
     newCost: '0 € / mois (intégré nativement)',
+    targetSection: 'ats',
+    targetLabel: 'Tester 07 · Recrutement ATS',
   },
   {
     replaced: 'Google Calendar / WhatsApp / Fichiers Excel épars',
@@ -217,11 +271,22 @@ const REPLACED_SOFTWARE_MATRIX = [
     limitation: 'Informations éparpillées, aucune traçabilité opposable, risque RGPD sur les téléphones personnels.',
     cfitnessSolution: 'Cockpit unique « Ma Journée » + Grille Collaborateur + Zéro téléphone personnel.',
     newCost: '0 € / mois + Sécurité juridique totale',
+    targetSection: 'my-day',
+    targetLabel: 'Tester 01 · Ma Journée',
   },
 ];
 
-const PARTNER_SYSTEMS_IN_HARMONY = [
+const PARTNER_SYSTEMS_IN_HARMONY: Array<{
+  id: string;
+  system: string;
+  role: string;
+  whyKept: string;
+  howItWorksTogether: string[];
+  targetSection: NavSection;
+  targetLabel: string;
+}> = [
   {
+    id: 'part-heitz',
     system: '1. Système Heitz (Portillons, SEPA, Caisse NF525 & Fidélité)',
     role: 'Cœur Adhérents, Prélèvements SEPA/EBICS, Caisse KPI & Contrôle d’Accès Portillons (RFID / Bluetooth / QR)',
     whyKept: 'Heitz est la référence métier certifiée NF525 pour la gestion bancaire SEPA et pilote déjà les lecteurs RFID/Bluetooth installés dans les clubs.',
@@ -230,8 +295,11 @@ const PARTNER_SYSTEMS_IN_HARMONY = [
       'Sens Heitz → C.Fitness : Chaque passage au tourniquet ou rejet SEPA remonte instantanément dans C.Fitness OS pour bloquer le portillon, alerter l’accueil et déclencher un SMS de régularisation.',
       'Fidélité & Parrainage : attribution en 1 clic des points de fidélité, mois offerts parrains et offres d’anniversaire.',
     ],
+    targetSection: 'devices',
+    targetLabel: 'Ouvrir 08 · Portillons & Caisse Heitz',
   },
   {
+    id: 'part-technogym',
     system: '2. Technogym Mywellness Cloud & 2× Stations Technogym Checkup',
     role: 'Suivi Sportif Plateau, Programmes d’Entraînement, Cours Collectifs & Bilans Biométriques 3D / BIA',
     whyKept: 'L’écosystème Technogym (Mywellness + balances révolutionnaires Checkup) offre une expérience sportive mondiale irremplaçable aux adhérents.',
@@ -239,8 +307,11 @@ const PARTNER_SYSTEMS_IN_HARMONY = [
       'Aucune double saisie : C.Fitness OS synchronise les créneaux de bilans et de cours Mywellness directement dans « L’Espace Planning » centralisé.',
       'Passerelle contextuelle 1-clic : Depuis la fiche d’un adhérent ou le planning coach, un bouton ouvre directement son dossier biométrique Technogym Checkup (Wellness Age™, masse musculaire, mobilité).',
     ],
+    targetSection: 'devices',
+    targetLabel: 'Ouvrir 08 · Stations Technogym Checkup',
   },
   {
+    id: 'part-silae',
     system: '3. Silae Paie (Cabinet Comptable & Social)',
     role: 'Édition Officielle des Bulletins de Paie & Déclarations Sociales (DSN / URSSAF)',
     whyKept: 'Le cabinet comptable utilise Silae pour garantir la conformité légale des fiches de paie et des déclarations URSSAF.',
@@ -249,8 +320,11 @@ const PARTNER_SYSTEMS_IN_HARMONY = [
       'Les pointages de la badgeuse PIN, les heures supplémentaires, les congés validés et les commissions commerciales sont consolidés automatiquement.',
       'En fin de mois, la Direction génère en 1 clic le fichier d’export normé prêt à être importé dans Silae par le cabinet comptable.',
     ],
+    targetSection: 'planning-hr',
+    targetLabel: 'Ouvrir 03 · Pré-Paie & Export Silae',
   },
   {
+    id: 'part-ovh',
     system: '4. OVHcloud Télécom (Lignes Fixes 04 & Pool Mobiles 07)',
     role: 'Infrastructure Opérateur Télécom Pure (Voix Fixe, Voix Mobile & SMS)',
     whyKept: 'Indispensable pour acheminer les appels sur le réseau téléphonique public français en respectant strictement la réglementation ARCEP.',
@@ -258,6 +332,8 @@ const PARTNER_SYSTEMS_IN_HARMONY = [
       'C.Fitness OS fournit toute l’interface logicielle (WebRTC, Studio SVI, Power-Dialer, écoute manager, enregistrement, transcription IA).',
       'OVHcloud ne facture plus que la consommation télécom pure (~1,20 € HT/mois/ligne fixe), supprimant 100 % des licences logicielles par poste.',
     ],
+    targetSection: 'telephony',
+    targetLabel: 'Ouvrir 04 · Téléphonie OVHcloud 04/07',
   },
 ];
 
@@ -326,6 +402,13 @@ export function DashboardView() {
   } = useCfos();
 
   const [activeTab, setActiveTab] = useState<ExecutiveDashboardTab>('synthese');
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({});
+  const [partnerSyncMap, setPartnerSyncMap] = useState<Record<string, boolean>>({
+    'part-heitz': true,
+    'part-technogym': true,
+    'part-silae': true,
+    'part-ovh': true,
+  });
 
   const filterByClub = <T extends { clubId: string }>(items: T[]) =>
     clubFilter === 'all' ? items : items.filter((item) => item.clubId === clubFilter);
@@ -793,10 +876,13 @@ export function DashboardView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {group.modules.map((mod) => {
                   const Icon = mod.icon;
+                  const isModEnabled = enabledModules[mod.code] ?? true;
                   return (
                     <div
                       key={mod.code}
-                      className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 flex flex-col justify-between shadow-2xs"
+                      className={`bg-white border rounded-2xl p-5 space-y-3 flex flex-col justify-between shadow-2xs transition-colors ${
+                        isModEnabled ? 'border-slate-200' : 'border-amber-300 bg-amber-50/20'
+                      }`}
                     >
                       <div className="space-y-2.5">
                         <div className="flex items-start justify-between gap-3">
@@ -813,9 +899,24 @@ export function DashboardView() {
                               </div>
                             </div>
                           </div>
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
-                            Actif
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEnabledModules((prev) => ({
+                                ...prev,
+                                [mod.code]: !isModEnabled,
+                              }))
+                            }
+                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shrink-0 cursor-pointer transition-colors ${
+                              isModEnabled
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                            }`}
+                            title="Cliquer pour activer ou mettre en pause ce module en démonstration"
+                          >
+                            <Power className="w-3 h-3" />
+                            <span>{isModEnabled ? 'Actif' : 'En pause'}</span>
+                          </button>
                         </div>
 
                         <ul className="space-y-1.5 text-xs text-slate-600 pt-1">
@@ -826,6 +927,30 @@ export function DashboardView() {
                             </li>
                           ))}
                         </ul>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Accès direct pour démonstration :
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (mod.targetShell) {
+                              setShellMode(mod.targetShell);
+                            } else if (mod.targetSection) {
+                              if (mod.targetSection === 'dashboard') {
+                                setActiveTab('synthese');
+                              } else {
+                                setActiveSection(mod.targetSection);
+                              }
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>{mod.actionLabel}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-orange-400" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -1069,6 +1194,7 @@ export function DashboardView() {
                     <th className="py-2.5 px-3">Limite de l&apos;ancien outil</th>
                     <th className="py-2.5 px-3">Module C.Fitness OS</th>
                     <th className="py-2.5 px-3">Nouveau Coût</th>
+                    <th className="py-2.5 px-3 text-right">Démonstration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1084,6 +1210,16 @@ export function DashboardView() {
                       </td>
                       <td className="py-3 px-3 font-mono font-bold text-emerald-700">
                         {row.newCost}
+                      </td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSection(row.targetSection)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>{row.targetLabel}</span>
+                          <ArrowRight className="w-3 h-3 text-orange-400" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1117,40 +1253,76 @@ export function DashboardView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {PARTNER_SYSTEMS_IN_HARMONY.map((partner) => (
-                <div
-                  key={partner.system}
-                  className="border border-slate-200 rounded-xl p-4 space-y-2.5 bg-slate-50/40"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-extrabold text-slate-900">
-                        {partner.system}
+              {PARTNER_SYSTEMS_IN_HARMONY.map((partner) => {
+                const isPartnerActive = partnerSyncMap[partner.id] ?? true;
+                return (
+                  <div
+                    key={partner.system}
+                    className={`border rounded-xl p-4 space-y-2.5 flex flex-col justify-between transition-colors ${
+                      isPartnerActive
+                        ? 'border-slate-200 bg-slate-50/40'
+                        : 'border-amber-300 bg-amber-50/20'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-extrabold text-slate-900">
+                            {partner.system}
+                          </div>
+                          <div className="text-xs font-semibold text-orange-600">
+                            Rôle : {partner.role}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPartnerSyncMap((prev) => ({
+                              ...prev,
+                              [partner.id]: !isPartnerActive,
+                            }))
+                          }
+                          className={`px-2.5 py-1 rounded text-[10px] font-bold shrink-0 flex items-center gap-1 cursor-pointer transition-colors ${
+                            isPartnerActive
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                          }`}
+                        >
+                          <Power className="w-3 h-3" />
+                          <span>
+                            {isPartnerActive ? 'Conservé & Synchronisé' : 'Synchro en Pause'}
+                          </span>
+                        </button>
                       </div>
-                      <div className="text-xs font-semibold text-orange-600">
-                        Rôle : {partner.role}
+
+                      <div className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200/80">
+                        <span className="font-bold text-slate-900">Pourquoi on le garde : </span>
+                        {partner.whyKept}
                       </div>
+
+                      <ul className="space-y-1.5 text-xs text-slate-600 pt-1">
+                        {partner.howItWorksTogether.map((line, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
-                      Conservé &amp; Synchronisé
-                    </span>
-                  </div>
 
-                  <div className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200/80">
-                    <span className="font-bold text-slate-900">Pourquoi on le garde : </span>
-                    {partner.whyKept}
+                    <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(partner.targetSection)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>{partner.targetLabel}</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-orange-400" />
+                      </button>
+                    </div>
                   </div>
-
-                  <ul className="space-y-1.5 text-xs text-slate-600 pt-1">
-                    {partner.howItWorksTogether.map((line, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

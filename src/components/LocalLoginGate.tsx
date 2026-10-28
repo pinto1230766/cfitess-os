@@ -27,6 +27,8 @@ export function LocalLoginGate({ children }: { children: React.ReactNode }) {
     loginWithLocalCredentials,
     unlockEmployeePin,
     setActiveSection,
+    unlockArchitectSpace,
+    lockArchitectSpace,
   } = useCfos();
 
   const [roleCategory, setRoleCategory] = useState<RoleCategoryFilter>('TOUS');
@@ -86,15 +88,17 @@ export function LocalLoginGate({ children }: { children: React.ReactNode }) {
   const handleOpenArchitectSpace = (autoUnlock = false) => {
     const adminEmp = employees.find((e) => e.role === 'admin') || nonKioskEmployees[0];
     if (!adminEmp) return;
-    if (autoUnlock && typeof window !== 'undefined') {
-      window.sessionStorage.setItem('cfos_architect_pin_unlocked', 'true');
-    }
     loginWithLocalCredentials({
       employeeId: adminEmp.id,
       secretOrPin: adminEmp.pinCode,
       preferredShell: 'admin',
     });
-    setActiveSection('governance');
+    if (autoUnlock) {
+      unlockArchitectSpace();
+    } else {
+      lockArchitectSpace();
+      setActiveSection('governance');
+    }
   };
 
   const handleSelectProfile = (empId: string) => {
@@ -178,7 +182,7 @@ export function LocalLoginGate({ children }: { children: React.ReactNode }) {
             className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-sans font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md"
           >
             <Lock className="w-3.5 h-3.5" />
-            <span>Mon Espace : Serveur, Config &amp; Mises à Jour (PIN 0766)</span>
+            <span>Mon Espace : Serveur, Config &amp; Mises à Jour</span>
           </button>
           <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400">
             VPN WireGuard &lt; 3 ms

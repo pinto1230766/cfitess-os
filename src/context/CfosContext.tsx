@@ -184,6 +184,7 @@ function getDefaultState(): PersistedState {
 interface CfosContextValue extends PersistedState {
   currentUser: Employee;
   isAuthenticated: boolean;
+  isArchitectUnlocked: boolean;
   shellMode: ShellMode;
   activeSection: AdminSection;
   clubFilter: ClubFilter;
@@ -191,6 +192,8 @@ interface CfosContextValue extends PersistedState {
   clearBanner: () => void;
   setShellMode: (mode: ShellMode) => void;
   setActiveSection: (sec: AdminSection) => void;
+  unlockArchitectSpace: () => void;
+  lockArchitectSpace: () => void;
   setClubFilter: (filter: ClubFilter) => void;
   switchUserSession: (employeeId: string, preferredShell?: ShellMode) => void;
   loginWithLocalCredentials: (params: {
@@ -267,7 +270,7 @@ interface CfosContextValue extends PersistedState {
     endDate: string;
     daysCount: number;
   }) => void;
-  decideLeaveRequest: (leaveId: string, decision: 'valide' | 'refuse') => void;
+  decideLeaveRequest: (leaveId: string, decision: 'valide' | 'refuse' | 'en_attente') => void;
   signHrDocument: (docId: string) => void;
 
   completeAcademyQuiz: (employeeId: string, moduleId: string, selectedOption: number) => {
@@ -387,9 +390,42 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }
     return 'admin';
   });
-  const [activeSection, setActiveSection] = useState<AdminSection>('my-day');
+  const [activeSection, setActiveSectionState] = useState<AdminSection>('my-day');
+  const [isArchitectUnlocked, setIsArchitectUnlocked] = useState<boolean>(false);
   const [clubFilter, setClubFilter] = useState<ClubFilter>('all');
   const [bannerNotice, setBannerNotice] = useState<CfosContextValue['bannerNotice']>(null);
+
+  // Toujours purger l'ancien cache sessionStorage pour que Mon Espace ne soit jamais déverrouillé d'office
+  useEffect(() => {
+    try {
+      window.sessionStorage.removeItem('cfos_architect_pin_unlocked');
+      window.localStorage.removeItem('cfos_architect_pin_unlocked');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setActiveSection = (sec: AdminSection) => {
+    if (sec !== 'governance') {
+      setIsArchitectUnlocked(false);
+    }
+    setActiveSectionState(sec);
+  };
+
+  const unlockArchitectSpace = () => {
+    setIsArchitectUnlocked(true);
+    setActiveSectionState('governance');
+  };
+
+  const lockArchitectSpace = () => {
+    setIsArchitectUnlocked(false);
+    try {
+      window.sessionStorage.removeItem('cfos_architect_pin_unlocked');
+      window.localStorage.removeItem('cfos_architect_pin_unlocked');
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     try {
@@ -439,6 +475,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
   const switchUserSession = (employeeId: string, preferredShell?: ShellMode) => {
     const target = state.employees.find((e) => e.id === employeeId);
     if (!target) return;
+    setIsArchitectUnlocked(false);
     setCurrentUserId(target.id);
     setIsAuthenticated(true);
     try {
@@ -561,9 +598,12 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
         afterState: 'Session locale verrouillée',
       }),
     }));
+    setIsArchitectUnlocked(false);
     setIsAuthenticated(false);
     try {
       window.sessionStorage.removeItem('cfos_local_auth_active');
+      window.sessionStorage.removeItem('cfos_architect_pin_unlocked');
+      window.localStorage.removeItem('cfos_architect_pin_unlocked');
     } catch {
       // ignore
     }
@@ -572,10 +612,17 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
   const resetDemoData = () => {
     const fresh = getDefaultState();
     setState(fresh);
+    setIsArchitectUnlocked(false);
     setCurrentUserId('emp-mario');
     setShellMode('admin');
     setActiveSection('my-day');
     setClubFilter('all');
+    try {
+      window.sessionStorage.removeItem('cfos_architect_pin_unlocked');
+      window.localStorage.removeItem('cfos_architect_pin_unlocked');
+    } catch {
+      // ignore
+    }
     notify('success', 'Données de référence C.Fitness OS v1.2 réinitialisées.');
   };
 
@@ -1220,7 +1267,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     notify('success', 'Demande d’absence transmise au responsable pour validation.');
   };
 
-  const decideLeaveRequest = (leaveId: string, decision: 'valide' | 'refuse') => {
+  const decideLeaveRequest = (leaveId: string, decision: 'valide' | 'refuse' | 'en_attente') => {
     setState((prev) => ({
       ...prev,
       leaveRequests: prev.leaveRequests.map((l) =>
@@ -1228,18 +1275,33 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
           ? {
               ...l,
               status: decision,
-              validatedBy: `${currentUser.firstName} ${currentUser.lastName}`,
+              validatedBy:
+                decision === 'en_attente'
+                  ? undefined
+                  : `${currentUser.firstName} ${currentUser.lastName}`,
             }
           : l
       ),
       auditLogs: appendAudit(prev.auditLogs, {
         clubId: 'global',
-        action: decision === 'valide' ? 'VALIDATION_CONGES_RH' : 'REFUS_CONGES_RH',
+        action:
+          decision === 'valide'
+            ? 'VALIDATION_CONGES_RH'
+            : decision === 'refuse'
+            ? 'REFUS_CONGES_RH'
+            : 'REINITIALISATION_CONGES_RH',
         target: leaveId,
         afterState: `Statut: ${decision}`,
       }),
     }));
-    notify('success', decision === 'valide' ? 'Congé validé.' : 'Demande refusée.');
+    notify(
+      'success',
+      decision === 'valide'
+        ? 'Congé validé.'
+        : decision === 'refuse'
+        ? 'Demande refusée.'
+        : 'Demande d’absence remise en attente.'
+    );
   };
 
   const signHrDocument = (docId: string) => {
@@ -1724,28 +1786,48 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signGoNoGoPhase = (phaseId: string, signerNames: string) => {
-    if (!signerNames.trim()) return;
     const today = new Date().toISOString().slice(0, 10);
+    const targetPhase = state.goNoGoPhases.find((p) => p.id === phaseId);
+    const isCurrentlyValidated = targetPhase?.status === 'valide';
+    const resolvedSigner =
+      signerNames && signerNames !== 'valide' && signerNames !== 'en_cours'
+        ? signerNames.trim()
+        : `${currentUser.firstName} ${currentUser.lastName}`;
+
     setState((prev) => ({
       ...prev,
       goNoGoPhases: prev.goNoGoPhases.map((p) =>
         p.id === phaseId
-          ? {
-              ...p,
-              status: 'valide',
-              signedBy: signerNames.trim(),
-              signedAt: today,
-            }
+          ? isCurrentlyValidated
+            ? {
+                ...p,
+                status: 'en_cours',
+                signedBy: undefined,
+                signedAt: undefined,
+              }
+            : {
+                ...p,
+                status: 'valide',
+                signedBy: resolvedSigner,
+                signedAt: today,
+              }
           : p
       ),
       auditLogs: appendAudit(prev.auditLogs, {
         clubId: 'global',
-        action: 'SIGNATURE_PORTE_GO_NOGO',
+        action: isCurrentlyValidated ? 'REOUVERTURE_PORTE_GO_NOGO' : 'SIGNATURE_PORTE_GO_NOGO',
         target: phaseId,
-        afterState: `Signé par ${signerNames.trim()} le ${today}`,
+        afterState: isCurrentlyValidated
+          ? 'Porte Go/No-Go remise en cours de vérification'
+          : `Signé par ${resolvedSigner} le ${today}`,
       }),
     }));
-    notify('success', `Porte Go/No-Go validée et signée par ${signerNames.trim()}.`);
+    notify(
+      'success',
+      isCurrentlyValidated
+        ? `Porte Go/No-Go (${targetPhase?.phase || phaseId}) remise en attente de validation.`
+        : `Porte Go/No-Go (${targetPhase?.phase || phaseId}) validée et signée par ${resolvedSigner}.`
+    );
   };
 
   const syncAllDeviceReplicasNow = (targetNodeId?: string) => {
@@ -2133,6 +2215,7 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     ...state,
     currentUser,
     isAuthenticated,
+    isArchitectUnlocked,
     shellMode,
     activeSection,
     clubFilter,
@@ -2140,6 +2223,8 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     clearBanner: () => setBannerNotice(null),
     setShellMode,
     setActiveSection,
+    unlockArchitectSpace,
+    lockArchitectSpace,
     setClubFilter,
     switchUserSession,
     loginWithLocalCredentials,
