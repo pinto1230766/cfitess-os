@@ -1,30 +1,38 @@
 import React, { useState } from 'react';
 import { useCfos } from '../context/CfosContext';
 import {
-  LayoutDashboard,
-  PhoneCall,
   Users,
   Calendar,
   GraduationCap,
-  Briefcase,
-  QrCode,
-  ShieldCheck,
   Menu,
   X,
-  UserCheck,
   Smartphone,
   Tablet,
   RotateCcw,
   LogOut,
-  HardDriveDownload,
   ZapOff,
   Sun,
-  BrainCircuit,
+  Moon,
   Headphones,
-  FileSignature,
   ChevronDown,
   ChevronRight,
   Lock,
+  Home,
+  Building2,
+  MapPin,
+  TrendingUp,
+  Activity,
+  Euro,
+  Wrench,
+  Package,
+  Megaphone,
+  FileText,
+  BarChart3,
+  Sparkles,
+  Settings,
+  Search,
+  Bell,
+  MessageSquare,
 } from 'lucide-react';
 import { AdminSection } from '../types/cfos';
 import { isSectionAllowedForRole } from '../domain/rules';
@@ -40,142 +48,169 @@ import { DevicesHeitzView } from './views/DevicesHeitzView';
 import { GovernanceView } from './views/GovernanceView';
 import { AuthSwitchModal } from './AuthSwitchModal';
 import { MywellnessQuickConnect } from './MywellnessQuickConnect';
+import { ThemeColorControl } from './ThemeColorControl';
 
-interface NavEntry {
+interface VisualNavItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  sectionId?: AdminSection;
+  subTarget?: string;
+  shellTarget?: 'employe' | 'telephone' | 'tablette';
+  badge?: string;
+  hasChevron?: boolean;
+}
+
+const VISUAL_SIDEBAR_ITEMS: VisualNavItem[] = [
+  {
+    id: 'nav-adherents',
+    label: 'Adhérents',
+    icon: Users,
+    iconColor: 'text-amber-500',
+    sectionId: 'devices',
+    subTarget: 'adherents',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-crm',
+    label: 'CRM & Ventes',
+    icon: TrendingUp,
+    iconColor: 'text-emerald-500',
+    sectionId: 'crm',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-planning',
+    label: 'Planning',
+    icon: Calendar,
+    iconColor: 'text-purple-500',
+    sectionId: 'planning-hr',
+    subTarget: 'planning',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-cours',
+    label: 'Cours collectifs',
+    icon: Activity,
+    iconColor: 'text-rose-500',
+    sectionId: 'planning-hr',
+    subTarget: 'cours-collectifs',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-personnel',
+    label: 'Personnel',
+    icon: Users,
+    iconColor: 'text-blue-500',
+    sectionId: 'my-day',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-finances',
+    label: 'Finances',
+    icon: Euro,
+    iconColor: 'text-amber-500',
+    sectionId: 'devices',
+    subTarget: 'finances',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-maintenance',
+    label: 'Maintenance',
+    icon: Wrench,
+    iconColor: 'text-sky-500',
+    sectionId: 'orchestrator',
+    subTarget: 'maintenance',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-stock',
+    label: 'Stock & Achats',
+    icon: Package,
+    iconColor: 'text-orange-500',
+    sectionId: 'orchestrator',
+    subTarget: 'stocks',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-marketing',
+    label: 'Marketing',
+    icon: Megaphone,
+    iconColor: 'text-pink-500',
+    sectionId: 'telephony',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-documents',
+    label: 'Documents',
+    icon: FileText,
+    iconColor: 'text-emerald-500',
+    sectionId: 'ats',
+    subTarget: 'documents',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-rapports',
+    label: 'Rapports',
+    icon: BarChart3,
+    iconColor: 'text-indigo-500',
+    sectionId: 'academy',
+    subTarget: 'rapports',
+    hasChevron: true,
+  },
+  {
+    id: 'nav-agents-ia',
+    label: 'Agents IA',
+    icon: Sparkles,
+    iconColor: 'text-violet-500',
+    sectionId: 'orchestrator',
+    subTarget: 'agents',
+    hasChevron: true,
+  },
+];
+
+interface NumberedNavItem {
   key: string;
   sectionId?: AdminSection;
+  subTarget?: string;
   shellTarget?: 'employe' | 'telephone' | 'tablette';
+  badgeText: string;
   label: string;
-  shortLabel: string;
-  stepNum?: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-// PREMIER PLAN : Fonctions directement opérationnelles en club (affichées en priorité)
-const PRIMARY_OPERATIONAL_ITEMS: NavEntry[] = [
+const NUMBERED_PLAN_ITEMS: NumberedNavItem[] = [
   {
-    key: 'op-my-day',
-    sectionId: 'my-day',
-    stepNum: '01',
-    label: 'Ma Journée',
-    shortLabel: 'Ma Journée',
-    icon: Sun,
-  },
-  {
-    key: 'op-collaborateur',
+    key: 'borne-mobile',
     shellTarget: 'employe',
-    stepNum: '02',
-    label: 'Le Collaborateur (Grille & App)',
-    shortLabel: 'Le Collaborateur',
+    badgeText: 'APP',
+    label: 'App Mobile & Tablette',
     icon: Smartphone,
   },
   {
-    key: 'op-planning',
-    sectionId: 'planning-hr',
-    stepNum: '03',
-    label: 'L’Espace Planning',
-    shortLabel: 'Espace Planning',
-    icon: Calendar,
-  },
-  {
-    key: 'op-telephony',
-    sectionId: 'telephony',
-    stepNum: '04',
-    label: 'La Téléphonie (12 lignes)',
-    shortLabel: 'La Téléphonie',
-    icon: PhoneCall,
-  },
-  {
-    key: 'op-webrtc',
+    key: 'borne-softphone',
     shellTarget: 'telephone',
-    stepNum: '05',
-    label: 'Le WebRTC (Poste 04/07)',
-    shortLabel: 'Le WebRTC',
+    badgeText: 'VOIP',
+    label: 'Softphone WebRTC',
     icon: Headphones,
   },
   {
-    key: 'op-crm',
-    sectionId: 'crm',
-    stepNum: '06',
-    label: 'Le CRM (Prospects & Club)',
-    shortLabel: 'Le CRM',
-    icon: Users,
-  },
-  {
-    key: 'op-ats',
-    sectionId: 'ats',
-    stepNum: '07',
-    label: 'Les ATS & Signatures (0 €)',
-    shortLabel: 'ATS Signatures',
-    icon: FileSignature,
-  },
-  {
-    key: 'op-devices',
-    sectionId: 'devices',
-    stepNum: '08',
-    label: 'Matériel Heitz & Checkup',
-    shortLabel: 'Heitz & Checkup',
-    icon: QrCode,
-  },
-  {
-    key: 'op-kiosk',
+    key: 'borne-kiosque',
     shellTarget: 'tablette',
-    stepNum: '09',
-    label: 'Tablette Kiosque Badgeuse PIN',
-    shortLabel: 'Kiosque PIN',
+    badgeText: 'PIN',
+    label: 'Borne Tablette Kiosque',
     icon: Tablet,
   },
-];
-
-// DEUXIÈME PLAN : Pilotage & Dossier Dirigeants regroupés, Orchestration IA, Académie & Espace Architecte (PIN 0766)
-const SECONDARY_BACKOFFICE_ITEMS: NavEntry[] = [
   {
-    key: 'sec-dashboard',
-    sectionId: 'dashboard',
-    stepNum: '10',
-    label: 'Pilotage & Dossier Dirigeants',
-    shortLabel: 'Pilotage & Dirigeants',
-    icon: LayoutDashboard,
-  },
-  {
-    key: 'sec-orchestrator',
-    sectionId: 'orchestrator',
-    stepNum: '11',
-    label: 'Orchestration IA (6 Agents) & Maintenance',
-    shortLabel: 'Orchestration IA',
-    icon: BrainCircuit,
-  },
-  {
-    key: 'sec-academy',
+    key: 'module-bpjeps',
     sectionId: 'academy',
-    stepNum: '12',
-    label: 'Académie 3S & Livret BPJEPS',
-    shortLabel: 'Académie',
+    subTarget: 'bpjeps',
+    badgeText: '3S',
+    label: 'Académie & Livret BPJEPS',
     icon: GraduationCap,
   },
-  {
-    key: 'sec-governance',
-    sectionId: 'governance',
-    stepNum: 'PIN',
-    label: 'Mon Espace : Serveur & Config',
-    shortLabel: 'Mon Espace',
-    icon: Lock,
-  },
 ];
-
-const ALL_SECTION_TITLES: Record<AdminSection, { title: string; plan: '1er Plan · Opérations Club' | '2e Plan · Direction & Gouvernance' }> = {
-  'my-day': { title: 'Ma Journée & Activité Collaborateur', plan: '1er Plan · Opérations Club' },
-  'planning-hr': { title: 'L’Espace Planning Centralisé (RH, Mywellness, Heitz) & Paie Silae', plan: '1er Plan · Opérations Club' },
-  telephony: { title: 'La Téléphonie & Supervision WebRTC (OVHcloud 04/07)', plan: '1er Plan · Opérations Club' },
-  crm: { title: 'Le CRM Acquisition & Relances Adhérents', plan: '1er Plan · Opérations Club' },
-  ats: { title: 'Les ATS Recrutement & Signatures Électroniques (0 €)', plan: '1er Plan · Opérations Club' },
-  devices: { title: 'Matériel Club : Portillons Heitz, Caisse TPV & Technogym Checkup', plan: '1er Plan · Opérations Club' },
-  dashboard: { title: 'Pilotage Bi-Club, Dossier Dirigeants & Associés', plan: '2e Plan · Direction & Gouvernance' },
-  'executive-dossier': { title: 'Pilotage Bi-Club, Dossier Dirigeants & Associés', plan: '2e Plan · Direction & Gouvernance' },
-  orchestrator: { title: 'Orchestration IA (6 Agents Métier) & Maintenance', plan: '2e Plan · Direction & Gouvernance' },
-  academy: { title: 'Académie 3S & Livret BPJEPS', plan: '2e Plan · Direction & Gouvernance' },
-  governance: { title: 'Mon Espace Personnel : Matériel Serveur, Config Club & Mises à Jour', plan: '2e Plan · Direction & Gouvernance' },
-};
 
 export function AdminShell() {
   const {
@@ -183,6 +218,7 @@ export function AdminShell() {
     setClubFilter,
     currentUser,
     activeSection,
+    navSubTarget,
     setActiveSection,
     isArchitectUnlocked,
     lockArchitectSpace,
@@ -192,172 +228,332 @@ export function AdminShell() {
     serverPowerStatus,
     activeFailoverNodeId,
     backupReplicas,
-    lastBackupChecksum,
     simulateServerPowerOutage,
     exportDeviceBackupJson,
+    themeMode,
+    toggleThemeMode,
+    heitzMembers,
+    prospects,
   } = useCfos();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [clubsExpanded, setClubsExpanded] = useState(true);
+  const [numberedPlanExpanded, setNumberedPlanExpanded] = useState(false);
+  const [selectedNavId, setSelectedNavId] = useState<string>('nav-dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedDateLabel, setSelectedDateLabel] = useState('Lundi 14 avril 2025');
+  const [notifPopoverOpen, setNotifPopoverOpen] = useState(false);
 
-  const isSecondarySectionActive = ['dashboard', 'orchestrator', 'academy', 'executive-dossier', 'governance'].includes(
-    activeSection
-  );
-  // Toujours ouvert par défaut pour que le 2e Plan et l'onglet personnel soient immédiatement visibles
-  const [secondaryPlanExpanded, setSecondaryPlanExpanded] = useState<boolean>(true);
+  React.useEffect(() => {
+    if (activeSection === 'dashboard') {
+      setSelectedNavId('nav-dashboard');
+    } else if (activeSection === 'devices') {
+      setSelectedNavId(navSubTarget === 'finances' ? 'nav-finances' : 'nav-adherents');
+    } else if (activeSection === 'crm') {
+      setSelectedNavId('nav-crm');
+    } else if (activeSection === 'planning-hr') {
+      setSelectedNavId(navSubTarget === 'cours-collectifs' ? 'nav-cours' : 'nav-planning');
+    } else if (activeSection === 'my-day') {
+      setSelectedNavId('nav-personnel');
+    } else if (activeSection === 'orchestrator') {
+      if (navSubTarget === 'stocks') setSelectedNavId('nav-stock');
+      else if (navSubTarget === 'maintenance') setSelectedNavId('nav-maintenance');
+      else setSelectedNavId('nav-agents-ia');
+    } else if (activeSection === 'telephony') {
+      setSelectedNavId('nav-marketing');
+    } else if (activeSection === 'ats') {
+      setSelectedNavId('nav-documents');
+    } else if (activeSection === 'academy') {
+      setSelectedNavId(navSubTarget === 'bpjeps' ? 'module-bpjeps' : 'nav-rapports');
+    } else if (activeSection === 'governance') {
+      setSelectedNavId('nav-governance');
+    }
+  }, [activeSection, navSubTarget]);
 
-  const showSecondaryMenu = secondaryPlanExpanded || isSecondarySectionActive;
-
+  const isDark = themeMode === 'dark';
   const isOutage = serverPowerStatus === 'coupure_courant_bascule_active';
   const activeFailoverDevice =
     backupReplicas.find((r) => r.id === activeFailoverNodeId) ?? backupReplicas[0];
 
-  const filterAllowed = (items: NavEntry[]) =>
-    items.filter((item) => {
-      if (item.sectionId === 'governance') return true;
-      return item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true;
-    });
-
-  const visiblePrimaryItems = filterAllowed(PRIMARY_OPERATIONAL_ITEMS);
-  const visibleSecondaryItems = filterAllowed(SECONDARY_BACKOFFICE_ITEMS);
-
-  const handleNavClick = (item: NavEntry) => {
+  const handleVisualItemClick = (item: VisualNavItem) => {
+    setSelectedNavId(item.id);
     if (item.shellTarget) {
       setShellMode(item.shellTarget);
       return;
     }
-    if (item.sectionId === 'governance' && activeSection === 'governance' && isArchitectUnlocked) {
-      lockArchitectSpace();
-      return;
-    }
     if (item.sectionId) {
-      setActiveSection(item.sectionId);
+      setActiveSection(item.sectionId, item.subTarget);
     }
   };
 
-  const currentHeaderMeta = ALL_SECTION_TITLES[activeSection];
+  const handleNumberedItemClick = (item: NumberedNavItem) => {
+    setSelectedNavId(item.key);
+    if (item.shellTarget) {
+      setShellMode(item.shellTarget);
+      return;
+    }
+    if (item.sectionId) {
+      setActiveSection(item.sectionId, item.subTarget);
+    }
+  };
+
+  const handleGovernanceClick = () => {
+    setSelectedNavId('nav-governance');
+    if (activeSection === 'governance' && isArchitectUnlocked) {
+      lockArchitectSpace();
+      return;
+    }
+    setActiveSection('governance');
+  };
+
+  // Search results for global search bar
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matchingMembers = normalizedQuery
+    ? heitzMembers
+        .filter((m) =>
+          `${m.firstName} ${m.lastName} ${m.badgeCode}`.toLowerCase().includes(normalizedQuery)
+        )
+        .slice(0, 3)
+    : [];
+  const matchingProspects = normalizedQuery
+    ? prospects
+        .filter((p) =>
+          `${p.firstName} ${p.lastName} ${p.phone}`.toLowerCase().includes(normalizedQuery)
+        )
+        .slice(0, 3)
+    : [];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col lg:flex-row overflow-x-hidden">
-      {/* Desktop Left Sidebar */}
-      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-white border-r border-slate-800 z-40">
-        {/* Brand Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center font-black text-sm tracking-tighter text-white shrink-0">
-              CF
+    <div
+      className={`min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-200 ${
+        isDark ? 'bg-[#0B0E17] text-slate-100' : 'bg-[#F6F7FB] text-slate-900'
+      }`}
+    >
+      {/* =====================================================================
+          DESKTOP LEFT SIDEBAR (Matches C.Fitness OS Reference Design)
+         ===================================================================== */}
+      <aside
+        className={`hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 z-40 border-r transition-colors duration-200 ${
+          isDark
+            ? 'bg-[#111522] border-slate-800/80 text-slate-200'
+            : 'bg-white border-slate-200/80 text-slate-700'
+        }`}
+      >
+        {/* Brand Header: C.Fitness OS — Deux clubs, une vision */}
+        <div className="px-5 py-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 via-purple-600 to-blue-500 flex items-center justify-center shadow-sm shrink-0">
+            <span className="font-black text-xl text-white tracking-tighter">C</span>
+          </div>
+          <div className="min-w-0">
+            <div
+              className={`font-extrabold text-base leading-tight truncate ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}
+            >
+              C.Fitness OS
             </div>
-            <div className="min-w-0">
-              <div className="font-bold text-sm leading-tight truncate">C.Fitness OS</div>
-              <div className="text-[11px] text-slate-400 truncate">Carré de Soie · Beynost</div>
-            </div>
+            <div className="text-[11px] text-slate-400 truncate">Deux clubs, une vision</div>
           </div>
         </div>
 
-        {/* Navigation Links Split into 1er Plan (Prioritaire) & 2e Plan (Secondaire) */}
-        <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
-          {/* 1ER PLAN : OPÉRATIONS CLUB AU QUOTIDIEN */}
-          <div className="space-y-1">
-            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center justify-between">
-              <span>1er Plan · Opérations Club</span>
-              <span className="text-slate-500 font-mono">Priorité</span>
-            </div>
+        {/* Navigation Links */}
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+          {/* Primary Active Item: Tableau de bord */}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedNavId('nav-dashboard');
+              setActiveSection('dashboard');
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition-all cursor-pointer ${
+              activeSection === 'dashboard' && selectedNavId === 'nav-dashboard'
+                ? isDark
+                  ? 'bg-violet-600/25 text-violet-300 border border-violet-500/30 shadow-2xs'
+                  : 'bg-violet-50 text-violet-600 shadow-2xs'
+                : isDark
+                ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Home
+              className={`w-4 h-4 shrink-0 ${
+                activeSection === 'dashboard' ? 'text-violet-500' : 'text-violet-400'
+              }`}
+            />
+            <span>Tableau de bord</span>
+          </button>
 
-            {visiblePrimaryItems.map((item) => {
-              const Icon = item.icon;
-              const active = item.sectionId ? activeSection === item.sectionId : false;
-              return (
+          {/* Expandable Clubs Group: C.Fitness Center & C.Fitness Place */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setClubsExpanded((prev) => !prev)}
+              className={`w-full px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                isDark
+                  ? 'text-slate-300 hover:bg-slate-800/60'
+                  : 'text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Building2 className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>Clubs</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                  clubsExpanded ? '' : '-rotate-90'
+                }`}
+              />
+            </button>
+
+            {clubsExpanded && (
+              <div className="mt-1 ml-4 pl-3 border-l border-slate-200 dark:border-slate-800 space-y-1">
                 <button
-                  key={item.key}
-                  onClick={() => handleNavClick(item)}
-                  className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                    active
-                      ? 'bg-orange-600 text-white shadow-2xs'
-                      : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                  type="button"
+                  onClick={() => {
+                    setClubFilter(clubFilter === 'carre-de-soie' ? 'all' : 'carre-de-soie');
+                    setActiveSection('dashboard');
+                  }}
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                    clubFilter === 'carre-de-soie'
+                      ? isDark
+                        ? 'bg-violet-500/20 text-violet-300 font-semibold'
+                        : 'bg-violet-50 text-violet-700 font-semibold'
+                      : isDark
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Icon
-                      className={`w-4 h-4 shrink-0 ${
-                        active ? 'text-white' : 'text-orange-400'
-                      }`}
-                    />
+                  <div className="flex items-center gap-2 truncate">
+                    <MapPin className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                    <span className="truncate">C.Fitness Center</span>
+                  </div>
+                  <span className="text-[10px] opacity-70">CDS</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClubFilter(clubFilter === 'beynost' ? 'all' : 'beynost');
+                    setActiveSection('dashboard');
+                  }}
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                    clubFilter === 'beynost'
+                      ? isDark
+                        ? 'bg-blue-500/20 text-blue-300 font-semibold'
+                        : 'bg-blue-50 text-blue-700 font-semibold'
+                      : isDark
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <span className="truncate">C.Fitness Place</span>
+                  </div>
+                  <span className="text-[10px] opacity-70">BEY</span>
+                </button>
+
+                {clubFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setClubFilter('all')}
+                    className="w-full px-2.5 py-1 text-[11px] text-violet-500 hover:underline text-left cursor-pointer"
+                  >
+                    Afficher les 2 clubs
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* All Visual Navigation Items from Reference Mockup */}
+          <div className="space-y-0.5 pt-1">
+            {VISUAL_SIDEBAR_ITEMS.filter((item) =>
+              item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true
+            ).map((item) => {
+              const Icon = item.icon;
+              const isSelected =
+                selectedNavId === item.id &&
+                (item.sectionId ? activeSection === item.sectionId : false);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleVisualItemClick(item)}
+                  className={`w-full px-3.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    isSelected
+                      ? isDark
+                        ? 'bg-violet-600/25 text-violet-300 font-semibold'
+                        : 'bg-violet-50 text-violet-600 font-semibold'
+                      : isDark
+                      ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 ${item.iconColor}`} />
                     <span className="truncate">{item.label}</span>
                   </div>
-                  {item.stepNum && (
-                    <span
-                      className={`font-mono text-[10px] shrink-0 ${
-                        active ? 'text-orange-100' : 'text-slate-500'
-                      }`}
-                    >
-                      {item.stepNum}
-                    </span>
+                  {item.hasChevron && (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400/70 shrink-0" />
                   )}
                 </button>
               );
             })}
           </div>
 
-          {/* 2E PLAN : PILOTAGE, ORCHESTRATION IA, ACADÉMIE & MON ESPACE (PIN 0766) */}
-          <div className="pt-2.5 border-t border-slate-800/90 space-y-1">
+          {/* Non-redundant Terminals & Kiosks Accordion */}
+          <div
+            className={`pt-2 mt-2 border-t ${
+              isDark ? 'border-slate-800/80' : 'border-slate-200/80'
+            }`}
+          >
             <button
               type="button"
-              onClick={() => setSecondaryPlanExpanded((prev) => !prev)}
-              className="w-full px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-between cursor-pointer transition-colors"
+              onClick={() => setNumberedPlanExpanded((prev) => !prev)}
+              className={`w-full px-3.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer ${
+                isDark
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
             >
-              <span>2e Plan · Direction &amp; Mon Espace</span>
-              {showSecondaryMenu ? (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              )}
+              <span>Bornes &amp; Terminaux ({NUMBERED_PLAN_ITEMS.length})</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  numberedPlanExpanded ? '' : '-rotate-90'
+                }`}
+              />
             </button>
 
-            {showSecondaryMenu && (
-              <div className="space-y-1 pt-1">
-                {visibleSecondaryItems.map((item) => {
+            {numberedPlanExpanded && (
+              <div className="mt-1 space-y-0.5">
+                {NUMBERED_PLAN_ITEMS.map((item) => {
                   const Icon = item.icon;
-                  const active = item.sectionId ? activeSection === item.sectionId : false;
-                  const isArchitectPinTab = item.sectionId === 'governance';
+                  const active =
+                    selectedNavId === item.key &&
+                    (item.sectionId ? activeSection === item.sectionId : false);
                   return (
                     <button
                       key={item.key}
-                      onClick={() => handleNavClick(item)}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      type="button"
+                      onClick={() => handleNumberedItemClick(item)}
+                      className={`w-full px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center justify-between gap-2 cursor-pointer ${
                         active
-                          ? 'bg-orange-600 text-white shadow-2xs'
-                          : isArchitectPinTab
-                          ? 'bg-orange-500/15 text-orange-300 border border-orange-500/40 hover:bg-orange-500/25 hover:text-white'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          ? isDark
+                            ? 'bg-violet-500/20 text-violet-300 font-semibold'
+                            : 'bg-violet-50 text-violet-700 font-semibold'
+                          : isDark
+                          ? 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon
-                          className={`w-4 h-4 shrink-0 ${
-                            active
-                              ? 'text-white'
-                              : isArchitectPinTab
-                              ? 'text-orange-400'
-                              : 'text-slate-400'
-                          }`}
-                        />
+                      <div className="flex items-center gap-2 truncate">
+                        <Icon className="w-3.5 h-3.5 text-violet-500 shrink-0" />
                         <span className="truncate">{item.label}</span>
                       </div>
-                      {item.stepNum && (
-                        <span
-                          className={`font-mono text-[10px] shrink-0 px-1.5 py-0.5 rounded ${
-                            isArchitectPinTab && isArchitectUnlocked
-                              ? 'bg-rose-600 text-white font-bold'
-                              : active
-                              ? 'bg-orange-700 text-white'
-                              : isArchitectPinTab
-                              ? 'bg-orange-500/30 text-orange-200 font-bold'
-                              : 'text-slate-500'
-                          }`}
-                        >
-                          {isArchitectPinTab && isArchitectUnlocked ? 'VERROUILLER' : item.stepNum}
-                        </span>
-                      )}
+                      <span className="font-mono text-[10px] opacity-60">{item.badgeText}</span>
                     </button>
                   );
                 })}
@@ -366,97 +562,354 @@ export function AdminShell() {
           </div>
         </nav>
 
-        {/* User Footer */}
-        <div className="p-3 border-t border-slate-800 space-y-2">
+        {/* Bottom Settings / Mon Espace (PIN 0766) & Session Controls */}
+        <div
+          className={`p-3 border-t space-y-2 ${
+            isDark ? 'border-slate-800/80' : 'border-slate-200/80'
+          }`}
+        >
           <button
-            onClick={() => setAuthModalOpen(true)}
-            className="w-full p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-left text-xs flex items-center justify-between cursor-pointer"
+            type="button"
+            onClick={handleGovernanceClick}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+              activeSection === 'governance'
+                ? 'bg-violet-600 text-white shadow-2xs'
+                : isDark
+                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
           >
-            <div className="truncate pr-2">
-              <div className="font-bold text-white truncate">
-                {currentUser.firstName} {currentUser.lastName}
-              </div>
-              <div className="text-[11px] text-orange-400 font-mono">
-                Rôle : {currentUser.role}
-              </div>
+            <div className="flex items-center gap-3 min-w-0">
+              <Settings className="w-4 h-4 shrink-0 text-slate-400" />
+              <span className="truncate">Paramètres · Mon Espace</span>
             </div>
-            <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                isArchitectUnlocked
+                  ? 'bg-rose-600 text-white font-bold'
+                  : isDark
+                  ? 'bg-slate-800 text-slate-400'
+                  : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              {isArchitectUnlocked ? 'VERROUILLER' : 'PIN'}
+            </span>
           </button>
+
           <div className="grid grid-cols-2 gap-1.5">
             <button
+              type="button"
               onClick={logoutSession}
-              className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-[11px] text-rose-300 font-semibold flex items-center justify-center gap-1 cursor-pointer"
+              className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer ${
+                isDark
+                  ? 'bg-slate-800/80 hover:bg-rose-950/60 text-rose-300'
+                  : 'bg-slate-100 hover:bg-rose-50 text-rose-600'
+              }`}
             >
               <LogOut className="w-3 h-3" />
-              Verrouiller
+              <span>Quitter</span>
             </button>
             <button
+              type="button"
               onClick={resetDemoData}
-              className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center justify-center gap-1 cursor-pointer"
+              className={`py-1.5 px-2 rounded-lg text-[11px] flex items-center justify-center gap-1 cursor-pointer ${
+                isDark
+                  ? 'bg-slate-800/80 hover:bg-slate-800 text-slate-300'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              }`}
             >
               <RotateCcw className="w-3 h-3" />
-              Reset démo
+              <span>Reset démo</span>
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Workspace Container (min-w-0 prevents wide tables from overflowing flex container) */}
-      <div className="flex-1 min-w-0 lg:pl-72 flex flex-col min-h-screen">
-        {/* Single Top Sticky Header (No duplicate horizontal nav bar) */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+      {/* =====================================================================
+          MAIN WORKSPACE CONTAINER
+         ===================================================================== */}
+      <div className="flex-1 min-w-0 lg:pl-64 flex flex-col min-h-screen">
+        {/* Top Sticky Header (Matches C.Fitness OS Reference Mockup) */}
+        <header
+          className={`sticky top-0 z-30 border-b backdrop-blur transition-colors duration-200 ${
+            isDark
+              ? 'bg-[#111522]/95 border-slate-800/80'
+              : 'bg-white/95 border-slate-200/80'
+          }`}
+        >
           <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            {/* Left: Mobile Menu Button + Wide Global Search Bar */}
+            <div className="flex items-center gap-3 flex-1 max-w-md xl:max-w-lg">
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Ouvrir le menu de navigation"
-                className="lg:hidden min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
+                className={`lg:hidden min-h-[40px] min-w-[40px] rounded-xl border flex items-center justify-center cursor-pointer shrink-0 ${
+                  isDark
+                    ? 'border-slate-700 text-slate-200 hover:bg-slate-800'
+                    : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-[11px] text-slate-500">
+
+              {/* Global Search Input */}
+              <div className="relative flex-1 min-w-[220px]">
+                <div
+                  className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-xs transition-colors ${
+                    isDark
+                      ? 'bg-[#1A2033] border-slate-700/80 text-slate-200 focus-within:border-violet-500'
+                      : 'bg-slate-100/80 border-slate-200/80 text-slate-700 focus-within:border-violet-500 focus-within:bg-white'
+                  }`}
+                >
+                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setTimeout(() => setSearchFocused(false), 180)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Rechercher un adhérent, un cours, un document..."
+                    className="w-full bg-transparent outline-hidden text-xs placeholder:text-slate-400"
+                  />
                   <span
-                    className={`font-semibold ${
-                      isSecondarySectionActive ? 'text-slate-600' : 'text-orange-600'
+                    className={`hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0 ${
+                      isDark
+                        ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                        : 'bg-white text-slate-400 border border-slate-200'
                     }`}
                   >
-                    {currentHeaderMeta.plan}
+                    ⌘ K
                   </span>
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  {currentHeaderMeta.title}
-                </div>
+
+                {/* Instant Search Results Dropdown */}
+                {searchFocused && normalizedQuery.length > 0 && (
+                  <div
+                    className={`absolute left-0 right-0 mt-1.5 rounded-2xl border shadow-xl p-3 z-50 space-y-2 text-xs ${
+                      isDark
+                        ? 'bg-[#161B2B] border-slate-700 text-slate-200'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Résultats de recherche rapide
+                    </div>
+                    {matchingMembers.length === 0 && matchingProspects.length === 0 ? (
+                      <div className="text-slate-400 py-2">
+                        Aucun adhérent ou prospect trouvé pour « {searchQuery} ».
+                      </div>
+                    ) : (
+                      <>
+                        {matchingMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveSection('devices');
+                              setSearchQuery('');
+                            }}
+                            className={`w-full p-2 rounded-xl flex items-center justify-between text-left cursor-pointer ${
+                              isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'
+                            }`}
+                          >
+                            <div>
+                              <span className="font-bold">
+                                {m.firstName} {m.lastName}
+                              </span>{' '}
+                              <span className="text-slate-400">· Adhérent #{m.badgeCode}</span>
+                            </div>
+                            <span className="text-violet-500 font-semibold">Ouvrir Heitz →</span>
+                          </button>
+                        ))}
+                        {matchingProspects.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveSection('crm');
+                              setSearchQuery('');
+                            }}
+                            className={`w-full p-2 rounded-xl flex items-center justify-between text-left cursor-pointer ${
+                              isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'
+                            }`}
+                          >
+                            <div>
+                              <span className="font-bold">
+                                {p.firstName} {p.lastName}
+                              </span>{' '}
+                              <span className="text-slate-400">· Prospect ({p.stage})</span>
+                            </div>
+                            <span className="text-emerald-500 font-semibold">Ouvrir CRM →</span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Right Global Controls: Single Club Filter + Direct PIN Space Button + Mywellness Quick Connect + Profile */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Global Club Scope Selector (Single place for the whole app) */}
-              <div className="hidden xl:flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
-                {(
-                  [
-                    { id: 'all', label: 'Tous les clubs (2)' },
-                    { id: 'carre-de-soie', label: 'Carré de Soie' },
-                    { id: 'beynost', label: 'Beynost' },
-                  ] as const
-                ).map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setClubFilter(c.id)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                      clubFilter === c.id
-                        ? 'bg-slate-900 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+            {/* Right Controls: Date Selector, Light/Dark Toggle, Mobile App Preview, Bell, Chat, User Profile */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              {/* Date Picker Selector (Lundi 14 avril 2025) */}
+              <div className="hidden xl:flex items-center">
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium ${
+                    isDark
+                      ? 'bg-[#1A2033] border-slate-700/80 text-slate-200'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <select
+                    aria-label="Sélectionner la date"
+                    value={selectedDateLabel}
+                    onChange={(e) => setSelectedDateLabel(e.target.value)}
+                    className="bg-transparent outline-hidden cursor-pointer text-xs font-medium"
                   >
-                    {c.label}
-                  </button>
-                ))}
+                    <option value="Lundi 14 avril 2025" className="text-slate-900">
+                      Lundi 14 avril 2025
+                    </option>
+                    <option value="Mardi 15 avril 2025" className="text-slate-900">
+                      Mardi 15 avril 2025
+                    </option>
+                    <option value="Aujourd'hui · Temps réel" className="text-slate-900">
+                      Aujourd&apos;hui · Temps réel
+                    </option>
+                  </select>
+                </div>
               </div>
 
-              {activeSection === 'governance' && isArchitectUnlocked ? (
+              {/* Night Mode & Display Color Switcher (PC, Tablette & Téléphone) */}
+              <ThemeColorControl variant="full" />
+
+              {/* Quick Mobile / Tablet App Preview Button (Image 2) */}
+              <button
+                type="button"
+                onClick={() => setShellMode('employe')}
+                title="Ouvrir la vue Mobile & Tablette (Accueil & Planning)"
+                className={`hidden sm:flex min-h-[38px] px-3 py-1.5 rounded-xl border text-xs font-semibold items-center gap-1.5 cursor-pointer transition-colors ${
+                  isDark
+                    ? 'bg-[#1A2033] border-slate-700 text-slate-200 hover:bg-slate-800'
+                    : 'bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5 text-violet-500" />
+                <span className="hidden lg:inline">Vue Mobile &amp; Tablette</span>
+              </button>
+
+              {/* Notifications Bell with Badge 3 */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotifPopoverOpen((prev) => !prev)}
+                  aria-label="Notifications (3)"
+                  className={`relative w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
+                    isDark
+                      ? 'bg-[#1A2033] border-slate-700 text-slate-300 hover:bg-slate-800'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    3
+                  </span>
+                </button>
+
+                {notifPopoverOpen && (
+                  <div
+                    className={`absolute right-0 mt-2 w-80 rounded-2xl border shadow-xl p-3.5 z-50 space-y-2.5 text-xs ${
+                      isDark
+                        ? 'bg-[#161B2B] border-slate-700 text-slate-200'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold">
+                      <span>Actions importantes (3)</span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifPopoverOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        Fermer
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSection('devices', 'finances');
+                        setNotifPopoverOpen(false);
+                      }}
+                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between cursor-pointer ${
+                        isDark ? 'bg-rose-950/40 hover:bg-rose-950/60' : 'bg-rose-50 hover:bg-rose-100'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-rose-500">5 impayés à relancer</div>
+                        <div className="text-[11px] opacity-80">Représentent 1 250 €</div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-rose-400" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSection('ats', 'documents');
+                        setNotifPopoverOpen(false);
+                      }}
+                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between cursor-pointer ${
+                        isDark
+                          ? 'bg-amber-950/40 hover:bg-amber-950/60'
+                          : 'bg-amber-50 hover:bg-amber-100'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-amber-500">2 contrats en attente</div>
+                        <div className="text-[11px] opacity-80">À valider cette semaine</div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-amber-400" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSection('orchestrator', 'maintenance');
+                        setNotifPopoverOpen(false);
+                      }}
+                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between cursor-pointer ${
+                        isDark
+                          ? 'bg-emerald-950/40 hover:bg-emerald-950/60'
+                          : 'bg-emerald-50 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-emerald-500">Maintenance prévue</div>
+                        <div className="text-[11px] opacity-80">CTA Beynost – 15 avril</div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-emerald-400" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat / Softphone WebRTC Button */}
+              <button
+                type="button"
+                onClick={() => setShellMode('telephone')}
+                title="Ouvrir le Softphone WebRTC & Messagerie SMS 07"
+                aria-label="Ouvrir la messagerie et le softphone"
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
+                  isDark
+                    ? 'bg-[#1A2033] border-slate-700 text-slate-300 hover:bg-slate-800'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
+
+              <MywellnessQuickConnect variant="header" />
+
+              {/* Lock button when Architect Space is unlocked */}
+              {activeSection === 'governance' && isArchitectUnlocked && (
                 <button
                   type="button"
                   onClick={() => lockArchitectSpace()}
@@ -465,31 +918,34 @@ export function AdminShell() {
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   <span>Verrouiller Mon Espace</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setActiveSection('governance')}
-                  className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
-                    activeSection === 'governance'
-                      ? 'bg-orange-600 text-white shadow-2xs'
-                      : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
-                  }`}
-                >
-                  <Lock className="w-3.5 h-3.5 shrink-0" />
-                  <span>Mon Espace Config</span>
-                </button>
               )}
 
-              <MywellnessQuickConnect variant="header" />
-
+              {/* User Profile Pill (Thomas CLAUDE / Active User) */}
               <button
+                type="button"
                 onClick={() => setAuthModalOpen(true)}
-                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                className={`pl-2 pr-3 py-1.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-colors ${
+                  isDark
+                    ? 'bg-[#1A2033] border-slate-700 hover:bg-slate-800 text-white'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900'
+                }`}
               >
-                <UserCheck className="w-3.5 h-3.5 text-orange-400" />
-                <span className="hidden sm:inline">
-                  {currentUser.firstName} {currentUser.lastName}
-                </span>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                  {currentUser.id === 'emp-mario'
+                    ? 'TC'
+                    : `${currentUser.firstName[0]}${currentUser.lastName[0]}`}
+                </div>
+                <div className="hidden sm:block text-left leading-tight">
+                  <div className="text-xs font-bold">
+                    {currentUser.id === 'emp-mario'
+                      ? 'Thomas CLAUDE'
+                      : `${currentUser.firstName} ${currentUser.lastName}`}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {currentUser.id === 'emp-mario' ? 'Directeur Général' : currentUser.jobTitle}
+                  </div>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
               </button>
             </div>
           </div>
@@ -524,7 +980,7 @@ export function AdminShell() {
         )}
 
         {/* Active View Content */}
-        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 max-w-[1440px] w-full mx-auto">
           {activeSection === 'my-day' && <MyDayCollaboratorView />}
           {activeSection === 'planning-hr' && <PlanningHrView />}
           {activeSection === 'telephony' && <TelephonyView />}
@@ -547,106 +1003,187 @@ export function AdminShell() {
             className="fixed inset-0 bg-slate-900/60"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-slate-900 text-white h-full flex flex-col justify-between p-4 z-10 overflow-y-auto">
+          <div
+            className={`relative w-72 max-w-[85vw] h-full flex flex-col justify-between p-4 z-10 overflow-y-auto ${
+              isDark ? 'bg-[#111522] text-white' : 'bg-white text-slate-900'
+            }`}
+          >
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-black text-xs">
-                    CF
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-blue-500 flex items-center justify-center font-black text-sm text-white">
+                    C
                   </div>
-                  <span className="font-bold text-sm">C.Fitness OS</span>
+                  <div>
+                    <div className="font-bold text-sm">C.Fitness OS</div>
+                    <div className="text-[10px] text-slate-400">Deux clubs, une vision</div>
+                  </div>
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
                   aria-label="Fermer le menu"
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Club Filter inside Drawer */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold uppercase text-slate-400 px-2">
-                  Périmètre Club
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {(
-                    [
-                      { id: 'all', label: 'Tous' },
-                      { id: 'carre-de-soie', label: 'CDS' },
-                      { id: 'beynost', label: 'BEY' },
-                    ] as const
-                  ).map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setClubFilter(c.id)}
-                      className={`py-2 rounded-lg text-xs font-bold ${
-                        clubFilter === c.id
-                          ? 'bg-orange-600 text-white'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+              {/* Theme & Display Color Control inside Mobile/Tablet Drawer */}
+              <ThemeColorControl variant="inline" />
+
+              {/* Clubs Filter inside Mobile/Tablet Drawer */}
+              <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClubFilter('all');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border cursor-pointer ${
+                    clubFilter === 'all'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : isDark
+                      ? 'bg-slate-900 border-slate-800 text-slate-300'
+                      : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  2 Clubs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClubFilter('carre-de-soie');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border cursor-pointer ${
+                    clubFilter === 'carre-de-soie'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : isDark
+                      ? 'bg-slate-900 border-slate-800 text-slate-300'
+                      : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  Center
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClubFilter('beynost');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg border cursor-pointer ${
+                    clubFilter === 'beynost'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : isDark
+                      ? 'bg-slate-900 border-slate-800 text-slate-300'
+                      : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  Place
+                </button>
               </div>
 
-              {/* 1er Plan Mobile */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedNavId('nav-dashboard');
+                  setActiveSection('dashboard');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 bg-violet-600 text-white cursor-pointer"
+              >
+                <Home className="w-4 h-4" />
+                <span>Tableau de bord</span>
+              </button>
+
               <div className="space-y-1">
-                <div className="text-[10px] font-bold uppercase text-orange-400 px-2">
-                  1er Plan · Opérations Club
-                </div>
-                {visiblePrimaryItems.map((item) => {
+                {VISUAL_SIDEBAR_ITEMS.filter((item) =>
+                  item.sectionId ? isSectionAllowedForRole(item.sectionId, currentUser.role) : true
+                ).map((item) => {
                   const Icon = item.icon;
-                  const active = item.sectionId ? activeSection === item.sectionId : false;
                   return (
                     <button
-                      key={item.key}
+                      key={item.id}
                       onClick={() => {
-                        handleNavClick(item);
+                        handleVisualItemClick(item);
                         setMobileMenuOpen(false);
                       }}
-                      className={`w-full min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 ${
-                        active
-                          ? 'bg-orange-600 text-white'
-                          : 'text-slate-200 hover:bg-slate-800'
-                      }`}
+                      className="w-full px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
-                      <Icon className="w-4 h-4 shrink-0" />
+                      <Icon className={`w-4 h-4 shrink-0 ${item.iconColor}`} />
                       <span>{item.label}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* 2e Plan Mobile */}
-              <div className="pt-3 border-t border-slate-800 space-y-1">
-                <div className="text-[10px] font-bold uppercase text-slate-400 px-2">
-                  2e Plan · Pilotage, IA &amp; Gouvernance
+              {/* Bornes & Terminaux in Mobile/Tablet Drawer */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Bornes &amp; Terminaux ({NUMBERED_PLAN_ITEMS.length})
                 </div>
-                {visibleSecondaryItems.map((item) => {
+                {NUMBERED_PLAN_ITEMS.map((item) => {
                   const Icon = item.icon;
-                  const active = item.sectionId ? activeSection === item.sectionId : false;
                   return (
                     <button
                       key={item.key}
+                      type="button"
                       onClick={() => {
-                        handleNavClick(item);
+                        handleNumberedItemClick(item);
                         setMobileMenuOpen(false);
                       }}
-                      className={`w-full min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-3 ${
-                        active
-                          ? 'bg-slate-800 text-orange-400 font-semibold'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                      }`}
+                      className="w-full px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span>{item.label}</span>
+                      <span className="flex items-center gap-2.5 truncate">
+                        <Icon className="w-4 h-4 text-violet-500 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </span>
+                      <span className="text-[10px] font-mono opacity-60">{item.badgeText}</span>
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleGovernanceClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between bg-slate-100 dark:bg-slate-800 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-violet-500" />
+                    Paramètres · Mon Espace
+                  </span>
+                  <span className="text-[10px] font-mono">PIN</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      logoutSession();
+                    }}
+                    className="py-2 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-rose-500/15 text-rose-500 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Quitter</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      resetDemoData();
+                    }}
+                    className="py-2 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-slate-100 dark:bg-slate-800 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset démo</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -23,7 +23,7 @@ function DeviceIcon({ type }: { type: BackupDeviceType }) {
   if (type === 'tablette_kiosque') {
     return <Tablet className="w-4 h-4 text-emerald-600 shrink-0" />;
   }
-  return <Smartphone className="w-4 h-4 text-orange-600 shrink-0" />;
+  return <Smartphone className="w-4 h-4 text-violet-600 shrink-0" />;
 }
 
 function formatDeviceBadge(type: BackupDeviceType): string {
@@ -79,12 +79,12 @@ export function BackupFailoverPanel() {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-5">
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-5 shadow-2xs">
       {/* Top Banner & Emergency Outage Simulator */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-600">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-600">
               Continuité d&apos;Activité Hors-Serveur (PRA / PCA Multi-Appareils)
             </span>
             <span
@@ -100,7 +100,7 @@ export function BackupFailoverPanel() {
             </span>
           </div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-5 h-5 text-orange-600 shrink-0" />
+            <Database className="w-5 h-5 text-violet-600 shrink-0" />
             Sauvegarde Automatique Multi-Appareils (PC, Tablette, Téléphone) &amp; Relais Coupure de Courant
           </h2>
           <p className="text-xs text-slate-600">
@@ -119,9 +119,9 @@ export function BackupFailoverPanel() {
 
           <button
             onClick={() => exportDeviceBackupJson()}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
-            <HardDriveDownload className="w-3.5 h-3.5 text-orange-400" />
+            <HardDriveDownload className="w-3.5 h-3.5 text-white" />
             Sauvegarder sur cet appareil (.json)
           </button>
 
@@ -169,7 +169,7 @@ export function BackupFailoverPanel() {
               {lastAutoBackupAt.slice(0, 19).replace('T', ' ')}
             </span>{' '}
             · Empreinte d&apos;intégrité :{' '}
-            <span className="font-mono font-semibold text-orange-700">{lastBackupChecksum}</span> ·{' '}
+            <span className="font-mono font-semibold text-violet-600">{lastBackupChecksum}</span> ·{' '}
             <span className="font-semibold">
               {heitzMembers.length} adhérents Heitz, {employees.length} salariés (PIN),{' '}
               {prospects.length} prospects, {shifts.length} shifts
@@ -181,6 +181,7 @@ export function BackupFailoverPanel() {
             )}
           </div>
         </div>
+
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <select

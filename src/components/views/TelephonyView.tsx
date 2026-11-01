@@ -25,6 +25,7 @@ import {
   Voicemail,
   Users,
   Send,
+  PhoneCall,
 } from 'lucide-react';
 import { CallLog, PhoneLine } from '../../types/cfos';
 import { formatClubName, resolveTelecomOutboundRoute } from '../../domain/rules';
@@ -304,27 +305,30 @@ export function TelephonyView() {
   return (
     <div className="space-y-4">
       {/* ===================================================================== */}
-      {/* AUTHENTIC RINGOVER APPLICATION SHELL (#141B2D Dark + #00BFA5 Teal)    */}
+      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — TÉLÉPHONIE WEBRTC 04/07 & SMS           */}
       {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-300 shadow-xs bg-white">
-        {/* Ringover Top Header Bar */}
-        <div className="bg-[#141B2D] text-white px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10">
-          {/* Ringover Brand Identity */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#00BFA5] text-slate-950 font-black text-base flex items-center justify-center shadow-xs">
-              R
+      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs bg-white">
+        {/* C.Fitness OS Top Header Bar */}
+        <div className="bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80">
+          {/* Brand Identity */}
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white font-black text-base flex items-center justify-center shadow-xs shrink-0">
+              <PhoneCall className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-white">
-                  ringover
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
+                  04 · La Téléphonie &amp; Campagnes SMS
                 </span>
-                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#00BFA5]/20 text-[#00D2B8] border border-[#00BFA5]/40">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
                   WebRTC SIP.js
                 </span>
               </div>
-              <div className="text-[10px] text-slate-400">
-                OVHcloud Télécom (Fixes 04 &amp; Mobiles 07) · 12 Lignes Bi-Club
+              <h2 className="font-extrabold text-lg tracking-tight text-slate-900">
+                Téléphonie Commerciale Bi-Club (Fixes 04 &amp; Mobiles 07)
+              </h2>
+              <div className="text-xs text-slate-500">
+                OVHcloud Télécom &amp; Passerelle Yeastar 4G · 12 Lignes Bi-Club en Remplacement Ringover
               </div>
             </div>
           </div>
@@ -333,20 +337,20 @@ export function TelephonyView() {
           <div className="flex flex-wrap items-center gap-2 shrink-0 text-xs">
             <button
               onClick={() => setSipTrunkProvider('ovhcloud_sip')}
-              className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl font-bold border cursor-pointer transition-colors ${
                 sipTrunkProvider === 'ovhcloud_sip'
-                  ? 'bg-[#00BFA5] text-slate-950 border-[#00BFA5] font-bold'
-                  : 'bg-white/5 text-slate-300 border-white/15 hover:bg-white/10'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-violet-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               Trunk SIP OVHcloud (Fixes 04)
             </button>
             <button
               onClick={() => setSipTrunkProvider('ovhcloud_mobile_07')}
-              className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl font-bold border cursor-pointer transition-colors ${
                 sipTrunkProvider === 'ovhcloud_mobile_07'
-                  ? 'bg-[#00BFA5] text-slate-950 border-[#00BFA5] font-bold'
-                  : 'bg-white/5 text-slate-300 border-white/15 hover:bg-white/10'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-violet-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               OVHcloud Mobile 07 &amp; SMS
@@ -354,8 +358,8 @@ export function TelephonyView() {
           </div>
         </div>
 
-        {/* Dedicated Prominent 5-Tab Bar (Impossible to miss on any screen size) */}
-        <div className="bg-[#1A233A] px-4 py-2.5 border-b border-slate-300">
+        {/* Dedicated Prominent 5-Tab Bar */}
+        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200/80">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
             {[
               {
@@ -381,7 +385,7 @@ export function TelephonyView() {
               {
                 id: 'SVI_STUDIO',
                 num: '5',
-                label: '🎛️ Studio SVI & 5 Passerelles',
+                label: 'Studio SVI & 5 Passerelles',
               },
             ].map((t) => {
               const isActive = ringoverTab === t.id;
@@ -391,15 +395,15 @@ export function TelephonyView() {
                   onClick={() => setRingoverTab(t.id as typeof ringoverTab)}
                   className={`px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
                     isActive
-                      ? 'bg-[#00BFA5] text-slate-950 border-[#00BFA5] shadow-sm'
-                      : 'bg-[#141B2D] text-white border-white/15 hover:bg-white/10'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-violet-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   <span
                     className={`w-5 h-5 rounded-full text-[10px] font-mono font-black flex items-center justify-center shrink-0 ${
                       isActive
-                        ? 'bg-slate-950 text-[#00BFA5]'
-                        : 'bg-[#00BFA5]/20 text-[#00D2B8]'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-violet-50 text-violet-700'
                     }`}
                   >
                     {t.num}
@@ -443,7 +447,7 @@ export function TelephonyView() {
                 </div>
 
                 {/* Call Log List (Exact Ringover Call Feed) */}
-                <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+                <div className="bg-white border border-slate-200/80 rounded-2xl divide-y divide-slate-100 text-xs shadow-2xs">
                   {filteredCalls.map((call) => {
                     const isSelected = selectedCall?.id === call.id;
                     return (
@@ -457,7 +461,7 @@ export function TelephonyView() {
                         }}
                         className={`p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-teal-50/70 border-l-4 border-l-[#00BFA5]'
+                            ? 'bg-violet-50/70 border-l-4 border-l-violet-600'
                             : 'hover:bg-slate-50'
                         }`}
                       >
@@ -466,7 +470,7 @@ export function TelephonyView() {
                             className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                               call.direction === 'entrant'
                                 ? 'bg-sky-100 text-sky-700'
-                                : 'bg-emerald-100 text-emerald-700'
+                                : 'bg-violet-100 text-violet-700'
                             }`}
                           >
                             {call.direction === 'entrant' ? (
@@ -494,7 +498,7 @@ export function TelephonyView() {
                               {call.ringoverTags?.map((t) => (
                                 <span
                                   key={t}
-                                  className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-semibold"
+                                  className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-800 border border-violet-200 text-[10px] font-semibold"
                                 >
                                   #{t}
                                 </span>
@@ -525,7 +529,7 @@ export function TelephonyView() {
                               e.stopPropagation();
                               setDialerNumber(call.prospectPhone);
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-[#141B2D] hover:bg-slate-800 text-[#00D2B8] font-bold text-[11px] cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                           >
                             Charger dans le Dialer
                           </button>
@@ -537,10 +541,10 @@ export function TelephonyView() {
 
                 {/* Selected Call Whisper Transcript + Ringover After-Call Work (Tags & Note CRM) */}
                 {selectedCall && (
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4 text-xs">
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-4 text-xs shadow-2xs">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-[#00BFA5]" />
+                        <Sparkles className="w-4 h-4 text-violet-600" />
                         <span>
                           Analyse Vocale Whisper GPU &amp; Qualification Ringover —{' '}
                           {selectedCall.prospectName}
@@ -552,7 +556,7 @@ export function TelephonyView() {
                     </div>
 
                     {selectedCall.whisperTranscript ? (
-                      <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 italic text-slate-700 leading-relaxed">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 italic text-slate-700 leading-relaxed">
                         « {selectedCall.whisperTranscript} »
                       </div>
                     ) : (
@@ -562,7 +566,7 @@ export function TelephonyView() {
                     )}
 
                     {selectedCall.detectedObjection && (
-                      <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
                         <span className="font-bold">Objection détectée :</span>{' '}
                         {selectedCall.detectedObjection}
                       </div>
@@ -571,7 +575,7 @@ export function TelephonyView() {
                     {/* Ringover Official After-Call Work (ACW) Qualification Block */}
                     <div className="pt-3 border-t border-slate-200 space-y-3">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-[#00BFA5]" />
+                        <Tag className="w-3.5 h-3.5 text-violet-600" />
                         Qualification After-Call Work (Tags Ringover &amp; Synchronisation Note CRM)
                       </div>
 
@@ -585,7 +589,7 @@ export function TelephonyView() {
                               onClick={() => toggleQualifyTag(tag)}
                               className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border cursor-pointer transition-colors ${
                                 active
-                                  ? 'bg-[#00BFA5] text-slate-950 border-[#00BFA5] font-bold'
+                                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-transparent font-bold'
                                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                               }`}
                             >
@@ -601,7 +605,7 @@ export function TelephonyView() {
                           onChange={(e) =>
                             setQualifyOutcome(e.target.value as CallLog['outcome'])
                           }
-                          className="border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 bg-white"
+                          className="border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white"
                         >
                           <option value="RDV Séance fixé">Statut : RDV Séance fixé</option>
                           <option value="Décroché — Qualifié">Statut : Décroché — Qualifié</option>
@@ -615,7 +619,7 @@ export function TelephonyView() {
                           value={qualifyNote}
                           onChange={(e) => setQualifyNote(e.target.value)}
                           placeholder="Note d’appel synchronisée dans la fiche prospect CRM..."
-                          className="sm:col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 bg-white"
+                          className="sm:col-span-2 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 bg-white"
                         />
                       </div>
 
@@ -630,7 +634,7 @@ export function TelephonyView() {
                               callNote: qualifyNote,
                             })
                           }
-                          className="px-3.5 py-1.5 rounded-lg bg-[#141B2D] hover:bg-slate-800 text-[#00D2B8] font-bold text-xs cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs cursor-pointer"
                         >
                           Enregistrer Qualification &amp; Synchroniser Fiche CRM
                         </button>
@@ -647,19 +651,19 @@ export function TelephonyView() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-[#00BFA5]" />
+                      <Zap className="w-4 h-4 text-violet-600" />
                       Campagne Power-Dialer Ringover (Click-to-Call, Rotation 07 &amp; Voicemail Drop 1-Clic)
                     </h2>
                     <p className="text-xs text-slate-500">
                       Enchaînement automatique des prospects hors liste Bloctel avec dépôt de messagerie vocale Studio en 1 clic si répondeur.
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-900 border border-teal-200 text-xs font-bold">
+                  <span className="px-2.5 py-1 rounded-full bg-violet-50 text-violet-900 border border-violet-200 text-xs font-bold">
                     {powerDialerQueue.length} prospects en file
                   </span>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+                <div className="bg-white border border-slate-200/80 rounded-2xl divide-y divide-slate-100 text-xs shadow-2xs">
                   {powerDialerQueue.map((p) => (
                     <div
                       key={p.id}
@@ -686,17 +690,17 @@ export function TelephonyView() {
                           onClick={() =>
                             handlePowerDialProspect(p.id, '07', 'RDV Séance fixé', false)
                           }
-                          className="px-3 py-1.5 rounded-lg bg-[#00BFA5] hover:bg-[#00a991] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                         >
                           <PhoneOutgoing className="w-3.5 h-3.5" />
                           Appeler (07)
                         </button>
                         <button
                           onClick={() => handlePowerDialProspect(p.id, '07', 'Messagerie', true)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           title="Déposer le message vocal studio C.Fitness pré-enregistré sans attendre le bip"
                         >
-                          <Voicemail className="w-3.5 h-3.5 text-indigo-600" />
+                          <Voicemail className="w-3.5 h-3.5 text-violet-600" />
                           Voicemail Drop 1-clic
                         </button>
                       </div>
@@ -711,7 +715,7 @@ export function TelephonyView() {
               <div className="space-y-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-[#00BFA5]" />
+                    <MessageSquare className="w-4 h-4 text-violet-600" />
                     Boîte SMS Collaborative 07 Ringover (Passerelle GSM 4G VoLTE &amp; STOP 36111)
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -719,7 +723,7 @@ export function TelephonyView() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4 text-xs">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-4 text-xs shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">
@@ -728,7 +732,7 @@ export function TelephonyView() {
                       <select
                         value={selectedSmsProspect?.id || ''}
                         onChange={(e) => setSelectedSmsProspectId(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 bg-white"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 bg-white"
                       >
                         {smsEligibleProspects.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -751,7 +755,7 @@ export function TelephonyView() {
                               `Bonjour ${selectedSmsProspect?.firstName || ''}, votre séance d’essai chez C.Fitness (${formatClubName(selectedSmsProspect?.clubId || 'carre-de-soie', true)}) est confirmée ! Code portillon Heitz : ${selectedSmsProspect?.heitzPassageQrCode || 'HZ-PASS-5052'}. STOP au 36111.`
                             )
                           }
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold cursor-pointer"
                         >
                           Confirmation RDV + QR Heitz
                         </button>
@@ -762,7 +766,7 @@ export function TelephonyView() {
                               `Bonjour ${selectedSmsProspect?.firstName || ''}, je viens de vous laisser un message vocal au sujet de votre séance découverte offerte chez C.Fitness. Quel créneau vous conviendrait cette semaine ? STOP au 36111.`
                             )
                           }
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold cursor-pointer"
                         >
                           Relance après Voicemail
                         </button>
@@ -778,7 +782,7 @@ export function TelephonyView() {
                       rows={3}
                       value={smsBodyText}
                       onChange={(e) => setSmsBodyText(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg p-3 text-xs text-slate-900 bg-slate-50"
+                      className="w-full border border-slate-200 rounded-xl p-3 text-xs text-slate-900 bg-slate-50"
                     />
                   </div>
 
@@ -804,7 +808,7 @@ export function TelephonyView() {
                             );
                           }
                         }}
-                        className="px-4 py-2 rounded-lg bg-[#00BFA5] hover:bg-[#00a991] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer self-end"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer self-end"
                       >
                         <Send className="w-3.5 h-3.5" />
                         Envoyer le SMS (07)
@@ -839,7 +843,7 @@ export function TelephonyView() {
                     return (
                       <div
                         key={line.id}
-                        className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-3 text-xs"
+                        className="bg-white border border-slate-200/80 rounded-2xl p-3.5 space-y-3 text-xs shadow-2xs"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -875,14 +879,14 @@ export function TelephonyView() {
                           {assignedEmp ? (
                             <button
                               onClick={() => releasePhoneLineSession(line.id)}
-                              className="px-2.5 py-1 rounded border border-slate-200 hover:bg-rose-50 text-slate-700 font-semibold cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-rose-50 text-slate-700 font-semibold cursor-pointer"
                             >
                               Libérer
                             </button>
                           ) : (
                             <button
                               onClick={() => takePhoneLineSession(line.id)}
-                              className="px-2.5 py-1 rounded bg-[#141B2D] text-white font-semibold cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold cursor-pointer"
                             >
                               Prendre mon poste
                             </button>
@@ -896,7 +900,7 @@ export function TelephonyView() {
                             </span>
                             <button
                               onClick={() => handleDialSimulation(line, 'RDV Séance fixé')}
-                              className="py-1.5 px-3 rounded-lg bg-[#00BFA5] hover:bg-[#00a991] text-slate-950 font-bold text-[11px] cursor-pointer whitespace-nowrap"
+                              className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer whitespace-nowrap"
                             >
                               Simuler un appel sortant
                             </button>
@@ -909,7 +913,7 @@ export function TelephonyView() {
                             <div className="flex flex-wrap gap-1">
                               <button
                                 onClick={() => setListenModeLineId(isListening ? null : line.id)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
                                   isListening
                                     ? 'bg-amber-500 text-slate-950'
                                     : 'bg-slate-100 text-slate-700'
@@ -920,9 +924,9 @@ export function TelephonyView() {
                               </button>
                               <button
                                 onClick={() => setWhisperModeLineId(isWhispering ? null : line.id)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
                                   isWhispering
-                                    ? 'bg-purple-600 text-white'
+                                    ? 'bg-violet-600 text-white'
                                     : 'bg-slate-100 text-slate-700'
                                 }`}
                               >
@@ -931,7 +935,7 @@ export function TelephonyView() {
                               </button>
                               <button
                                 onClick={() => setBargeInLineId(isBarging ? null : line.id)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
                                   isBarging
                                     ? 'bg-rose-600 text-white'
                                     : 'bg-slate-100 text-slate-700'
@@ -954,7 +958,7 @@ export function TelephonyView() {
             {/* TAB 5: STUDIO SVI & LES 5 PASSERELLES TÉLÉCOM / WEBHOOKS RINGOVER */}
             {ringoverTab === 'SVI_STUDIO' && (
               <div className="space-y-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 text-xs">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-2 text-xs shadow-2xs">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     Conformité ARCEP n° 2022-1583 : Trunk SIP OVHcloud (Fixes 04) + Passerelle 4G Yeastar TG400 (SIM 07)
@@ -964,9 +968,9 @@ export function TelephonyView() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs">
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Volume2 className="w-4 h-4 text-[#00BFA5]" />
+                    <Volume2 className="w-4 h-4 text-violet-600" />
                     Studio SVI Ringover / Asterisk — Arbre Vocal Interactif
                   </h3>
                   <div className="flex gap-2">
@@ -974,9 +978,9 @@ export function TelephonyView() {
                       <button
                         key={digit}
                         onClick={() => setSviDigit(digit)}
-                        className={`w-10 h-10 rounded-lg font-mono font-bold text-sm cursor-pointer ${
+                        className={`w-10 h-10 rounded-xl font-mono font-bold text-sm cursor-pointer ${
                           sviDigit === digit
-                            ? 'bg-[#00BFA5] text-slate-950'
+                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
@@ -985,7 +989,7 @@ export function TelephonyView() {
                     ))}
                   </div>
                   {sviRoutes[sviDigit] && (
-                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
                       <div className="font-bold text-slate-900">{sviRoutes[sviDigit].title}</div>
                       <div className="text-slate-600">
                         <span className="font-semibold text-slate-800">Routage :</span>{' '}
@@ -1000,13 +1004,13 @@ export function TelephonyView() {
                 </div>
 
                 {/* Architecture des 5 Passerelles Télécom & API remplaçant l'abonnement Ringover */}
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3 text-xs shadow-2xs">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
-                    <Server className="w-4 h-4 text-[#00BFA5]" />
+                    <Server className="w-4 h-4 text-violet-600" />
                     Matrice des 5 Passerelles Télécom &amp; Webhooks CTI intégrées (Zéro Abonnement Ringover)
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                       <div className="font-bold text-slate-900">
                         1. Passerelle WebRTC Navigateur (SIP.js / WSS)
                       </div>
@@ -1014,7 +1018,7 @@ export function TelephonyView() {
                         Connexion directe du navigateur au serveur local <span className="font-mono">Asterisk 20 LTS (:8089/ws)</span> en Opus 48 kHz + SRTP sans logiciel tiers à installer.
                       </div>
                     </div>
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                       <div className="font-bold text-slate-900">
                         2. Passerelle Fixe 04 (Trunk SIP OVHcloud)
                       </div>
@@ -1022,7 +1026,7 @@ export function TelephonyView() {
                         Trunk <span className="font-mono">sip.ovh.fr</span> avec signature <span className="font-mono">STIR/SHAKEN MAN</span> (ARCEP n° 2022-1583) pour `04 26 22 55 30` (CDS) et `04 22 91 36 82` (Beynost).
                       </div>
                     </div>
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                       <div className="font-bold text-slate-900">
                         3. Passerelle Mobile 07 &amp; SMS (Yeastar TG400 4G VoLTE)
                       </div>
@@ -1030,7 +1034,7 @@ export function TelephonyView() {
                         Passerelle matérielle <span className="font-mono">10.10.0.14</span> hébergeant les cartes SIM 07 des 2 clubs avec rotation anti-spam et API HTTP SMS locale (STOP 36111).
                       </div>
                     </div>
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                       <div className="font-bold text-slate-900">
                         4. Passerelle CTI Screen-Pop CRM &amp; Heitz (AMI + HZ.WS)
                       </div>
@@ -1044,30 +1048,30 @@ export function TelephonyView() {
             )}
           </div>
 
-          {/* RIGHT DOCKED AUTHENTIC RINGOVER WEBRTC DIALER (4 cols) */}
-          <div className="lg:col-span-4 bg-[#141B2D] text-white p-5 flex flex-col justify-between space-y-4">
+          {/* RIGHT DOCKED C.FITNESS OS WEBRTC DIALER (4 cols) */}
+          <div className="lg:col-span-4 bg-white p-5 flex flex-col justify-between space-y-4">
             {/* Dialer Top Status Header */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00BFA5] inline-block" />
-                  <span className="text-xs font-bold tracking-wide">DIALER RINGOVER WebRTC</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                  <span className="text-xs font-extrabold tracking-wide text-slate-900">DIALER RINGOVER WebRTC</span>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-white/10 font-mono text-[10px] text-[#00D2B8]">
+                <span className="px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 font-mono text-[10px] font-bold text-violet-700">
                   Opus 48kHz · TLS
                 </span>
               </div>
 
               {/* Caller ID Selection Pill (07 vs 04) */}
-              <div className="bg-[#1E2740] p-2.5 rounded-xl border border-white/10 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-[11px] text-slate-300">
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
                   <span>Numéro C.Fitness présenté :</span>
                   <select
                     value={dialerClubId}
                     onChange={(e) =>
                       setDialerClubId(e.target.value as 'carre-de-soie' | 'beynost')
                     }
-                    className="bg-transparent font-bold text-[#00D2B8] focus:outline-none cursor-pointer"
+                    className="bg-transparent font-bold text-violet-600 focus:outline-none cursor-pointer"
                   >
                     <option value="carre-de-soie" className="text-slate-900">
                       Carré de Soie
@@ -1082,10 +1086,10 @@ export function TelephonyView() {
                   <button
                     type="button"
                     onClick={() => setDialerMode('07')}
-                    className={`py-1.5 px-2 rounded-lg font-mono text-[11px] font-bold cursor-pointer transition-colors ${
+                    className={`py-1.5 px-2 rounded-xl font-mono text-[11px] font-bold cursor-pointer transition-colors ${
                       dialerMode === '07'
-                        ? 'bg-[#00BFA5] text-slate-950'
-                        : 'bg-slate-900/60 text-slate-300 hover:bg-slate-900'
+                        ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     📱 Mobile 07 (SIM 4G)
@@ -1093,10 +1097,10 @@ export function TelephonyView() {
                   <button
                     type="button"
                     onClick={() => setDialerMode('04')}
-                    className={`py-1.5 px-2 rounded-lg font-mono text-[11px] font-bold cursor-pointer transition-colors ${
+                    className={`py-1.5 px-2 rounded-xl font-mono text-[11px] font-bold cursor-pointer transition-colors ${
                       dialerMode === '04'
-                        ? 'bg-[#00BFA5] text-slate-950'
-                        : 'bg-slate-900/60 text-slate-300 hover:bg-slate-900'
+                        ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     ☎️ Fixe 04 (OVH SIP)
@@ -1105,28 +1109,28 @@ export function TelephonyView() {
               </div>
 
               {/* CTI Screen-Pop CRM / Heitz Fiche Temps Réel */}
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-[11px] space-y-1">
-                <div className="flex items-center justify-between text-[#00D2B8] font-bold">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
+                <div className="flex items-center justify-between text-violet-600 font-bold">
                   <span>CTI Screen-Pop (CRM &amp; Heitz)</span>
                   <span className="font-mono text-[10px]">
                     {screenPopProspect ? `Stage : ${screenPopProspect.stage}` : 'Adhérent Heitz'}
                   </span>
                 </div>
                 {screenPopProspect ? (
-                  <div className="text-slate-300">
-                    <span className="font-bold text-white">
+                  <div className="text-slate-600">
+                    <span className="font-bold text-slate-900">
                       {screenPopProspect.firstName} {screenPopProspect.lastName}
                     </span>{' '}
                     · Objectif : {screenPopProspect.goal}
                     {screenPopProspect.heitzPassageQrCode && (
-                      <span className="block text-[10px] font-mono text-emerald-400">
+                      <span className="block text-[10px] font-mono text-emerald-700 font-bold">
                         QR Portillon Heitz : {screenPopProspect.heitzPassageQrCode}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <div className="text-slate-300">
-                    <span className="font-bold text-white">
+                  <div className="text-slate-600">
+                    <span className="font-bold text-slate-900">
                       {screenPopHeitzMember.firstName} {screenPopHeitzMember.lastName}
                     </span>{' '}
                     · Badge <span className="font-mono">{screenPopHeitzMember.badgeCode}</span> ·
@@ -1134,8 +1138,8 @@ export function TelephonyView() {
                     <span
                       className={
                         screenPopHeitzMember.finBalanceEur < 0
-                          ? 'text-rose-400 font-bold'
-                          : 'text-emerald-400 font-bold'
+                          ? 'text-rose-600 font-bold'
+                          : 'text-emerald-700 font-bold'
                       }
                     >
                       {screenPopHeitzMember.finBalanceEur.toFixed(2)} €
@@ -1146,25 +1150,25 @@ export function TelephonyView() {
 
               {/* Active Call Screen Banner inside the Ringover Dialer */}
               {activeCallState && (
-                <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#1E2942] to-[#172035] border border-[#00BFA5]/50 space-y-3">
+                <div className="p-3.5 rounded-2xl bg-violet-50 border border-violet-200 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="text-[10px] font-mono uppercase text-[#00D2B8] font-bold">
+                      <div className="text-[10px] font-mono uppercase text-violet-700 font-bold">
                         {activeCallState.isOnHold ? 'Appel en attente' : 'Appel en cours · 01:42'}
                       </div>
-                      <div className="text-sm font-black text-white mt-0.5">
+                      <div className="text-sm font-black text-slate-900 mt-0.5">
                         {activeCallState.prospectName}
                       </div>
-                      <div className="text-xs font-mono text-slate-300 tabular-nums">
+                      <div className="text-xs font-mono text-slate-600 tabular-nums">
                         {activeCallState.prospectPhone}
                       </div>
                       {activeCallState.transferredTo && (
-                        <div className="text-[10px] text-amber-300 mt-0.5">
+                        <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
                           → Transféré : {activeCallState.transferredTo}
                         </div>
                       )}
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-[#00BFA5]/20 text-[#00D2B8] font-mono text-[10px]">
+                    <span className="px-2 py-0.5 rounded-lg bg-white border border-violet-200 text-violet-700 font-mono text-[10px] font-bold">
                       {activeCallState.callerId}
                     </span>
                   </div>
@@ -1177,10 +1181,10 @@ export function TelephonyView() {
                           prev ? { ...prev, isMuted: !prev.isMuted } : null
                         )
                       }
-                      className={`p-2 rounded-lg flex flex-col items-center gap-1 cursor-pointer ${
+                      className={`p-2 rounded-xl flex flex-col items-center gap-1 cursor-pointer ${
                         activeCallState.isMuted
                           ? 'bg-amber-500 text-slate-950 font-bold'
-                          : 'bg-white/10 text-slate-200 hover:bg-white/15'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                       }`}
                     >
                       {activeCallState.isMuted ? (
@@ -1197,10 +1201,10 @@ export function TelephonyView() {
                           prev ? { ...prev, isOnHold: !prev.isOnHold } : null
                         )
                       }
-                      className={`p-2 rounded-lg flex flex-col items-center gap-1 cursor-pointer ${
+                      className={`p-2 rounded-xl flex flex-col items-center gap-1 cursor-pointer ${
                         activeCallState.isOnHold
                           ? 'bg-sky-500 text-slate-950 font-bold'
-                          : 'bg-white/10 text-slate-200 hover:bg-white/15'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                       }`}
                     >
                       <PauseCircle className="w-3.5 h-3.5" />
@@ -1221,15 +1225,15 @@ export function TelephonyView() {
                             : null
                         )
                       }
-                      className="p-2 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 flex flex-col items-center gap-1 cursor-pointer"
+                      className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 flex flex-col items-center gap-1 cursor-pointer"
                     >
-                      <PhoneForwarded className="w-3.5 h-3.5 text-[#00D2B8]" />
+                      <PhoneForwarded className="w-3.5 h-3.5 text-violet-600" />
                       <span>Transfert</span>
                     </button>
 
                     <button
                       onClick={() => setActiveCallState(null)}
-                      className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold flex flex-col items-center gap-1 cursor-pointer"
+                      className="p-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold flex flex-col items-center gap-1 cursor-pointer"
                     >
                       <PhoneOff className="w-3.5 h-3.5" />
                       <span>Couper</span>
@@ -1239,33 +1243,33 @@ export function TelephonyView() {
               )}
 
               {/* Dialer Number Display Input */}
-              <div className="bg-slate-950/70 border border-white/15 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 flex items-center justify-between">
                 <input
                   type="text"
                   value={dialerNumber}
                   onChange={(e) => setDialerNumber(e.target.value)}
-                  className="bg-transparent font-mono text-lg font-extrabold text-white tracking-wider w-full focus:outline-none tabular-nums"
+                  className="bg-transparent font-mono text-lg font-extrabold text-slate-900 tracking-wider w-full focus:outline-none tabular-nums"
                 />
                 <button
                   type="button"
                   onClick={() => setDialerNumber((prev) => prev.slice(0, -1))}
-                  className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                  className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
                   title="Effacer"
                 >
                   <Delete className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Authentic 12-Key Ringover Keypad */}
+              {/* 12-Key Keypad */}
               <div className="grid grid-cols-3 gap-2">
                 {KEYPAD_KEYS.map((k) => (
                   <button
                     key={k.digit}
                     type="button"
                     onClick={() => setDialerNumber((prev) => `${prev}${k.digit}`)}
-                    className="py-2 rounded-xl bg-[#1E2740] hover:bg-[#283352] border border-white/5 flex flex-col items-center justify-center transition-colors cursor-pointer"
+                    className="py-2.5 rounded-2xl bg-slate-50 hover:bg-violet-50 border border-slate-200 flex flex-col items-center justify-center transition-colors cursor-pointer"
                   >
-                    <span className="font-mono font-extrabold text-base text-white leading-none">
+                    <span className="font-mono font-extrabold text-base text-slate-900 leading-none">
                       {k.digit}
                     </span>
                     <span className="font-mono text-[9px] text-slate-400 tracking-widest mt-0.5 h-2.5">
@@ -1281,7 +1285,7 @@ export function TelephonyView() {
               <button
                 type="button"
                 onClick={() => handleDialFromSoftphone('RDV Séance fixé')}
-                className="w-full py-3 rounded-xl bg-[#00BFA5] hover:bg-[#00a991] text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
                 <Phone className="w-4 h-4 fill-current" />
                 Appeler ({dialerMode === '07' ? 'Pool 07 SIM 4G' : 'Fixe 04 OVH'})

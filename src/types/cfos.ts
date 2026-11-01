@@ -18,6 +18,8 @@ export type AdminSection =
   | 'governance'
   | 'executive-dossier';
 
+export type NavSection = AdminSection;
+
 export type ContractType = 'CDI' | 'CDD' | 'Apprentissage' | 'Extra';
 
 export type SipTrunkProvider = 'ovhcloud_sip' | 'ovhcloud_mobile_07';

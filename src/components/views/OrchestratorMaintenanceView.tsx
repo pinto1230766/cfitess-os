@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -259,6 +259,30 @@ const INITIAL_ORCHESTRATOR_DECISIONS: OrchestratorDecisionItem[] = [
 
 const INITIAL_MAINTENANCE_TICKETS: MaintenanceTicket[] = [
   {
+    id: 'mnt-cta-beynost',
+    clubId: 'beynost',
+    equipmentName: 'Centrale de Traitement d’Air (CTA Beynost – 15 avril)',
+    category: 'CVC / Sauna / Douches',
+    issueDescription: 'Maintenance préventive planifiée CTA Beynost (contrôle débit air neuf & remplacement filtres).',
+    priority: 'Préventive',
+    status: 'Technicien planifié',
+    supplierName: 'ClimRhône Maintenance',
+    estimatedCostEur: 240,
+    createdAt: 'Prévu le 15 avril',
+  },
+  {
+    id: 'mnt-clim-center',
+    clubId: 'carre-de-soie',
+    equipmentName: 'Climatisation – Espace musculation (Center · 12:30)',
+    category: 'CVC / Sauna / Douches',
+    issueDescription: 'Intervention maintenance climatisation plateau musculation programmée aujourd’hui à 12h30.',
+    priority: 'Urgente',
+    status: 'Technicien planifié',
+    supplierName: 'ClimRhône Maintenance',
+    estimatedCostEur: 150,
+    createdAt: 'Aujourd’hui · 12:30',
+  },
+  {
     id: 'mnt-1',
     clubId: 'carre-de-soie',
     equipmentName: 'Presse à cuisses Biocircuit #3 (Technogym)',
@@ -268,7 +292,7 @@ const INITIAL_MAINTENANCE_TICKETS: MaintenanceTicket[] = [
     status: 'Technicien planifié',
     supplierName: 'Technogym France SAV',
     estimatedCostEur: 0,
-    createdAt: '2026-10-24 (Sous contrat garantie)',
+    createdAt: 'Sous contrat garantie',
   },
   {
     id: 'mnt-2',
@@ -280,19 +304,7 @@ const INITIAL_MAINTENANCE_TICKETS: MaintenanceTicket[] = [
     status: 'Signalé (Agent Maintenance)',
     supplierName: 'Heitz System Support',
     estimatedCostEur: 0,
-    createdAt: '2026-10-25',
-  },
-  {
-    id: 'mnt-3',
-    clubId: 'carre-de-soie',
-    equipmentName: 'Centrale Traitement d’Air (CTA) Zone Cardio',
-    category: 'CVC / Sauna / Douches',
-    issueDescription: 'Remplacement trimestriel des filtres F7 avant période hivernale.',
-    priority: 'Préventive',
-    status: 'Résolu',
-    supplierName: 'ClimRhône Maintenance',
-    estimatedCostEur: 190,
-    createdAt: '2026-10-21',
+    createdAt: 'Planifié',
   },
 ];
 
@@ -345,14 +357,105 @@ const INITIAL_STOCKS: StockConsumableItem[] = [
     unitPriceht: 14.9,
     autoOrderPrepared: false,
   },
+  {
+    id: 'stk-5',
+    clubId: 'carre-de-soie',
+    name: 'Isolat Whey Native Vanille & Chocolat (Pots 2kg)',
+    category: 'Nutrition / Bar',
+    currentQty: 14,
+    minThreshold: 10,
+    unit: 'pots 2kg',
+    supplier: 'NutriSport France',
+    unitPriceht: 34.0,
+    autoOrderPrepared: false,
+  },
+  {
+    id: 'stk-6',
+    clubId: 'beynost',
+    name: 'Boissons Isotoniques & BCAA Frigo Bar (Packs x24)',
+    category: 'Nutrition / Bar',
+    currentQty: 11,
+    minThreshold: 8,
+    unit: 'packs x24',
+    supplier: 'NutriSport France',
+    unitPriceht: 19.5,
+    autoOrderPrepared: false,
+  },
+];
+
+interface PurchaseOrderItem {
+  id: string;
+  reference: string;
+  clubId: ClubId;
+  supplier: string;
+  itemsSummary: string;
+  amountHtEur: number;
+  date: string;
+  status: 'Brouillon IA' | 'Commande envoyée' | 'Livré & Réceptionné';
+}
+
+const INITIAL_PURCHASE_ORDERS: PurchaseOrderItem[] = [
+  {
+    id: 'po-1',
+    reference: 'BC-2025-0412',
+    clubId: 'beynost',
+    supplier: 'FitSupply Pro Lyon',
+    itemsSummary: '25× Cadenas Acier Haute Sécurité + 30× Serviettes C.Fitness',
+    amountHtEur: 215.0,
+    date: '14 avril 2025',
+    status: 'Brouillon IA',
+  },
+  {
+    id: 'po-2',
+    reference: 'BC-2025-0409',
+    clubId: 'carre-de-soie',
+    supplier: 'NutriSport France',
+    itemsSummary: '12× Whey Isolat 2kg + 10× Packs Boissons BCAA Bar',
+    amountHtEur: 603.0,
+    date: '11 avril 2025',
+    status: 'Commande envoyée',
+  },
+  {
+    id: 'po-3',
+    reference: 'BC-2025-0402',
+    clubId: 'carre-de-soie',
+    supplier: 'Heitz System',
+    itemsSummary: '100× Badges RFID MIFARE + 10× Rouleaux Thermiques TPV NF525',
+    amountHtEur: 198.0,
+    date: '04 avril 2025',
+    status: 'Livré & Réceptionné',
+  },
 ];
 
 export function OrchestratorMaintenanceView() {
-  const { clubFilter, heitzMembers, employees, setActiveSection } = useCfos();
+  const { clubFilter, heitzMembers, employees, setActiveSection, navSubTarget } = useCfos();
 
   const [activeTab, setActiveTab] = useState<
-    'ARCHITECTURE_ORCHESTRATOR' | 'MODULE_MAINTENANCE' | 'INFRA_POSTGRES_TEMPORAL'
-  >('ARCHITECTURE_ORCHESTRATOR');
+    | 'ARCHITECTURE_ORCHESTRATOR'
+    | 'MODULE_MAINTENANCE'
+    | 'MODULE_STOCKS'
+    | 'INFRA_POSTGRES_TEMPORAL'
+  >(
+    navSubTarget === 'stocks'
+      ? 'MODULE_STOCKS'
+      : navSubTarget === 'maintenance'
+      ? 'MODULE_MAINTENANCE'
+      : navSubTarget === 'infra'
+      ? 'INFRA_POSTGRES_TEMPORAL'
+      : 'ARCHITECTURE_ORCHESTRATOR'
+  );
+
+  useEffect(() => {
+    if (navSubTarget === 'stocks') {
+      setActiveTab('MODULE_STOCKS');
+    } else if (navSubTarget === 'maintenance') {
+      setActiveTab('MODULE_MAINTENANCE');
+    } else if (navSubTarget === 'agents') {
+      setActiveTab('ARCHITECTURE_ORCHESTRATOR');
+    } else if (navSubTarget === 'infra') {
+      setActiveTab('INFRA_POSTGRES_TEMPORAL');
+    }
+  }, [navSubTarget]);
 
   const [agents, setAgents] = useState<AgentDefinition[]>(INITIAL_AGENTS);
   const [decisions, setDecisions] = useState<OrchestratorDecisionItem[]>(
@@ -362,7 +465,19 @@ export function OrchestratorMaintenanceView() {
     INITIAL_MAINTENANCE_TICKETS
   );
   const [stocks, setStocks] = useState<StockConsumableItem[]>(INITIAL_STOCKS);
-  const [showDiagramBlueprint, setShowDiagramBlueprint] = useState<boolean>(true);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderItem[]>(
+    INITIAL_PURCHASE_ORDERS
+  );
+  const [showDiagramBlueprint, setShowDiagramBlueprint] = useState<boolean>(false);
+
+  // New stock / purchase order form state
+  const [newStockName, setNewStockName] = useState('');
+  const [newStockCategory, setNewStockCategory] =
+    useState<StockConsumableItem['category']>('Nutrition / Bar');
+  const [newStockClub, setNewStockClub] = useState<ClubId>('carre-de-soie');
+  const [newStockSupplier, setNewStockSupplier] = useState('FitSupply Pro Lyon');
+  const [newStockQty, setNewStockQty] = useState(20);
+  const [newStockPrice, setNewStockPrice] = useState(12.5);
 
   // New maintenance ticket form state
   const [newEquipment, setNewEquipment] = useState('');
@@ -498,11 +613,66 @@ export function OrchestratorMaintenanceView() {
     );
   };
 
+  const handleCreatePurchaseOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStockName.trim()) return;
+    const totalHt = Math.round(newStockQty * newStockPrice * 100) / 100;
+    const newPo: PurchaseOrderItem = {
+      id: `po-${Date.now()}`,
+      reference: `BC-2025-0${Math.floor(420 + Math.random() * 70)}`,
+      clubId: newStockClub,
+      supplier: newStockSupplier,
+      itemsSummary: `${newStockQty}× ${newStockName.trim()}`,
+      amountHtEur: totalHt,
+      date: "Aujourd'hui",
+      status: 'Commande envoyée',
+    };
+    setPurchaseOrders((prev) => [newPo, ...prev]);
+
+    const newStk: StockConsumableItem = {
+      id: `stk-${Date.now()}`,
+      clubId: newStockClub,
+      name: newStockName.trim(),
+      category: newStockCategory,
+      currentQty: newStockQty,
+      minThreshold: Math.max(5, Math.round(newStockQty * 0.3)),
+      unit: 'unités',
+      supplier: newStockSupplier,
+      unitPriceht: newStockPrice,
+      autoOrderPrepared: false,
+    };
+    setStocks((prev) => [newStk, ...prev]);
+    setNewStockName('');
+  };
+
+  const handleAdvancePoStatus = (id: string) => {
+    setPurchaseOrders((prev) =>
+      prev.map((po) => {
+        if (po.id !== id) return po;
+        const next: PurchaseOrderItem['status'] =
+          po.status === 'Brouillon IA'
+            ? 'Commande envoyée'
+            : 'Livré & Réceptionné';
+        return { ...po, status: next };
+      })
+    );
+  };
+
   const filteredTickets = tickets.filter(
     (t) => clubFilter === 'all' || t.clubId === clubFilter
   );
   const filteredStocks = stocks.filter(
     (s) => clubFilter === 'all' || s.clubId === clubFilter
+  );
+  const filteredPurchaseOrders = purchaseOrders.filter(
+    (po) => clubFilter === 'all' || po.clubId === clubFilter
+  );
+
+  const lowStockCount = filteredStocks.filter(
+    (s) => s.currentQty < s.minThreshold
+  ).length;
+  const totalStockValueHt = Math.round(
+    filteredStocks.reduce((acc, s) => acc + s.currentQty * s.unitPriceht, 0)
   );
 
   const pendingApprovalsCount = decisions.filter(
@@ -511,125 +681,124 @@ export function OrchestratorMaintenanceView() {
 
   return (
     <div className="space-y-6">
-      {/* Top Hero Banner matching the uploaded Director Vision Architecture */}
-      <div className="bg-[#071126] text-white rounded-2xl p-5 sm:p-6 border border-sky-500/30 shadow-md space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-[11px] font-mono font-bold uppercase tracking-wider">
-              <BrainCircuit className="w-3.5 h-3.5 text-sky-400" />
-              <span>Architecture Cible Dirigeant · Orchestrateur Central &amp; 6 Agents IA Métier</span>
+      {/* Dynamic Context Header matching the selected Left Sidebar Item */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-200/80 pb-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5">
+              {activeTab === 'MODULE_STOCKS' ? (
+                <Package className="w-5 h-5" />
+              ) : activeTab === 'MODULE_MAINTENANCE' ? (
+                <Wrench className="w-5 h-5" />
+              ) : (
+                <BrainCircuit className="w-5 h-5" />
+              )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-2">
-              C.Fitness <span className="text-sky-400">OS</span> — Plateforme Unique de Pilotage, Orchestrateur IA &amp; Maintenance
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
-              Traduction opérationnelle exacte de votre schéma directeur : <strong>4 Modules Métier</strong> · <strong>Orchestrateur Central (avec validation humaine)</strong> · <strong>6 Agents IA Spécialisés</strong> · <strong>Sources de Vérité (Heitz, Technogym Mywellness &amp; Checkup, Silae)</strong> · <strong>PostgreSQL &amp; Temporal/n8n</strong>.
-            </p>
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-[11px] font-mono font-bold uppercase tracking-wider">
+                {activeTab === 'MODULE_STOCKS' && (
+                  <span>Stock &amp; Achats · Gestion des Stocks, Consommables &amp; Commandes Fournisseurs</span>
+                )}
+                {activeTab === 'MODULE_MAINTENANCE' && (
+                  <span>Maintenance &amp; Équipements · Parc Technogym, Climatisation CTA &amp; Portillons Heitz</span>
+                )}
+                {activeTab === 'ARCHITECTURE_ORCHESTRATOR' && (
+                  <span>Agents IA · Orchestrateur Central &amp; 6 Agents IA Métier</span>
+                )}
+                {activeTab === 'INFRA_POSTGRES_TEMPORAL' && (
+                  <span>Socle Technique · PostgreSQL 16, Temporal/n8n &amp; Identifiants Unifiés</span>
+                )}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mt-1.5">
+                {activeTab === 'MODULE_STOCKS' && (
+                  <>
+                    Stock &amp; Achats — <span className="text-violet-600">Inventaire Bi-Club &amp; Fournisseurs</span>
+                  </>
+                )}
+                {activeTab === 'MODULE_MAINTENANCE' && (
+                  <>
+                    Maintenance — <span className="text-violet-600">Parc Machines, Climatisation CTA &amp; SAV</span>
+                  </>
+                )}
+                {activeTab === 'ARCHITECTURE_ORCHESTRATOR' && (
+                  <>
+                    Agents IA — <span className="text-violet-600">Orchestrateur Central &amp; 6 Agents Spécialisés</span>
+                  </>
+                )}
+                {activeTab === 'INFRA_POSTGRES_TEMPORAL' && (
+                  <>
+                    Infrastructure — <span className="text-violet-600">PostgreSQL Unifié &amp; Workflows Temporal</span>
+                  </>
+                )}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                {activeTab === 'MODULE_STOCKS' &&
+                  'Suivi en temps réel des stocks (C.Fitness Center & C.Fitness Place), alertes de seuil bas, réapprovisionnement automatique et bons de commande fournisseurs.'}
+                {activeTab === 'MODULE_MAINTENANCE' &&
+                  'Pilotage préventif et curatif du parc Technogym Biocircuit/Checkup, des centrales d’air CTA (Beynost & Center) et des portillons RFID/Bluetooth Heitz.'}
+                {activeTab === 'ARCHITECTURE_ORCHESTRATOR' &&
+                  'Supervision des 6 Agents IA métier (RH, CRM, Recouvrement SEPA, Téléphonie, Maintenance, Pilotage) avec validation humaine en 1 clic.'}
+                {activeTab === 'INFRA_POSTGRES_TEMPORAL' &&
+                  'Table d’unification sans doublon entre Heitz System, Technogym Mywellness/Checkup et Silae Paie.'}
+              </p>
+            </div>
           </div>
 
-          {/* 3 Top Value Pillars from the image top-right */}
-          <div className="grid grid-cols-3 gap-2.5 shrink-0 text-xs">
-            <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80">
-              <TrendingUp className="w-4 h-4 text-sky-400 mb-1" />
-              <div className="font-bold text-white leading-tight">Plus d&apos;efficacité</div>
-              <div className="text-[11px] text-slate-400">au quotidien</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80">
-              <Users className="w-4 h-4 text-emerald-400 mb-1" />
-              <div className="font-bold text-white leading-tight">Meilleure expérience</div>
-              <div className="text-[11px] text-slate-400">adhérent bi-club</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80">
-              <Database className="w-4 h-4 text-amber-400 mb-1" />
-              <div className="font-bold text-white leading-tight">Rentabilité</div>
-              <div className="text-[11px] text-slate-400">optimisée (+18 k€/an)</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sub-navigation Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Sub-navigation Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
             <button
               type="button"
-              onClick={() => setActiveTab('ARCHITECTURE_ORCHESTRATOR')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-                activeTab === 'ARCHITECTURE_ORCHESTRATOR'
-                  ? 'bg-sky-500 text-slate-950 shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              onClick={() => setActiveTab('MODULE_STOCKS')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                activeTab === 'MODULE_STOCKS'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900'
               }`}
             >
-              <BrainCircuit className="w-4 h-4" />
-              <span>
-                1. Orchestrateur Central &amp; Les 6 Agents IA Métier ({pendingApprovalsCount} à valider)
-              </span>
+              <Package className="w-3.5 h-3.5" />
+              <span>Stock &amp; Achats ({filteredStocks.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('MODULE_MAINTENANCE')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                 activeTab === 'MODULE_MAINTENANCE'
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900'
               }`}
             >
-              <Wrench className="w-4 h-4" />
-              <span>
-                2. Module Maintenance, Équipements &amp; Stocks (4e Module Métier)
-              </span>
+              <Wrench className="w-3.5 h-3.5" />
+              <span>Maintenance ({filteredTickets.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('ARCHITECTURE_ORCHESTRATOR')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                activeTab === 'ARCHITECTURE_ORCHESTRATOR'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Agents IA ({pendingApprovalsCount})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('INFRA_POSTGRES_TEMPORAL')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                 activeTab === 'INFRA_POSTGRES_TEMPORAL'
-                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900'
               }`}
             >
-              <GitBranch className="w-4 h-4" />
-              <span>
-                3. Socle PostgreSQL (IDs Unifiés), Workflows Temporal/n8n &amp; Passerelle LLM
-              </span>
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>Base Unifiée</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowDiagramBlueprint(!showDiagramBlueprint)}
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-sky-200 cursor-pointer"
-          >
-            {showDiagramBlueprint
-              ? 'Masquer le schéma directeur original'
-              : 'Afficher le schéma directeur original'}
-          </button>
         </div>
-
-        {/* Collapsible Director Blueprint Image Viewer + Adaptation Note */}
-        {showDiagramBlueprint && (
-          <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-              <div className="font-bold text-sky-300 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
-                <span>
-                  Schéma Directeur de Référence (avec mise à jour matérielle : Technogym Checkup intégré à Mywellness en remplacement d’InBody)
-                </span>
-              </div>
-              <span className="font-mono text-[11px] text-emerald-400">
-                6 couches architecturales actives dans C.Fitness OS
-              </span>
-            </div>
-            <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950 max-h-[420px] overflow-y-auto">
-              <img
-                src="/assets/aistudio/1786145c-3869-4831-aa8a-2c51e3fd9e17_3d27f351.png"
-                alt="Vision Dirigeant C.Fitness OS — Orchestrateur Central, 4 Modules Métier et 6 Agents IA"
-                className="w-full h-auto object-contain"
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* =================================================================== */}
@@ -638,10 +807,10 @@ export function OrchestratorMaintenanceView() {
       {activeTab === 'ARCHITECTURE_ORCHESTRATOR' && (
         <div className="space-y-6">
           {/* LAYER 1: LES 4 MODULES MÉTIER (Clickable Direct Navigation) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 font-bold">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-violet-600 font-bold">
                   Couche 1 du Schéma Directeur · Vos outils de travail au quotidien
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
@@ -657,7 +826,7 @@ export function OrchestratorMaintenanceView() {
               {/* Module 1: RH & Organisation (Blue) */}
               <div
                 onClick={() => setActiveSection('planning-hr')}
-                className="rounded-xl p-4 bg-gradient-to-br from-blue-600 to-blue-800 text-white border border-blue-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
+                className="rounded-2xl p-4 bg-gradient-to-br from-blue-600 to-blue-800 text-white border border-blue-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-extrabold text-sm">
@@ -679,7 +848,7 @@ export function OrchestratorMaintenanceView() {
               {/* Module 2: CRM & Fidélisation (Green) */}
               <div
                 onClick={() => setActiveSection('crm')}
-                className="rounded-xl p-4 bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border border-emerald-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
+                className="rounded-2xl p-4 bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border border-emerald-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-extrabold text-sm">
@@ -701,18 +870,18 @@ export function OrchestratorMaintenanceView() {
               {/* Module 3: Téléphonie commerciale (Purple) */}
               <div
                 onClick={() => setActiveSection('telephony')}
-                className="rounded-xl p-4 bg-gradient-to-br from-purple-600 to-indigo-900 text-white border border-purple-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
+                className="rounded-2xl p-4 bg-gradient-to-br from-violet-600 to-indigo-800 text-white border border-violet-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-extrabold text-sm">
-                    <PhoneCall className="w-4 h-4 text-purple-200" />
+                    <PhoneCall className="w-4 h-4 text-violet-200" />
                     <span>Module Téléphonie Commerciale</span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-black/25 font-mono text-[10px]">
                     Ex-Ringover
                   </span>
                 </div>
-                <ul className="space-y-1 text-purple-100 text-[11px] list-disc list-inside">
+                <ul className="space-y-1 text-violet-100 text-[11px] list-disc list-inside">
                   <li>Appels entrants / sortants (04 OVH + 07 SIM)</li>
                   <li>Qualification de leads &amp; Hot Desking</li>
                   <li>Relances automatiques &amp; rotation anti-spam</li>
@@ -720,21 +889,21 @@ export function OrchestratorMaintenanceView() {
                 </ul>
               </div>
 
-              {/* Module 4: Maintenance & Gestion générale (Orange) */}
+              {/* Module 4: Maintenance & Gestion générale */}
               <div
                 onClick={() => setActiveTab('MODULE_MAINTENANCE')}
-                className="rounded-xl p-4 bg-gradient-to-br from-amber-600 to-orange-800 text-white border border-amber-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
+                className="rounded-2xl p-4 bg-gradient-to-br from-amber-500 to-orange-700 text-white border border-amber-400/30 shadow-xs cursor-pointer hover:brightness-105 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-extrabold text-sm">
-                    <Wrench className="w-4 h-4 text-amber-200" />
+                    <Wrench className="w-4 h-4 text-amber-100" />
                     <span>Module Maintenance &amp; Gestion</span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-black/25 font-mono text-[10px]">
                     Exploitation
                   </span>
                 </div>
-                <ul className="space-y-1 text-amber-100 text-[11px] list-disc list-inside">
+                <ul className="space-y-1 text-amber-50 text-[11px] list-disc list-inside">
                   <li>Équipements Technogym/Heitz &amp; interventions</li>
                   <li>Stocks et consommables (seuils d’alerte)</li>
                   <li>Fournisseurs et bons de commandes</li>
@@ -745,25 +914,25 @@ export function OrchestratorMaintenanceView() {
           </div>
 
           {/* LAYER 2: ORCHESTRATEUR CENTRAL (Coordination, Contrôle, Anti-Conflit & Validation Humaine) */}
-          <div className="bg-[#0B1730] text-white rounded-2xl p-5 border-2 border-sky-500/40 shadow-md space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-200/80 pb-4">
               <div className="flex items-start gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-400/50 flex items-center justify-center shrink-0">
-                  <BrainCircuit className="w-6 h-6 text-sky-400" />
+                <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <BrainCircuit className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-bold">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-violet-600 font-bold">
                       Couche 2 · Orchestrateur Central C.Fitness OS
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-[10px] font-bold">
                       DÉDOUBLONNAGE &amp; ANTI-CONTRADICTION ACTIFS
                     </span>
                   </div>
-                  <h2 className="text-lg font-black mt-0.5">
+                  <h2 className="text-lg font-extrabold text-slate-900 mt-0.5">
                     Coordination, Contrôle Qualité &amp; Validation Humaine (Human-in-the-Loop)
                   </h2>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Analyse les événements de Heitz, Mywellness/Checkup et Silae · Déclenche le bon agent · Évite les actions contradictoires · Demande votre validation humaine avant toute action sensible.
                   </p>
                 </div>
@@ -773,7 +942,7 @@ export function OrchestratorMaintenanceView() {
                 type="button"
                 onClick={handleSimulateOrchestratorEvent}
                 data-testid="simulate-orchestrator-event-btn"
-                className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-extrabold text-xs flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 <Play className="w-4 h-4" />
                 <span>Simuler un Événement Multi-Agents</span>
@@ -787,38 +956,38 @@ export function OrchestratorMaintenanceView() {
                   key={item.id}
                   className={`p-3.5 rounded-xl border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 ${
                     item.status === 'en_attente_validation'
-                      ? 'bg-slate-900/95 border-amber-400/40'
+                      ? 'bg-slate-50 border-amber-300'
                       : item.status === 'execute'
-                      ? 'bg-slate-900/60 border-emerald-500/30'
-                      : 'bg-slate-900/40 border-slate-800 opacity-75'
+                      ? 'bg-slate-50 border-emerald-300'
+                      : 'bg-slate-50 border-slate-200 opacity-75'
                   }`}
                 >
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[11px] text-slate-400">
+                      <span className="font-mono text-[11px] text-slate-500">
                         [{item.timestamp}]
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-mono text-[10px]">
                         Source : {item.sourceSystem}
                       </span>
-                      <span className={`font-bold ${item.agentColor}`}>
+                      <span className="font-bold text-violet-600">
                         → {item.assignedAgent}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono">
+                      <span className="px-2 py-0.5 rounded bg-violet-50 text-violet-700 text-[10px] font-mono font-bold">
                         {formatClubName(item.clubId, true)}
                       </span>
                     </div>
 
-                    <div className="font-bold text-white">
+                    <div className="font-bold text-slate-900">
                       Événement : {item.triggerEvent}
                     </div>
-                    <div className="text-slate-300">
-                      <strong className="text-sky-300">Action proposée :</strong>{' '}
+                    <div className="text-slate-600">
+                      <strong className="text-violet-600">Action proposée :</strong>{' '}
                       {item.proposedAction}
                     </div>
 
                     {item.conflictAvoidedNote && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px]">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium">
                         <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
                         <span>{item.conflictAvoidedNote}</span>
                       </div>
@@ -831,7 +1000,7 @@ export function OrchestratorMaintenanceView() {
                         <button
                           type="button"
                           onClick={() => handleApproveDecision(item.id)}
-                          className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Valider &amp; Exécuter</span>
@@ -839,7 +1008,7 @@ export function OrchestratorMaintenanceView() {
                         <button
                           type="button"
                           onClick={() => handleRejectDecision(item.id)}
-                          className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-rose-300 border border-slate-700 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 font-semibold text-xs flex items-center gap-1 cursor-pointer"
                         >
                           <XCircle className="w-3.5 h-3.5" />
                           <span>Refuser</span>
@@ -847,27 +1016,27 @@ export function OrchestratorMaintenanceView() {
                       </>
                     ) : item.status === 'execute' ? (
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-[11px] flex items-center gap-1.5">
+                        <span className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px] flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Exécuté &amp; Tracé</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => handleResetDecision(item.id)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold cursor-pointer"
                         >
                           Remettre en attente
                         </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-[11px]">
+                        <span className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[11px]">
                           Refusé par l&apos;humain
                         </span>
                         <button
                           type="button"
                           onClick={() => handleResetDecision(item.id)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold cursor-pointer"
                         >
                           Remettre en attente
                         </button>
@@ -883,7 +1052,7 @@ export function OrchestratorMaintenanceView() {
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <div className="text-[11px] font-mono uppercase tracking-wider text-orange-600 font-bold">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-violet-600 font-bold">
                   Couche 3 du Schéma Directeur · Assistants spécialisés gouvernés par permissions
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
@@ -899,11 +1068,11 @@ export function OrchestratorMaintenanceView() {
               {agents.map((ag) => (
                 <div
                   key={ag.id}
-                  className={`rounded-2xl bg-slate-900 text-white border-2 ${ag.borderAccent} overflow-hidden flex flex-col justify-between shadow-xs`}
+                  className="rounded-2xl bg-white border border-slate-200/80 overflow-hidden flex flex-col justify-between shadow-2xs"
                 >
                   <div>
                     <div
-                      className={`bg-gradient-to-r ${ag.colorHeader} px-4 py-3 flex items-center justify-between gap-2`}
+                      className={`bg-gradient-to-r ${ag.colorHeader} px-4 py-3 text-white flex items-center justify-between gap-2`}
                     >
                       <div className="flex items-center gap-2 font-black text-sm">
                         <Bot className="w-4 h-4 text-white shrink-0" />
@@ -919,37 +1088,37 @@ export function OrchestratorMaintenanceView() {
                         {ag.sourceTools.map((src) => (
                           <span
                             key={src}
-                            className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]"
+                            className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-semibold"
                           >
                             {src}
                           </span>
                         ))}
                       </div>
 
-                      <ul className="space-y-1.5 text-slate-200 text-[11px]">
+                      <ul className="space-y-1.5 text-slate-700 text-[11px]">
                         {ag.missions.map((m) => (
                           <li key={m} className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                             <span>{m}</span>
                           </li>
                         ))}
                       </ul>
 
-                      <div className="p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-[11px] text-slate-300">
-                        <span className="font-bold text-white">Dernière action : </span>
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
+                        <span className="font-bold text-slate-900">Dernière action : </span>
                         {ag.lastDecisionExample}
                       </div>
                     </div>
                   </div>
 
-                  <div className="px-4 py-3 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between gap-2">
+                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => handleToggleAgentAutonomy(ag.id)}
                       className={`px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold cursor-pointer border ${
                         ag.autonomyMode === 'validation_humaine'
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                       }`}
                     >
                       {ag.autonomyMode === 'validation_humaine'
@@ -966,7 +1135,7 @@ export function OrchestratorMaintenanceView() {
                           setActiveSection(ag.targetSection);
                         }
                       }}
-                      className="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline cursor-pointer"
+                      className="text-[11px] font-bold text-violet-600 hover:text-violet-700 underline cursor-pointer"
                     >
                       Ouvrir le module →
                     </button>
@@ -1038,7 +1207,7 @@ export function OrchestratorMaintenanceView() {
                 >
                   <div className="space-y-1.5">
                     <div className="font-extrabold text-slate-900">{tool.title}</div>
-                    <div className="inline-block px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[10px]">
+                    <div className="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-800 font-mono text-[10px] font-bold">
                       {tool.badge}
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
@@ -1060,25 +1229,413 @@ export function OrchestratorMaintenanceView() {
       )}
 
       {/* =================================================================== */}
-      {/* TAB 2: 4e MODULE MÉTIER — MAINTENANCE & GESTION GÉNÉRALE            */}
+      {/* TAB STOCKS: MODULE STOCK & ACHATS DÉDIÉ (INVENTAIRE & FOURNISSEURS) */}
+      {/* =================================================================== */}
+      {activeTab === 'MODULE_STOCKS' && (
+        <div className="space-y-6">
+          {/* 4 Stock & Achats KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Références en stock (2 clubs)
+              </div>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {filteredStocks.length} articles
+              </div>
+              <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                Nutrition, Textile, Badges RFID &amp; Hygiène
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Alertes Seuil Bas / À commander
+              </div>
+              <div className="text-2xl font-black text-rose-600 mt-1">
+                {lowStockCount} alertes
+              </div>
+              <div className="text-[11px] text-rose-600 font-semibold mt-0.5">
+                Pré-commandes fournisseur prêtes
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Valeur du Stock en Réserve
+              </div>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {totalStockValueHt.toLocaleString('fr-FR')} € HT
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Valorisation temps réel Center &amp; Place
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Bons de Commande Fournisseurs
+              </div>
+              <div className="text-2xl font-black text-violet-600 mt-1">
+                {filteredPurchaseOrders.length} commandes
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                FitSupply Pro, NutriSport, Heitz, Hygiène
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left 7 Cols: Inventaire des Stocks & Réapprovisionnement */}
+            <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <span className="text-[11px] font-mono uppercase text-orange-600 font-bold">
+                    Inventaire Temps Réel · C.Fitness Center &amp; C.Fitness Place
+                  </span>
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    État des Stocks, Consommables &amp; Produits Bar / Boutique ({filteredStocks.length})
+                  </h2>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-orange-800 font-bold text-xs">
+                  Surveillance Seuils Active
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {filteredStocks.map((s) => {
+                  const isLow = s.currentQty < s.minThreshold;
+                  const ratio = Math.min(100, Math.round((s.currentQty / (s.minThreshold * 2)) * 100));
+                  return (
+                    <div
+                      key={s.id}
+                      className={`p-3.5 rounded-xl border space-y-2.5 ${
+                        isLow
+                          ? 'bg-rose-50/50 border-rose-300'
+                          : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{s.name}</span>
+                            <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[10px] font-semibold">
+                              {s.category}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-violet-50 text-violet-700 font-mono text-[10px] font-bold">
+                              {formatClubName(s.clubId, true)}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Fournisseur : <strong>{s.supplier}</strong> · Prix d&apos;achat :{' '}
+                            <strong>{s.unitPriceht.toFixed(2)} € HT / {s.unit}</strong>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-lg font-mono font-bold text-xs shrink-0 ${
+                            isLow
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {s.currentQty} {s.unit} (Seuil min: {s.minThreshold})
+                        </span>
+                      </div>
+
+                      {/* Stock Progress Bar */}
+                      <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          style={{ width: `${ratio}%` }}
+                          className={`h-full rounded-full ${
+                            isLow ? 'bg-rose-500' : 'bg-emerald-500'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                        {isLow ? (
+                          <span className="text-[11px] text-rose-800 font-semibold flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            Stock sous le seuil minimum — Réapprovisionnement recommandé (+25 {s.unit})
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-emerald-800 font-medium">
+                            Stock nominal en réserve club
+                          </span>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleConsumeStock(s.id)}
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-[11px] cursor-pointer"
+                          >
+                            - Sortie stock
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOrderStock(s.id)}
+                            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Commander / Réceptionner (+25)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right 5 Cols: Nouvel Achat / Bon de Commande & Historique Achats */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* Create Purchase Order Form */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
+                <div className="border-b border-slate-100 pb-3">
+                  <span className="text-[11px] font-mono uppercase text-violet-600 font-bold">
+                    Achats &amp; Approvisionnements
+                  </span>
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    Créer un Bon de Commande Fournisseur
+                  </h2>
+                </div>
+
+                <form onSubmit={handleCreatePurchaseOrder} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Article ou lot à commander
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newStockName}
+                      onChange={(e) => setNewStockName(e.target.value)}
+                      placeholder="Ex: Barres Protéinées Chocolat (Boîte x24)..."
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Catégorie d&apos;achat
+                      </label>
+                      <select
+                        value={newStockCategory}
+                        onChange={(e) =>
+                          setNewStockCategory(e.target.value as StockConsumableItem['category'])
+                        }
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white"
+                      >
+                        <option value="Nutrition / Bar">Nutrition / Bar</option>
+                        <option value="Textile & Accueil">Textile &amp; Accueil</option>
+                        <option value="Badges & TPV">Badges &amp; TPV</option>
+                        <option value="Hygiène & Plateau">Hygiène &amp; Plateau</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Club destinataire
+                      </label>
+                      <select
+                        value={newStockClub}
+                        onChange={(e) => setNewStockClub(e.target.value as ClubId)}
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white"
+                      >
+                        <option value="carre-de-soie">C.Fitness Center (CDS)</option>
+                        <option value="beynost">C.Fitness Place (BEY)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Fournisseur
+                      </label>
+                      <select
+                        value={newStockSupplier}
+                        onChange={(e) => setNewStockSupplier(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white"
+                      >
+                        <option value="FitSupply Pro Lyon">FitSupply Pro Lyon</option>
+                        <option value="NutriSport France">NutriSport France</option>
+                        <option value="Heitz System">Heitz System</option>
+                        <option value="Hygiène Sport Rhône">Hygiène Sport Rhône</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Quantité
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={newStockQty}
+                        onChange={(e) => setNewStockQty(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Prix unitaire HT (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min={0.5}
+                        value={newStockPrice}
+                        onChange={(e) => setNewStockPrice(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>
+                      Émettre le Bon de Commande ({(newStockQty * newStockPrice).toFixed(2)} € HT)
+                    </span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Purchase Orders History */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3.5 shadow-2xs text-xs">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-emerald-700 font-bold">
+                      Suivi des Commandes &amp; Livraisons
+                    </span>
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      Bons de Commande Fournisseurs ({filteredPurchaseOrders.length})
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {filteredPurchaseOrders.map((po) => (
+                    <div
+                      key={po.id}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono font-bold text-violet-700">
+                          {po.reference} · {po.supplier}
+                        </span>
+                        <span className="font-black text-slate-900">
+                          {po.amountHtEur.toFixed(2)} € HT
+                        </span>
+                      </div>
+                      <div className="text-slate-700 font-medium">{po.itemsSummary}</div>
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-[11px] text-slate-500">
+                          {formatClubName(po.clubId, true)} · {po.date}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                              po.status === 'Livré & Réceptionné'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : po.status === 'Commande envoyée'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {po.status}
+                          </span>
+                          {po.status !== 'Livré & Réceptionné' && (
+                            <button
+                              type="button"
+                              onClick={() => handleAdvancePoStatus(po.id)}
+                              className="px-2 py-0.5 rounded bg-violet-600 text-white font-bold text-[10px] cursor-pointer"
+                            >
+                              {po.status === 'Brouillon IA' ? 'Envoyer' : 'Réceptionner'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* TAB 2: MODULE MAINTENANCE & PARC ÉQUIPEMENTS                        */}
       {/* =================================================================== */}
       {activeTab === 'MODULE_MAINTENANCE' && (
         <div className="space-y-6">
+          {/* 4 Maintenance KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Interventions &amp; Tickets SAV
+              </div>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {filteredTickets.length} dossiers
+              </div>
+              <div className="text-[11px] text-violet-600 font-semibold mt-0.5">
+                Dont CTA Beynost (15 avr.) &amp; Clim Center (12:30)
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Disponibilité Parc Technogym
+              </div>
+              <div className="text-2xl font-black text-emerald-600 mt-1">98,6 %</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Biocircuit, Excite &amp; 2× Stations Checkup
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Portillons RFID / BLE Heitz
+              </div>
+              <div className="text-2xl font-black text-sky-600 mt-1">100 % actifs</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Latence Wiegand &lt; 18 ms sur les 2 clubs
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">
+                Prochaine Maintenance Prévue
+              </div>
+              <div className="text-base font-black text-slate-900 mt-1">
+                CTA Beynost – 15 avril
+              </div>
+              <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                ClimRhône Maintenance confirmé
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left 7 Cols: Équipements & Interventions SAV */}
-            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            {/* Left 8 Cols: Équipements & Interventions SAV */}
+            <div className="lg:col-span-8 bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
                 <div>
-                  <span className="text-[11px] font-mono uppercase text-amber-700 font-bold">
-                    Module Maintenance &amp; Gestion Générale · Piloté par l&apos;Agent Maintenance
+                  <span className="text-[11px] font-mono uppercase text-violet-600 font-bold">
+                    Maintenance Préventive &amp; Curative · C.Fitness Center &amp; C.Fitness Place
                   </span>
                   <h2 className="text-base font-extrabold text-slate-900">
-                    Suivi des Équipements, Pannes &amp; Interventions ({filteredTickets.length})
+                    Suivi des Équipements, Climatisation CTA &amp; Interventions ({filteredTickets.length})
                   </h2>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 font-bold text-xs">
-                  Carré de Soie &amp; Beynost
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('MODULE_STOCKS')}
+                  className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-800 font-bold text-xs cursor-pointer"
+                >
+                  Voir Stock &amp; Achats ({filteredStocks.length}) →
+                </button>
               </div>
 
               {/* Quick Add Ticket Form */}
@@ -1123,17 +1680,17 @@ export function OrchestratorMaintenanceView() {
                     onChange={(e) => setNewClubId(e.target.value as ClubId)}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white"
                   >
-                    <option value="carre-de-soie">Carré de Soie</option>
-                    <option value="beynost">Beynost</option>
+                    <option value="carre-de-soie">Center (CDS)</option>
+                    <option value="beynost">Place (BEY)</option>
                   </select>
                 </div>
                 <div className="sm:col-span-3 flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center justify-center gap-1 cursor-pointer"
+                    className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Créer Ticket</span>
+                    <span>Créer Ticket SAV</span>
                   </button>
                 </div>
                 <div className="sm:col-span-12">
@@ -1168,7 +1725,7 @@ export function OrchestratorMaintenanceView() {
                       </div>
                       <p className="text-slate-600">{t.issueDescription}</p>
                       <div className="text-[11px] text-slate-500 font-mono">
-                        Prestataire : <strong>{t.supplierName}</strong> · Créé : {t.createdAt}
+                        Prestataire : <strong>{t.supplierName}</strong> · Échéance : {t.createdAt}
                       </div>
                     </div>
 
@@ -1190,10 +1747,10 @@ export function OrchestratorMaintenanceView() {
                         className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] cursor-pointer ${
                           t.status === 'Résolu'
                             ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                            : 'bg-slate-900 hover:bg-slate-800 text-white'
+                            : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white'
                         }`}
                       >
-                        {t.status === 'Résolu' ? 'Réouvrir ticket' : 'Avancer statut'}
+                        {t.status === 'Résolu' ? 'Réouvrir ticket' : 'Valider étape'}
                       </button>
                     </div>
                   </div>
@@ -1201,80 +1758,52 @@ export function OrchestratorMaintenanceView() {
               </div>
             </div>
 
-            {/* Right 5 Cols: Stocks, Consommables & Commandes Fournisseurs */}
-            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+            {/* Right 4 Cols: Contrats de Maintenance & Prestataires Agréés */}
+            <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs text-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-mono uppercase text-orange-600 font-bold">
-                  Stocks, Consommables &amp; Commandes Fournisseurs
+                <span className="text-[11px] font-mono uppercase text-emerald-600 font-bold">
+                  Contrats SAV &amp; Prestataires Bi-Club
                 </span>
                 <h2 className="text-base font-extrabold text-slate-900">
-                  Surveillance Automatique des Seuils &amp; Réapprovisionnement
+                  Échéancier Préventif &amp; Garanties
                 </h2>
               </div>
 
-              <div className="space-y-3 text-xs">
-                {filteredStocks.map((s) => {
-                  const isLow = s.currentQty < s.minThreshold;
-                  return (
-                    <div
-                      key={s.id}
-                      className={`p-3.5 rounded-xl border space-y-2 ${
-                        isLow
-                          ? 'bg-rose-50/50 border-rose-300'
-                          : 'bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-bold text-slate-900">{s.name}</div>
-                          <div className="text-[11px] text-slate-500">
-                            {formatClubName(s.clubId, false)} · Fournisseur :{' '}
-                            <strong>{s.supplier}</strong> ({s.unitPriceht.toFixed(2)} € HT/u)
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] shrink-0 ${
-                            isLow
-                              ? 'bg-rose-600 text-white'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {s.currentQty} {s.unit} (Seuil: {s.minThreshold})
-                        </span>
-                      </div>
-
-                      {isLow ? (
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <span className="text-[11px] text-rose-800 font-semibold flex items-center gap-1">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                            Pré-commande de +25 {s.unit} préparée par l&apos;Agent Maintenance
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOrderStock(s.id)}
-                            className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 cursor-pointer"
-                          >
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                            <span>Valider commande</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <span className="text-[11px] text-emerald-800 font-medium">
-                            Stock suffisant en réserve club
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleConsumeStock(s.id)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-[11px] cursor-pointer"
-                          >
-                            Simuler seuil bas
-                          </button>
-                        </div>
-                      )}
+              <div className="space-y-3">
+                {[
+                  {
+                    partner: 'ClimRhône Maintenance (CVC / CTA)',
+                    scope: 'Centrales d’Air CTA Beynost & Climatisation Musculation Center',
+                    nextDate: '14 & 15 avril 2025',
+                    badge: '2 interventions cette semaine',
+                  },
+                  {
+                    partner: 'Technogym France SAV',
+                    scope: 'Parc Biocircuit, Cardio Excite & 2× Balances Checkup BIA/3D',
+                    nextDate: 'Sous garantie intégrale',
+                    badge: 'Télémétrie Mywellness OK',
+                  },
+                  {
+                    partner: 'Heitz System Support',
+                    scope: 'Tripodes d’entrée F5/F6, Portillons PMR F7 & Lecteurs RFID/BLE',
+                    nextDate: 'Contrôle annuel OK',
+                    badge: 'Cache hors-ligne actif',
+                  },
+                ].map((c) => (
+                  <div
+                    key={c.partner}
+                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5"
+                  >
+                    <div className="font-bold text-slate-900">{c.partner}</div>
+                    <p className="text-[11px] text-slate-600">{c.scope}</p>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="font-mono text-[10px] text-slate-500">{c.nextDate}</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                        {c.badge}
+                      </span>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -1317,13 +1846,13 @@ export function OrchestratorMaintenanceView() {
             ].map((p) => (
               <div
                 key={p.title}
-                className="p-4 rounded-xl bg-slate-900 text-white border border-slate-800 space-y-2"
+                className="p-4 rounded-2xl bg-white border border-slate-200/80 space-y-2 shadow-2xs"
               >
-                <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 font-mono text-[10px] font-bold">
                   {p.badge}
                 </span>
-                <div className="font-extrabold text-sm">{p.title}</div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">{p.sub}</p>
+                <div className="font-extrabold text-sm text-slate-900">{p.title}</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{p.sub}</p>
               </div>
             ))}
           </div>

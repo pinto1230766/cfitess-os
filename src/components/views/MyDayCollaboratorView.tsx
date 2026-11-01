@@ -97,17 +97,17 @@ export function MyDayCollaboratorView() {
 
   return (
     <div className="space-y-6">
-      {/* Top Personal Header & Quick Front-Desk Actions */}
-      <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 shadow-2xs space-y-5">
+      {/* Top Personal Header & Quick Front-Desk Actions (C.Fitness OS Unified Header) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-600 text-white font-black text-base flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white font-black text-base flex items-center justify-center shrink-0 shadow-sm">
               {activeEmployee.firstName[0]}
               {activeEmployee.lastName[0]}
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span className="text-orange-400 font-semibold">01. Ma Journée</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="text-violet-600 font-semibold">01. Personnel · Ma Journée</span>
                 <span aria-hidden="true">·</span>
                 <span>{formatClubName(activeEmployee.clubId, false)}</span>
                 <span aria-hidden="true">·</span>
@@ -115,10 +115,10 @@ export function MyDayCollaboratorView() {
                   {activeEmployee.contractType} {activeEmployee.weeklyContractHours}h/sem
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-1">
-                Bonjour {activeEmployee.firstName} {activeEmployee.lastName}
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mt-1">
+                Bonjour {activeEmployee.firstName} {activeEmployee.lastName} ! 👋
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 {activeEmployee.jobTitle} — Voici votre emploi du temps et vos priorités du jour.
               </p>
             </div>
@@ -126,16 +126,16 @@ export function MyDayCollaboratorView() {
 
           {/* Single Collaborator Selector */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5">
-              <UserCheck className="w-4 h-4 text-orange-400 shrink-0" />
-              <span className="text-xs text-slate-400">Voir la journée de :</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5">
+              <UserCheck className="w-4 h-4 text-violet-600 shrink-0" />
+              <span className="text-xs text-slate-500">Voir la journée de :</span>
               <select
                 value={activeEmployee.id}
                 onChange={(e) => setSelectedEmpId(e.target.value)}
-                className="bg-transparent text-white text-xs sm:text-sm font-semibold focus:outline-none cursor-pointer"
+                className="bg-transparent text-slate-900 text-xs sm:text-sm font-semibold focus:outline-none cursor-pointer"
               >
                 {staffList.map((emp) => (
-                  <option key={emp.id} value={emp.id} className="text-slate-900">
+                  <option key={emp.id} value={emp.id}>
                     {emp.firstName} {emp.lastName} ({formatClubName(emp.clubId, true)})
                   </option>
                 ))}
@@ -145,31 +145,31 @@ export function MyDayCollaboratorView() {
         </div>
 
         {/* 4 Key Daily Figures (Clean, Large, Readable at a Distance) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
-          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
-            <div className="text-xs text-slate-400">Tâches à faire aujourd&apos;hui</div>
-            <div className="text-lg sm:text-xl font-bold text-orange-400 font-mono tabular-nums mt-1">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4 border-t border-slate-100">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+            <div className="text-xs text-slate-500">Tâches à faire aujourd&apos;hui</div>
+            <div className="text-lg sm:text-xl font-black text-violet-600 font-mono tabular-nums mt-1">
               {remainingTasksCount} sur {myTasks.length}
             </div>
           </div>
 
-          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
-            <div className="text-xs text-slate-400">Rendez-vous &amp; Créneaux</div>
-            <div className="text-lg sm:text-xl font-bold text-emerald-400 font-mono tabular-nums mt-1">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+            <div className="text-xs text-slate-500">Rendez-vous &amp; Créneaux</div>
+            <div className="text-lg sm:text-xl font-black text-emerald-600 font-mono tabular-nums mt-1">
               {myEvents.length} programmés
             </div>
           </div>
 
-          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
-            <div className="text-xs text-slate-400">Heures de la semaine</div>
-            <div className="text-lg sm:text-xl font-bold text-white font-mono tabular-nums mt-1">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+            <div className="text-xs text-slate-500">Heures de la semaine</div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tabular-nums mt-1">
               {totalWeeklyHours.toFixed(1)} h / {activeEmployee.weeklyContractHours} h
             </div>
           </div>
 
-          <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-3.5">
-            <div className="text-xs text-slate-400">Congés disponibles</div>
-            <div className="text-lg sm:text-xl font-bold text-white font-mono tabular-nums mt-1">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+            <div className="text-xs text-slate-500">Congés disponibles</div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tabular-nums mt-1">
               {activeEmployee.cpBalance} j CP · {activeEmployee.rttBalance} j RTT
             </div>
           </div>
@@ -177,14 +177,14 @@ export function MyDayCollaboratorView() {
 
         {/* 3 Direct Counter Shortcuts ("Actions Comptoir Accueil en 1 Clic") */}
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <span className="text-xs font-semibold text-slate-400">
+          <span className="text-xs font-semibold text-slate-500">
             Raccourcis rapides comptoir d&apos;accueil :
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 max-w-3xl">
             <button
               type="button"
               onClick={() => setActiveSection('crm')}
-              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
             >
               <UserPlus className="w-4 h-4 shrink-0" />
               <span>Nouveau Prospect / Essai QR</span>
@@ -193,18 +193,18 @@ export function MyDayCollaboratorView() {
             <button
               type="button"
               onClick={() => setActiveSection('telephony')}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <PhoneCall className="w-4 h-4 text-emerald-400 shrink-0" />
+              <PhoneCall className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>Appels &amp; SMS (04 / 07)</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSection('devices')}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <QrCode className="w-4 h-4 text-orange-400 shrink-0" />
+              <QrCode className="w-4 h-4 text-violet-600 shrink-0" />
               <span>Portillons &amp; Caisse Heitz</span>
             </button>
           </div>
@@ -214,11 +214,11 @@ export function MyDayCollaboratorView() {
       {/* Main 2-Column Workspace: Left = Mon Planning du Jour (7 cols) | Right = Mes Tâches & Notifications (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT 7 COLS: Clean Unified Schedule */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+        <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-orange-600" />
+                <Calendar className="w-5 h-5 text-violet-600" />
                 <span>Mon Planning &amp; Mes Rendez-vous ({myEvents.length})</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -250,7 +250,7 @@ export function MyDayCollaboratorView() {
                 ev.originSystem === 'cfitness_rh'
                   ? 'text-slate-600'
                   : ev.originSystem === 'mywellness_api'
-                  ? 'text-orange-600'
+                  ? 'text-violet-600'
                   : ev.originSystem === 'heitz_api'
                   ? 'text-emerald-700'
                   : 'text-slate-700';
@@ -312,7 +312,7 @@ export function MyDayCollaboratorView() {
                       }
                       className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-xs flex items-center gap-1.5 self-start sm:self-center shrink-0 cursor-pointer"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-orange-600" />
+                      <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
                       <span>Dossier Mywellness</span>
                     </button>
                   )}
@@ -325,11 +325,11 @@ export function MyDayCollaboratorView() {
         {/* RIGHT 5 COLS: Tasks & Notifications */}
         <div className="lg:col-span-5 space-y-6">
           {/* Daily Tasks */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-600" />
+                  <Clock className="w-4 h-4 text-violet-600" />
                   <span>Mes Tâches du Jour ({remainingTasksCount} à faire)</span>
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -346,14 +346,14 @@ export function MyDayCollaboratorView() {
                   className={`p-3.5 rounded-xl border text-sm flex items-start gap-3 cursor-pointer transition-colors ${
                     task.completed
                       ? 'bg-slate-50 border-slate-200 text-slate-400 line-through'
-                      : 'bg-white border-slate-200 hover:border-orange-300 text-slate-900'
+                      : 'bg-white border-slate-200 hover:border-violet-300 text-slate-900'
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={task.completed}
                     onChange={() => {}}
-                    className="mt-1 w-4 h-4 rounded text-orange-600 cursor-pointer"
+                    className="mt-1 w-4 h-4 rounded text-violet-600 cursor-pointer"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold leading-snug">{task.title}</div>
@@ -383,11 +383,11 @@ export function MyDayCollaboratorView() {
                   placeholder="Ajouter une tâche rapide..."
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-orange-500"
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-violet-500"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Ajouter</span>
@@ -409,17 +409,17 @@ export function MyDayCollaboratorView() {
           </div>
 
           {/* Notifications & Contracts */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-orange-600" />
+                <Bell className="w-4 h-4 text-violet-600" />
                 <span>Messages &amp; Documents ({unreadNotifsCount})</span>
               </h2>
               {pendingDocsCount > 0 ? (
                 <button
                   type="button"
                   onClick={() => setActiveSection('ats')}
-                  className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <FileSignature className="w-3.5 h-3.5" />
                   <span>{pendingDocsCount} contrat à signer</span>
@@ -444,7 +444,7 @@ export function MyDayCollaboratorView() {
                     className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
                       notif.read
                         ? 'bg-slate-50 border-slate-200 text-slate-600'
-                        : 'bg-orange-50/50 border-orange-200 text-slate-900'
+                        : 'bg-violet-50/50 border-violet-200 text-slate-900'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -459,7 +459,7 @@ export function MyDayCollaboratorView() {
                         <button
                           type="button"
                           onClick={() => markNotificationRead(notif.id)}
-                          className="text-xs font-semibold text-orange-700 hover:text-orange-900 underline cursor-pointer"
+                          className="text-xs font-semibold text-violet-700 hover:text-violet-900 underline cursor-pointer"
                         >
                           Marquer comme lu
                         </button>
@@ -475,3 +475,4 @@ export function MyDayCollaboratorView() {
     </div>
   );
 }
+

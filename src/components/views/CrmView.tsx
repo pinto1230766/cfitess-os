@@ -188,29 +188,34 @@ export function CrmView() {
       {/* ===================================================================== */}
       {/* EN-TÊTE UNIFIÉ C.FITNESS OS — CRM PROSPECTS & ADHÉSIONS               */}
       {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-white">
-        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs bg-white">
+        <div className="bg-white border-b border-slate-200/80 px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="pr-4 border-r border-slate-800">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
-                06 · Le CRM Prospects &amp; Adhésions
+            <div className="flex items-center gap-3.5 pr-4 xl:border-r border-slate-200/80">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <UserPlus className="w-5 h-5" />
               </div>
-              <h2 className="font-black text-lg tracking-tight text-white">
-                Pipeline Commercial, Relances &amp; Parrainages
-              </h2>
-              <div className="text-xs text-slate-400">
-                Synchronisé avec les passages portillons Heitz &amp; bilans coach Mywellness
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
+                  06 · Le CRM Prospects &amp; Adhésions
+                </div>
+                <h2 className="font-extrabold text-lg tracking-tight text-slate-900">
+                  Pipeline Commercial, Relances &amp; Parrainages
+                </h2>
+                <div className="text-xs text-slate-500">
+                  Synchronisé avec les passages portillons Heitz &amp; bilans coach Mywellness
+                </div>
               </div>
             </div>
 
             {/* Sélecteur de vue */}
-            <div className="flex items-center gap-1.5 bg-slate-800 p-1 rounded-lg text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs">
               <button
                 onClick={() => setViewMode('KANBAN')}
-                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'KANBAN'
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <Columns3 className="w-3.5 h-3.5" />
@@ -218,10 +223,10 @@ export function CrmView() {
               </button>
               <button
                 onClick={() => setViewMode('HUBSPOT_360')}
-                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'HUBSPOT_360'
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -229,10 +234,10 @@ export function CrmView() {
               </button>
               <button
                 onClick={() => setViewMode('TABLE')}
-                className={`px-3.5 py-2 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   viewMode === 'TABLE'
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <Table2 className="w-3.5 h-3.5" />
@@ -243,16 +248,16 @@ export function CrmView() {
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-right font-mono text-xs hidden sm:block">
-              <span className="text-slate-400">Potentiel annuel : </span>
-              <span className="font-bold text-emerald-400 tabular-nums">
+              <span className="text-slate-500">Potentiel annuel : </span>
+              <span className="font-bold text-emerald-600 tabular-nums">
                 {totalPipelineValueEur.toLocaleString('fr-FR')} €
               </span>
-              <span className="text-slate-400"> · {filteredProspects.length} dossiers</span>
+              <span className="text-slate-500"> · {filteredProspects.length} dossiers</span>
             </div>
 
             <button
               onClick={() => setShowNewModal(true)}
-              className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <UserPlus className="w-4 h-4" />
               + Nouveau Prospect
@@ -464,7 +469,7 @@ export function CrmView() {
                               onClick={() =>
                                 sendValidatedProspectSms(prospect.id, prospect.pendingSmsDraft!)
                               }
-                              className="w-full py-1 px-2 rounded bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-800 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                              className="w-full py-1 px-2 rounded bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-800 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <Send className="w-3 h-3" />
                               Valider SMS
@@ -662,7 +667,7 @@ export function CrmView() {
                 </div>
 
                 {selectedHubspotProspect.pendingSmsDraft && (
-                  <div className="p-3 rounded-lg bg-orange-50 border border-orange-200 space-y-2">
+                  <div className="p-3 rounded-lg bg-violet-50 border border-violet-200 space-y-2">
                     <div className="font-bold text-slate-900">
                       SMS transactionnel en attente de validation :
                     </div>
@@ -676,7 +681,7 @@ export function CrmView() {
                           selectedHubspotProspect.pendingSmsDraft!
                         )
                       }
-                      className="w-full py-2 px-3 rounded bg-[#FF7A59] hover:bg-[#e86847] text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full py-2 px-3 rounded bg-violet-600 hover:bg-violet-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
                       Valider et envoyer le SMS

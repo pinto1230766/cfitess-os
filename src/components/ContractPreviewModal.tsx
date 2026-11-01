@@ -15,7 +15,7 @@ export function ContractPreviewModal({ contractText, onClose }: ContractPreviewM
       <div className="bg-white border border-slate-200 rounded-xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-xl">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase text-orange-600">
+            <div className="text-xs font-semibold uppercase text-violet-600">
               Modèle Officiel C.FITNESS (SIRET {CFITNESS_LEGAL_IDENTITY.siret} · IDCC 2511 Gr. 1)
             </div>
             <h3 className="text-sm font-bold text-slate-900">

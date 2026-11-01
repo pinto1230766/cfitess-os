@@ -81,8 +81,16 @@ import {
   verifyEmployeePin,
   type OnboardingTransactionResult,
 } from '../domain/rules';
+import {
+  type AccentColorId,
+  getNextAccentColor,
+  isValidAccentColor,
+  isValidThemeMode,
+} from '../domain/theme';
 
 const STORAGE_KEY = 'cfitness_os_state_v7';
+const THEME_STORAGE_KEY = 'cfos_theme_mode';
+const ACCENT_STORAGE_KEY = 'cfos_accent_color';
 const BACKUP_ENVELOPE_KEY = 'cfitness_os_backup_envelope_v13';
 const IDB_NAME = 'cfitness_os_failover_idb';
 const IDB_STORE = 'replica_snapshots';
@@ -187,11 +195,18 @@ interface CfosContextValue extends PersistedState {
   isArchitectUnlocked: boolean;
   shellMode: ShellMode;
   activeSection: AdminSection;
+  navSubTarget: string | null;
   clubFilter: ClubFilter;
+  themeMode: 'light' | 'dark';
+  setThemeMode: (mode: 'light' | 'dark') => void;
+  toggleThemeMode: () => void;
+  accentColor: AccentColorId;
+  setAccentColor: (color: AccentColorId) => void;
+  cycleAccentColor: () => void;
   bannerNotice: { tone: 'success' | 'warning' | 'error'; text: string } | null;
   clearBanner: () => void;
   setShellMode: (mode: ShellMode) => void;
-  setActiveSection: (sec: AdminSection) => void;
+  setActiveSection: (sec: AdminSection, subTarget?: string) => void;
   unlockArchitectSpace: () => void;
   lockArchitectSpace: () => void;
   setClubFilter: (filter: ClubFilter) => void;
@@ -347,6 +362,12 @@ interface CfosContextValue extends PersistedState {
     personName?: string;
     clubId?: ClubId;
   }) => { url: string; label: string; isContextualDeepLink: boolean };
+  activeMywellnessModal: {
+    mywellnessMemberId?: string;
+    personName?: string;
+    clubId?: ClubId;
+  } | null;
+  closeMywellnessModal: () => void;
 }
 
 const CfosContext = createContext<CfosContextValue | null>(null);
@@ -390,9 +411,76 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }
     return 'admin';
   });
-  const [activeSection, setActiveSectionState] = useState<AdminSection>('my-day');
+  const [activeSection, setActiveSectionState] = useState<AdminSection>('dashboard');
+  const [navSubTarget, setNavSubTarget] = useState<string | null>(null);
   const [isArchitectUnlocked, setIsArchitectUnlocked] = useState<boolean>(false);
   const [clubFilter, setClubFilter] = useState<ClubFilter>('all');
+  const [activeMywellnessModal, setActiveMywellnessModal] = useState<{
+    mywellnessMemberId?: string;
+    personName?: string;
+    clubId?: ClubId;
+  } | null>(null);
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (isValidThemeMode(saved)) return saved;
+    } catch {
+      // ignore
+    }
+    return 'light';
+  });
+  const [accentColor, setAccentColorState] = useState<AccentColorId>(() => {
+    try {
+      const saved = window.localStorage.getItem(ACCENT_STORAGE_KEY);
+      if (isValidAccentColor(saved)) return saved;
+    } catch {
+      // ignore
+    }
+    return 'violet';
+  });
+
+  const setThemeMode = (mode: 'light' | 'dark') => {
+    setThemeModeState(mode);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  const toggleThemeMode = () => {
+    setThemeModeState((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      try {
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const setAccentColor = (color: AccentColorId) => {
+    setAccentColorState(color);
+    try {
+      window.localStorage.setItem(ACCENT_STORAGE_KEY, color);
+    } catch {
+      // ignore
+    }
+  };
+
+  const cycleAccentColor = () => {
+    setAccentColorState((prev) => {
+      const next = getNextAccentColor(prev);
+      try {
+        window.localStorage.setItem(ACCENT_STORAGE_KEY, next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const [bannerNotice, setBannerNotice] = useState<CfosContextValue['bannerNotice']>(null);
 
   // Toujours purger l'ancien cache sessionStorage pour que Mon Espace ne soit jamais déverrouillé d'office
@@ -405,11 +493,12 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setActiveSection = (sec: AdminSection) => {
+  const setActiveSection = (sec: AdminSection, subTarget?: string) => {
     if (sec !== 'governance') {
       setIsArchitectUnlocked(false);
     }
     setActiveSectionState(sec);
+    setNavSubTarget(subTarget ?? null);
   };
 
   const unlockArchitectSpace = () => {
@@ -1713,38 +1802,42 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     memberName
   ) => {
     const nowIso = new Date().toISOString();
-    const tpvTicket: HeitzKpiTicket = {
-      id: 1000307250000 + Math.floor(Date.now() % 9000),
-      number: `000000${1457 + state.heitzKpiTickets.length}`,
-      clubId,
-      idCenter: clubId === 'carre-de-soie' ? 5052 : 5053,
-      dateIso: nowIso.slice(0, 16).replace('T', ' '),
-      idEmpSeller: currentUser.heitzEmployeeId ?? 100403,
-      sellerEmployeeId: currentUser.id,
-      sellerName: `${currentUser.firstName} ${currentUser.lastName}`,
-      idClient: 1000301397776,
-      clientName: memberName || 'Vente Comptoir Accueil',
-      articleId: 1000301396496,
-      articleCategory: 8,
-      articleName: `00 - ${itemLabel.toUpperCase()}`,
-      paymentMethodName: 'CB TPV',
-      amountTtcEur: amountEur,
-      silaeCommissionEur: Number((amountEur * 0.1).toFixed(2)),
-      ticketState: 1,
-    };
-    setState((prev) => ({
-      ...prev,
-      heitzKpiTickets: [tpvTicket, ...prev.heitzKpiTickets],
-      auditLogs: appendAudit(prev.auditLogs, {
+    const ticketSuffix = Math.floor(Math.random() * 90000) + 10000;
+    setState((prev) => {
+      const nextNum = 1457 + prev.heitzKpiTickets.length;
+      const tpvTicket: HeitzKpiTicket = {
+        id: 1000307250000 + prev.heitzKpiTickets.length * 100000 + ticketSuffix,
+        number: `000000${nextNum}`,
         clubId,
-        action: 'ENCAISSEMENT_TPV_CAISSE_HEITZ',
-        target: `${itemLabel} (${memberName || 'Vente Comptoir Accueil'})`,
-        afterState: `Encaissé : ${amountEur.toFixed(2)} € TTC (CB / Espèces · Ticket KPI /api/ticket #${tpvTicket.number})`,
-      }),
-    }));
+        idCenter: clubId === 'carre-de-soie' ? 5052 : 5053,
+        dateIso: nowIso.slice(0, 16).replace('T', ' '),
+        idEmpSeller: currentUser.heitzEmployeeId ?? 100403,
+        sellerEmployeeId: currentUser.id,
+        sellerName: `${currentUser.firstName} ${currentUser.lastName}`,
+        idClient: 1000301397776,
+        clientName: memberName || 'Vente Comptoir Accueil',
+        articleId: 1000301396496,
+        articleCategory: 8,
+        articleName: `00 - ${itemLabel.toUpperCase()}`,
+        paymentMethodName: 'CB TPV',
+        amountTtcEur: amountEur,
+        silaeCommissionEur: Number((amountEur * 0.1).toFixed(2)),
+        ticketState: 1,
+      };
+      return {
+        ...prev,
+        heitzKpiTickets: [tpvTicket, ...prev.heitzKpiTickets],
+        auditLogs: appendAudit(prev.auditLogs, {
+          clubId,
+          action: 'ENCAISSEMENT_TPV_CAISSE_HEITZ',
+          target: `${itemLabel} (${memberName || 'Vente Comptoir Accueil'})`,
+          afterState: `Encaissé : ${amountEur.toFixed(2)} € TTC (CB / Espèces · Ticket KPI /api/ticket #${tpvTicket.number})`,
+        }),
+      };
+    });
     notify(
       'success',
-      `Vente TPV Heitz encaissée : ${itemLabel} (${amountEur.toFixed(2)} € TTC · Ticket KPI #${tpvTicket.number}${
+      `Vente TPV Heitz encaissée : ${itemLabel} (${amountEur.toFixed(2)} € TTC${
         memberName ? ` · ${memberName}` : ''
       }).`
     );
@@ -1825,8 +1918,8 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     notify(
       'success',
       isCurrentlyValidated
-        ? `Porte Go/No-Go (${targetPhase?.phase || phaseId}) remise en attente de validation.`
-        : `Porte Go/No-Go (${targetPhase?.phase || phaseId}) validée et signée par ${resolvedSigner}.`
+        ? `Porte Go/No-Go (${targetPhase?.title || phaseId}) remise en attente de validation.`
+        : `Porte Go/No-Go (${targetPhase?.title || phaseId}) validée et signée par ${resolvedSigner}.`
     );
   };
 
@@ -2195,21 +2288,28 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
 
   const openMywellnessLink: CfosContextValue['openMywellnessLink'] = (params) => {
     const built = buildMywellnessContextualUrl(params);
+    setActiveMywellnessModal({
+      mywellnessMemberId: params.mywellnessMemberId,
+      personName: params.personName,
+      clubId: params.clubId,
+    });
     setState((prev) => ({
       ...prev,
       auditLogs: appendAudit(prev.auditLogs, {
         clubId: params.clubId || 'global',
         action: 'OUVERTURE_LIEN_CONTEXTUEL_MYWELLNESS',
         target: built.label,
-        afterState: `Redirection contextuelle Mywellness (${built.url})`,
+        afterState: `Ouverture de la Fiche Sportive Mywellness intégrée (${built.label})`,
       }),
     }));
     notify(
       'success',
-      `${built.label} → Lien contextuel Technogym Mywellness ouvert (${built.url}).`
+      `Fiche Sportive Technogym Mywellness ouverte : ${built.label}.`
     );
     return built;
   };
+
+  const closeMywellnessModal = () => setActiveMywellnessModal(null);
 
   const value: CfosContextValue = {
     ...state,
@@ -2218,7 +2318,14 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     isArchitectUnlocked,
     shellMode,
     activeSection,
+    navSubTarget,
     clubFilter,
+    themeMode,
+    setThemeMode,
+    toggleThemeMode,
+    accentColor,
+    setAccentColor,
+    cycleAccentColor,
     bannerNotice,
     clearBanner: () => setBannerNotice(null),
     setShellMode,
@@ -2277,6 +2384,8 @@ export function CfosProvider({ children }: { children: React.ReactNode }) {
     markNotificationRead,
     signDocumentWithInternalProof,
     openMywellnessLink,
+    activeMywellnessModal,
+    closeMywellnessModal,
   };
 
   return <CfosContext.Provider value={value}>{children}</CfosContext.Provider>;

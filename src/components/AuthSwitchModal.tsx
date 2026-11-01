@@ -34,11 +34,11 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+            <div className="text-xs font-semibold uppercase tracking-wider text-violet-600">
               Module M1 · Authentification Unifiée &amp; RBAC (6 Rôles)
             </div>
             <h2 className="text-base font-bold text-slate-900 mt-0.5">
@@ -60,7 +60,7 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
         >
           <div className="flex items-center justify-between">
             <span className="font-bold text-slate-900 flex items-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-orange-600" />
+              <KeyRound className="w-4 h-4 text-violet-600" />
               Test d&apos;authentification PIN (Verrouillage après 5 échecs)
             </span>
             <span className="text-[11px] text-slate-500 tabular-nums">
@@ -94,7 +94,7 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
             />
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold cursor-pointer"
             >
               Valider PIN
             </button>
@@ -139,7 +139,7 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
                   }}
                   className={`w-full p-3 rounded-xl border text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
                     isCurrent
-                      ? 'border-orange-500 bg-orange-50/40'
+                      ? 'border-violet-500 bg-violet-50/40'
                       : 'border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -148,7 +148,7 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
                       <span>
                         {emp.firstName} {emp.lastName}
                       </span>
-                      <span className="font-mono text-[11px] text-orange-600">
+                      <span className="font-mono text-[11px] text-violet-600">
                         [{emp.role.toUpperCase()}]
                       </span>
                     </div>
@@ -174,3 +174,4 @@ export function AuthSwitchModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+

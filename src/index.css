@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
@@ -15,4 +16,328 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* ============================================================================
+   C.FITNESS OS — PALETTES DE COULEURS D'AFFICHAGE DYNAMIQUES (PC / TABLETTE / MOBILE)
+   ============================================================================ */
+
+:root,
+[data-accent="violet"] {
+  --cfos-accent: #7c3aed;
+  --cfos-accent-hover: #6d28d9;
+  --cfos-accent-secondary: #4f46e5;
+  --cfos-accent-soft-bg: #f5f3ff;
+  --cfos-accent-soft-dark: rgba(124, 58, 237, 0.22);
+  --cfos-accent-border: rgba(139, 92, 246, 0.45);
+  --cfos-accent-text: #7c3aed;
+  --cfos-accent-text-dark: #c4b5fd;
+}
+
+[data-accent="blue"] {
+  --cfos-accent: #2563eb;
+  --cfos-accent-hover: #1d4ed8;
+  --cfos-accent-secondary: #0284c7;
+  --cfos-accent-soft-bg: #eff6ff;
+  --cfos-accent-soft-dark: rgba(37, 99, 235, 0.24);
+  --cfos-accent-border: rgba(59, 130, 246, 0.45);
+  --cfos-accent-text: #2563eb;
+  --cfos-accent-text-dark: #93c5fd;
+}
+
+[data-accent="emerald"] {
+  --cfos-accent: #059669;
+  --cfos-accent-hover: #047857;
+  --cfos-accent-secondary: #0d9488;
+  --cfos-accent-soft-bg: #ecfdf5;
+  --cfos-accent-soft-dark: rgba(5, 150, 105, 0.24);
+  --cfos-accent-border: rgba(16, 185, 129, 0.45);
+  --cfos-accent-text: #059669;
+  --cfos-accent-text-dark: #6ee7b7;
+}
+
+[data-accent="rose"] {
+  --cfos-accent: #e11d48;
+  --cfos-accent-hover: #be123c;
+  --cfos-accent-secondary: #db2777;
+  --cfos-accent-soft-bg: #fff1f2;
+  --cfos-accent-soft-dark: rgba(225, 29, 72, 0.24);
+  --cfos-accent-border: rgba(244, 63, 94, 0.45);
+  --cfos-accent-text: #e11d48;
+  --cfos-accent-text-dark: #fda4af;
+}
+
+[data-accent="amber"] {
+  --cfos-accent: #d97706;
+  --cfos-accent-hover: #b45309;
+  --cfos-accent-secondary: #ea580c;
+  --cfos-accent-soft-bg: #fffbeb;
+  --cfos-accent-soft-dark: rgba(217, 119, 6, 0.24);
+  --cfos-accent-border: rgba(245, 158, 11, 0.45);
+  --cfos-accent-text: #d97706;
+  --cfos-accent-text-dark: #fcd34d;
+}
+
+[data-accent="cyan"] {
+  --cfos-accent: #0891b2;
+  --cfos-accent-hover: #0e7490;
+  --cfos-accent-secondary: #2563eb;
+  --cfos-accent-soft-bg: #ecfeff;
+  --cfos-accent-soft-dark: rgba(8, 145, 178, 0.24);
+  --cfos-accent-border: rgba(6, 182, 212, 0.45);
+  --cfos-accent-text: #0891b2;
+  --cfos-accent-text-dark: #67e8f9;
+}
+
+/* Surcharge dynamique de la couleur principale d'affichage */
+[data-accent]:not([data-accent="violet"]) .bg-violet-600,
+[data-accent]:not([data-accent="violet"]) .bg-violet-500 {
+  background-color: var(--cfos-accent) !important;
+}
+
+[data-accent]:not([data-accent="violet"]) .hover\:bg-violet-700:hover,
+[data-accent]:not([data-accent="violet"]) .hover\:bg-violet-600:hover,
+[data-accent]:not([data-accent="violet"]) .hover\:bg-violet-500:hover {
+  background-color: var(--cfos-accent-hover) !important;
+}
+
+[data-accent]:not([data-accent="violet"]) .from-violet-600 {
+  --tw-gradient-from: var(--cfos-accent) !important;
+  --tw-gradient-to: var(--cfos-accent-secondary) !important;
+  background-image: linear-gradient(to right, var(--cfos-accent), var(--cfos-accent-secondary)) !important;
+}
+
+[data-accent]:not([data-accent="violet"]) .text-violet-600,
+[data-accent]:not([data-accent="violet"]) .text-violet-700,
+[data-accent]:not([data-accent="violet"]) .text-violet-500 {
+  color: var(--cfos-accent-text) !important;
+}
+
+.cfos-dark[data-accent]:not([data-accent="violet"]) .text-violet-400,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .text-violet-300,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .text-violet-500,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .text-violet-600 {
+  color: var(--cfos-accent-text-dark) !important;
+}
+
+[data-accent]:not([data-accent="violet"]) .bg-violet-50 {
+  background-color: var(--cfos-accent-soft-bg) !important;
+}
+
+.cfos-dark[data-accent]:not([data-accent="violet"]) .bg-violet-600\/25,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .bg-violet-500\/20,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .bg-violet-500\/15,
+.cfos-dark[data-accent]:not([data-accent="violet"]) .bg-violet-50 {
+  background-color: var(--cfos-accent-soft-dark) !important;
+}
+
+[data-accent]:not([data-accent="violet"]) .border-violet-500,
+[data-accent]:not([data-accent="violet"]) .border-violet-500\/30,
+[data-accent]:not([data-accent="violet"]) .border-violet-500\/40,
+[data-accent]:not([data-accent="violet"]) .border-violet-200,
+[data-accent]:not([data-accent="violet"]) .border-violet-300 {
+  border-color: var(--cfos-accent-border) !important;
+}
+
+/* ============================================================================
+   C.FITNESS OS — SYSTÈME DE DESIGN UNIFIÉ (MODE JOUR & MODE NUIT)
+   Garantit le même style sur PC, Tablettes et Téléphones
+   ============================================================================ */
+
+.cfos-light main .rounded-xl.border,
+.cfos-dark main .rounded-xl.border {
+  border-radius: 1rem;
+}
+
+/* Adaptation intégrale Mode Nuit (Sombre) */
+.cfos-dark main .bg-white,
+.cfos-dark .cfos-adaptive-shell .bg-white,
+.cfos-dark .fixed .bg-white {
+  background-color: #131826;
+  color: #F8FAFC;
+}
+
+.cfos-dark main .bg-slate-50,
+.cfos-dark main .bg-slate-50\/40,
+.cfos-dark main .bg-slate-50\/50,
+.cfos-dark main .bg-slate-50\/60,
+.cfos-dark main .bg-slate-50\/70,
+.cfos-dark main .bg-slate-50\/80,
+.cfos-dark .cfos-adaptive-shell .bg-slate-50,
+.cfos-dark .fixed .bg-slate-50 {
+  background-color: #191F31;
+}
+
+.cfos-dark main .bg-slate-100,
+.cfos-dark main .bg-slate-100\/80,
+.cfos-dark .cfos-adaptive-shell .bg-slate-100 {
+  background-color: #1E263B;
+  color: #E2E8F0;
+}
+
+.cfos-dark main .bg-\[\#E2E8F0\] {
+  background-color: #0F1420;
+}
+
+/* Bordures et séparateurs en Mode Nuit */
+.cfos-dark main .border-slate-200,
+.cfos-dark main .border-slate-200\/80,
+.cfos-dark main .border-slate-300,
+.cfos-dark .cfos-adaptive-shell .border-slate-200,
+.cfos-dark .cfos-adaptive-shell .border-slate-300,
+.cfos-dark .fixed .border-slate-200 {
+  border-color: rgba(51, 65, 85, 0.65);
+}
+
+.cfos-dark main .border-slate-100,
+.cfos-dark .cfos-adaptive-shell .border-slate-100,
+.cfos-dark .fixed .border-slate-100 {
+  border-color: rgba(30, 41, 59, 0.85);
+}
+
+.cfos-dark main .divide-slate-100 > :not(:last-child),
+.cfos-dark main .divide-slate-200 > :not(:last-child) {
+  border-color: rgba(30, 41, 59, 0.85);
+}
+
+/* Typographie lisible en Mode Nuit */
+.cfos-dark main .text-slate-900,
+.cfos-dark main .text-slate-950,
+.cfos-dark .cfos-adaptive-shell .text-slate-900,
+.cfos-dark .fixed .text-slate-900 {
+  color: #F8FAFC;
+}
+
+.cfos-dark main .text-slate-800,
+.cfos-dark .cfos-adaptive-shell .text-slate-800,
+.cfos-dark .fixed .text-slate-800 {
+  color: #E2E8F0;
+}
+
+.cfos-dark main .text-slate-700,
+.cfos-dark .cfos-adaptive-shell .text-slate-700,
+.cfos-dark .fixed .text-slate-700 {
+  color: #CBD5E1;
+}
+
+.cfos-dark main .text-slate-600,
+.cfos-dark .cfos-adaptive-shell .text-slate-600,
+.cfos-dark .fixed .text-slate-600 {
+  color: #94A3B8;
+}
+
+.cfos-dark main .text-slate-500,
+.cfos-dark .cfos-adaptive-shell .text-slate-500 {
+  color: #94A3B8;
+}
+
+/* Préserver le contraste sombre sur les badges clairs */
+.cfos-dark main .bg-amber-50,
+.cfos-dark main .bg-amber-50\/50,
+.cfos-dark main .bg-amber-50\/60,
+.cfos-dark main .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #FDE68A;
+}
+
+.cfos-dark main .text-amber-950,
+.cfos-dark main .text-amber-900,
+.cfos-dark main .text-amber-800 {
+  color: #FDE68A;
+}
+
+.cfos-dark main .bg-emerald-50,
+.cfos-dark main .bg-emerald-50\/50,
+.cfos-dark main .bg-emerald-50\/60,
+.cfos-dark main .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #A7F3D0;
+}
+
+.cfos-dark main .text-emerald-950,
+.cfos-dark main .text-emerald-900,
+.cfos-dark main .text-emerald-800,
+.cfos-dark main .text-emerald-700 {
+  color: #6EE7B7;
+}
+
+.cfos-dark main .bg-rose-50,
+.cfos-dark main .bg-rose-50\/50,
+.cfos-dark main .bg-rose-50\/60,
+.cfos-dark main .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.14);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #FECDD3;
+}
+
+.cfos-dark main .text-rose-950,
+.cfos-dark main .text-rose-900,
+.cfos-dark main .text-rose-800,
+.cfos-dark main .text-rose-700 {
+  color: #FDA4AF;
+}
+
+.cfos-dark main .bg-blue-50,
+.cfos-dark main .bg-blue-50\/40,
+.cfos-dark main .bg-blue-50\/50,
+.cfos-dark main .bg-sky-50,
+.cfos-dark main .bg-indigo-50,
+.cfos-dark main .bg-indigo-50\/40,
+.cfos-dark main .bg-teal-50\/70 {
+  background-color: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #BFDBFE;
+}
+
+.cfos-dark main .text-blue-950,
+.cfos-dark main .text-blue-900,
+.cfos-dark main .text-sky-950,
+.cfos-dark main .text-indigo-950,
+.cfos-dark main .text-indigo-900 {
+  color: #BFDBFE;
+}
+
+.cfos-dark main .bg-violet-50,
+.cfos-dark main .bg-violet-50\/40,
+.cfos-dark main .bg-violet-50\/50,
+.cfos-dark main .bg-purple-50 {
+  background-color: var(--cfos-accent-soft-dark);
+  border-color: var(--cfos-accent-border);
+  color: var(--cfos-accent-text-dark);
+}
+
+.cfos-dark main .text-violet-950,
+.cfos-dark main .text-violet-900,
+.cfos-dark main .text-violet-700 {
+  color: var(--cfos-accent-text-dark);
+}
+
+/* Champs de formulaire, listes déroulantes et zones de saisie en Mode Nuit */
+.cfos-dark main input:not([type="checkbox"]):not([type="radio"]),
+.cfos-dark main select,
+.cfos-dark main textarea,
+.cfos-dark .cfos-adaptive-shell input:not([type="checkbox"]):not([type="radio"]),
+.cfos-dark .cfos-adaptive-shell select,
+.cfos-dark .cfos-adaptive-shell textarea,
+.cfos-dark .fixed input:not([type="checkbox"]):not([type="radio"]),
+.cfos-dark .fixed select,
+.cfos-dark .fixed textarea {
+  background-color: #191F31;
+  border-color: rgba(71, 85, 105, 0.65);
+  color: #F8FAFC;
+}
+
+.cfos-dark main select option,
+.cfos-dark .cfos-adaptive-shell select option,
+.cfos-dark .fixed select option {
+  background-color: #131826;
+  color: #F8FAFC;
+}
+
+/* Survols de lignes de tableaux et listes en Mode Nuit */
+.cfos-dark main .hover\:bg-slate-50:hover,
+.cfos-dark main .hover\:bg-slate-100:hover {
+  background-color: #1E263B;
 }

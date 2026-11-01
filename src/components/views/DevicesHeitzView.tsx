@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCfos } from '../../context/CfosContext';
 import {
   QrCode,
@@ -36,6 +36,7 @@ export function DevicesHeitzView() {
     clubFilter,
     currentUser,
     heitzMembers,
+    heitzKpiTickets,
     accessEvents,
     inBodyScans,
     simulateMemberGateScan,
@@ -48,6 +49,7 @@ export function DevicesHeitzView() {
     addInBodyScan,
     openMywellnessLink,
     setActiveSection,
+    navSubTarget,
   } = useCfos();
 
   const [activeSoftwareTab, setActiveSoftwareTab] = useState<
@@ -61,11 +63,39 @@ export function DevicesHeitzView() {
   const [heitzStatusFilter, setHeitzStatusFilter] = useState<
     'ALL' | 'OK' | 'IMPAYE' | 'SUSPENDU'
   >('ALL');
+  const [showTpvDrawer, setShowTpvDrawer] = useState<boolean>(false);
   const [lastGateEvent, setLastGateEvent] = useState<AccessEvent | null>(
     accessEvents[0] || null
   );
   const [memberSearch, setMemberSearch] = useState('');
   const [mywellnessToast, setMywellnessToast] = useState<string | null>(null);
+
+  // Interactive TPV Shopping Cart & Custom Prestation State
+  const [tpvCart, setTpvCart] = useState<
+    Array<{ label: string; price: number; qty: number }>
+  >([
+    { label: 'Cadenas Acier', price: 8.0, qty: 1 },
+  ]);
+  const [tpvCustomLabel, setTpvCustomLabel] = useState('');
+  const [tpvCustomPrice, setTpvCustomPrice] = useState('10');
+  const [tpvPaymentMethod, setTpvPaymentMethod] = useState<'CB TPV' | 'Espèces' | 'SEPA'>(
+    'CB TPV'
+  );
+  const [tpvFeedback, setTpvFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (navSubTarget === 'finances') {
+      setActiveSoftwareTab('HEITZ_DESKTOP');
+      setShowTpvDrawer(true);
+      setHeitzStatusFilter('IMPAYE');
+    } else if (navSubTarget === 'adherents') {
+      setActiveSoftwareTab('HEITZ_DESKTOP');
+      setShowTpvDrawer(false);
+      setHeitzStatusFilter('ALL');
+    } else if (navSubTarget === 'checkup') {
+      setActiveSoftwareTab('INBODY_LB120');
+    }
+  }, [navSubTarget]);
 
   // New InBody Scan Form state
   const [showNewScanForm, setShowNewScanForm] = useState(false);
@@ -115,6 +145,10 @@ export function DevicesHeitzView() {
     }
   };
 
+  const handleScanBadge = (memberId: string) => {
+    handleSimulatePassage(memberId, selectedClubGate);
+  };
+
   const handleManualGateOpen = (gateLabel: string, reasonLabel: string) => {
     const ev = triggerManualTurnstileOpen(selectedClubGate, gateLabel, reasonLabel);
     setLastGateEvent(ev);
@@ -149,50 +183,143 @@ export function DevicesHeitzView() {
       personName: memberLabel,
       clubId: selectedClubGate,
     });
-    setMywellnessToast(`${res.label} → ${res.url}`);
+    setMywellnessToast(res.label);
   };
+
+  const handleAddTpvItem = (label: string, price: number) => {
+    const clientLabel = selectedMember
+      ? `${selectedMember.firstName} ${selectedMember.lastName}`
+      : 'Vente Comptoir Accueil';
+    setTpvCart((prev) => {
+      const existing = prev.find((i) => i.label === label);
+      if (existing) {
+        return prev.map((i) => (i.label === label ? { ...i, qty: i.qty + 1 } : i));
+      }
+      return [...prev, { label, price, qty: 1 }];
+    });
+    recordQuickTpvSale(selectedClubGate, label, price, clientLabel);
+    setTpvFeedback(
+      `+1 « ${label} » (${price.toFixed(2)} €) ajouté aux achats de ${clientLabel}`
+    );
+  };
+
+  const handleUpdateTpvQty = (label: string, delta: number) => {
+    setTpvCart((prev) =>
+      prev
+        .map((i) => (i.label === label ? { ...i, qty: i.qty + delta } : i))
+        .filter((i) => i.qty > 0)
+    );
+  };
+
+  const handleAddCustomTpvPrestation = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanLabel = tpvCustomLabel.trim();
+    const parsedPrice = Number(tpvCustomPrice);
+    if (!cleanLabel || Number.isNaN(parsedPrice) || parsedPrice <= 0) return;
+    handleAddTpvItem(cleanLabel, parsedPrice);
+    setTpvCustomLabel('');
+  };
+
+  const tpvTotalEur = tpvCart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  const handleCheckoutTpvCart = () => {
+    if (tpvCart.length === 0) return;
+    const clientLabel = selectedMember
+      ? `${selectedMember.firstName} ${selectedMember.lastName}`
+      : 'Vente Comptoir Accueil';
+    const summaryLabel = tpvCart.map((i) => `${i.qty}x ${i.label}`).join(' + ');
+    recordQuickTpvSale(
+      selectedClubGate,
+      `${summaryLabel} (${tpvPaymentMethod})`,
+      Number(tpvTotalEur.toFixed(2)),
+      clientLabel
+    );
+    setTpvFeedback(
+      `Ticket NF525 encaissé (${tpvPaymentMethod}) : ${summaryLabel} — Total ${tpvTotalEur.toFixed(
+        2
+      )} € TTC (${clientLabel})`
+    );
+    setTpvCart([]);
+  };
+
+  const isFinancesView = navSubTarget === 'finances' || showTpvDrawer;
 
   return (
     <div className="space-y-5">
-      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — 08. MATÉRIEL HEITZ & TECHNOGYM CHECKUP */}
-      <div className="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-xs space-y-4">
+      {/* EN-TÊTE DYNAMIQUE C.FITNESS OS : ADHÉRENTS / FINANCES / MATÉRIEL HEITZ */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="pr-4 border-r border-slate-800">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
-                08 · Le Matériel Club (1er Plan)
+            <div className="flex items-center gap-3.5 pr-4 xl:border-r border-slate-200/80">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                {isFinancesView ? (
+                  <CreditCard className="w-5 h-5" />
+                ) : (
+                  <UserCheck className="w-5 h-5" />
+                )}
               </div>
-              <h2 className="font-black text-lg tracking-tight text-white">
-                Portillons Heitz, Caisse TPV &amp; Bilans Technogym Checkup
-              </h2>
-              <div className="text-xs text-slate-400">
-                Contrôle d&apos;accès RFID/Bluetooth, caisse comptoir, fidélité et bilans biométriques Mywellness
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
+                  {isFinancesView
+                    ? 'Finances · Chiffre d’Affaires, Prélèvements SEPA & Caisse NF525'
+                    : 'Adhérents · Gestion des Abonnements, Contrôle d’Accès & Bilans'}
+                </div>
+                <h2 className="font-extrabold text-lg tracking-tight text-slate-900">
+                  {isFinancesView
+                    ? 'Finances, Caisse TPV NF525 & Relance des Impayés SEPA (102 450 €)'
+                    : 'Adhérents Actifs (1 248), Abonnements & Portillons Heitz Bi-Club'}
+                </h2>
+                <div className="text-xs text-slate-500">
+                  {isFinancesView
+                    ? 'Suivi du CA mensuel (Center 54 230 € · Place 48 220 €), 5 impayés SEPA à relancer (1 250 €) et caisse comptoir NF525'
+                    : 'Fiches adhérents C.Fitness Center (682) & C.Fitness Place (566), badges RFID/BLE et bilans Technogym Checkup'}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
               <button
-                onClick={() => setActiveSoftwareTab('HEITZ_DESKTOP')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-                  activeSoftwareTab === 'HEITZ_DESKTOP'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                onClick={() => {
+                  setActiveSoftwareTab('HEITZ_DESKTOP');
+                  setShowTpvDrawer(false);
+                  setHeitzStatusFilter('ALL');
+                }}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                  activeSoftwareTab === 'HEITZ_DESKTOP' && !showTpvDrawer
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
-                <Monitor className="w-4 h-4" />
-                <span>1. Portillons, Caisse &amp; Fidélité Heitz</span>
+                <UserCheck className="w-4 h-4" />
+                <span>1. Adhérents &amp; Portillons ({heitzMembers.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveSoftwareTab('HEITZ_DESKTOP');
+                  setShowTpvDrawer(true);
+                  setHeitzStatusFilter('IMPAYE');
+                }}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                  activeSoftwareTab === 'HEITZ_DESKTOP' && showTpvDrawer
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                }`}
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>2. Finances, SEPA &amp; Caisse NF525</span>
               </button>
 
               <button
                 onClick={() => setActiveSoftwareTab('INBODY_LB120')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
                   activeSoftwareTab === 'INBODY_LB120'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <Activity className="w-4 h-4" />
-                <span>2. Bilans Technogym Checkup &amp; Mywellness</span>
+                <span>3. Bilans Technogym Checkup</span>
               </button>
             </div>
           </div>
@@ -200,16 +327,16 @@ export function DevicesHeitzView() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => toggleClubMode(selectedClubGate, 'degradedMode')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
                 activeGateClub.degradedMode
                   ? 'bg-amber-600 text-white border-amber-500'
-                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               {activeGateClub.degradedMode ? (
                 <WifiOff className="w-3.5 h-3.5" />
               ) : (
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                <Wifi className="w-3.5 h-3.5 text-emerald-500" />
               )}
               {activeGateClub.degradedMode
                 ? 'Mode Autonome Actif'
@@ -218,36 +345,122 @@ export function DevicesHeitzView() {
 
             <button
               onClick={() => toggleClubMode(selectedClubGate, 'fireAlarmOpen')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer border ${
                 activeGateClub.fireAlarmOpen
                   ? 'bg-rose-600 text-white border-rose-500'
-                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              <Flame className="w-3.5 h-3.5 text-rose-400" />
+              <Flame className="w-3.5 h-3.5 text-rose-500" />
               {activeGateClub.fireAlarmOpen
                 ? 'Portillons en Libre Passage (SSI)'
                 : 'Ouverture Urgence SSI'}
             </button>
           </div>
         </div>
+
+        {/* Contextual Summary Strip matching Homepage KPIs (Finances OR Adhérents) */}
+        {isFinancesView ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+              <div className="text-slate-500 font-medium">Chiffre d&apos;affaires (mois)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">
+                102 450 € <span className="text-emerald-600 text-xs font-bold">↑ +8%</span>
+              </div>
+              <div className="text-[11px] text-slate-500">Consolidé Center &amp; Place</div>
+            </div>
+            <div className="p-3 rounded-xl bg-violet-50/70 border border-violet-200">
+              <div className="text-slate-500 font-medium">CA C.Fitness Center (Lyon 3e)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">
+                54 230 € <span className="text-emerald-600 text-xs font-bold">↑ +7%</span>
+              </div>
+              <div className="text-[11px] text-slate-500">682 adhérents actifs · SEPA EBICS</div>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+              <div className="text-slate-500 font-medium">CA C.Fitness Place (Lyon 6e)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">
+                48 220 € <span className="text-emerald-600 text-xs font-bold">↑ +9%</span>
+              </div>
+              <div className="text-[11px] text-slate-500">566 adhérents actifs · SEPA EBICS</div>
+            </div>
+            <div
+              onClick={() => setHeitzStatusFilter('IMPAYE')}
+              className="p-3 rounded-xl bg-rose-50 border border-rose-200 cursor-pointer hover:bg-rose-100/70 transition-colors"
+            >
+              <div className="text-rose-700 font-bold">5 impayés SEPA à relancer</div>
+              <div className="text-lg font-black text-rose-600 mt-0.5">1 250 €</div>
+              <div className="text-[11px] text-rose-700 underline font-semibold">
+                Filtrer &amp; régulariser en 1 clic →
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+            <div
+              onClick={() => setHeitzStatusFilter('ALL')}
+              className="p-3 rounded-xl bg-violet-50/70 border border-violet-200 cursor-pointer"
+            >
+              <div className="text-slate-500 font-medium">Total Adhérents actifs</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">
+                1 248 <span className="text-emerald-600 text-xs font-bold">↑ +12%</span>
+              </div>
+              <div className="text-[11px] text-slate-500">682 Center · 566 Place</div>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+              <div className="text-slate-500 font-medium">Abonnements Annuels (41 %)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">512 adhérents</div>
+              <div className="text-[11px] text-slate-500">Engagement 12 mois · Prélèvement SEPA</div>
+            </div>
+            <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200">
+              <div className="text-slate-500 font-medium">Abonnements Mensuels (32 %)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">399 adhérents</div>
+              <div className="text-[11px] text-slate-500">Sans engagement · Liberté Bi-Club</div>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+              <div className="text-slate-500 font-medium">Étudiant (12 %) &amp; Corporate (8 %)</div>
+              <div className="text-lg font-black text-slate-900 mt-0.5">250 adhérents</div>
+              <div className="text-[11px] text-slate-500">+ 87 Autres formules (7 %)</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {mywellnessToast && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-xl px-4 py-2.5 text-xs flex items-center justify-between gap-3">
+        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-xl px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-semibold">
             <Dumbbell className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              Passerelle Technogym Mywellness Cloud active :{' '}
-              <span className="font-mono font-bold underline">{mywellnessToast}</span>
-            </span>
+            <span>Passerelle Technogym Mywellness active :</span>
+            <button
+              type="button"
+              onClick={() =>
+                handleOpenMywellness(
+                  selectedMember?.mywellnessMemberId,
+                  selectedMember
+                    ? `${selectedMember.firstName} ${selectedMember.lastName}`
+                    : undefined
+                )
+              }
+              className="font-mono font-bold underline text-amber-900 hover:text-violet-700 cursor-pointer"
+            >
+              {mywellnessToast} (Ré-ouvrir la fiche sportive)
+            </button>
           </div>
-          <button
-            onClick={() => setMywellnessToast(null)}
-            className="text-xs font-bold underline cursor-pointer shrink-0"
-          >
-            Fermer
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveSoftwareTab('INBODY_LB120')}
+              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer"
+            >
+              Voir Bilans Checkup
+            </button>
+            <button
+              type="button"
+              onClick={() => setMywellnessToast(null)}
+              className="text-xs font-bold underline cursor-pointer shrink-0"
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       )}
 
@@ -255,11 +468,11 @@ export function DevicesHeitzView() {
       {/* WINDOW 1: AUTHENTIC HEITZ SYSTEM DESKTOP CLIENT (Heitz-WS.exe + TPV)  */}
       {/* ===================================================================== */}
       {activeSoftwareTab === 'HEITZ_DESKTOP' && (
-        <div className="rounded-xl overflow-hidden border-2 border-[#1E3A5F] shadow-md bg-[#E2E8F0]">
-          {/* Windows / Delphi Desktop Title Bar */}
-          <div className="bg-gradient-to-r from-[#0F2942] via-[#1E3A5F] to-[#2B4C7E] text-white px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-xs bg-sky-500 text-slate-950 font-black text-[11px] flex items-center justify-center">
+        <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-white">
+          {/* C.Fitness OS Supervision Title Bar */}
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-lg bg-white/20 text-white font-black text-[11px] flex items-center justify-center">
                 H
               </div>
               <span className="font-bold tracking-wide">
@@ -267,31 +480,31 @@ export function DevicesHeitzView() {
               </span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px]">
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-white border border-white/25 font-bold">
                 FMI {activeGateClub.name} : {activeGateClub.fmiCurrent}/{activeGateClub.fmiCapacity} présents
               </span>
-              <span className="text-sky-200">
+              <span className="text-violet-100">
                 Opérateur : {currentUser.firstName} {currentUser.lastName}
               </span>
             </div>
           </div>
 
-          {/* Classic Windows Menu Strip + Function Keys Toolbar */}
-          <div className="bg-[#F1F5F9] border-b border-slate-300 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700">
+          {/* Menu Strip + Function Keys Toolbar */}
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700">
             <div className="flex flex-wrap items-center gap-2 font-semibold">
               <button
                 type="button"
                 onClick={() => setHeitzStatusFilter('ALL')}
-                className="px-2 py-0.5 rounded hover:bg-slate-200 text-[#1E3A5F] font-bold underline cursor-pointer"
+                className="px-2.5 py-1 rounded-lg hover:bg-slate-200 text-violet-700 font-bold cursor-pointer"
               >
                 Fichier
               </button>
               <button
                 type="button"
                 onClick={() => setHeitzStatusFilter('ALL')}
-                className={`px-2 py-0.5 rounded cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg cursor-pointer ${
                   heitzStatusFilter === 'ALL'
-                    ? 'bg-[#1E3A5F] text-white font-bold'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold'
                     : 'hover:bg-slate-200 text-slate-700'
                 }`}
               >
@@ -300,16 +513,16 @@ export function DevicesHeitzView() {
               <button
                 type="button"
                 onClick={() => handleScanBadge(selectedMember.id)}
-                className="px-2 py-0.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
+                className="px-2.5 py-1 rounded-lg hover:bg-slate-200 text-slate-700 cursor-pointer"
               >
                 Contrôle d&apos;Accès Tripodes
               </button>
               <button
                 type="button"
                 onClick={() => setShowTpvDrawer((prev) => !prev)}
-                className={`px-2 py-0.5 rounded cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg cursor-pointer ${
                   showTpvDrawer
-                    ? 'bg-emerald-700 text-white font-bold'
+                    ? 'bg-emerald-600 text-white font-bold'
                     : 'hover:bg-slate-200 text-slate-700'
                 }`}
               >
@@ -320,7 +533,7 @@ export function DevicesHeitzView() {
                 onClick={() =>
                   setHeitzStatusFilter((prev) => (prev === 'IMPAYE' ? 'ALL' : 'IMPAYE'))
                 }
-                className={`px-2 py-0.5 rounded cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg cursor-pointer ${
                   heitzStatusFilter === 'IMPAYE'
                     ? 'bg-rose-600 text-white font-bold'
                     : 'hover:bg-slate-200 text-slate-700'
@@ -331,7 +544,7 @@ export function DevicesHeitzView() {
               <button
                 type="button"
                 onClick={() => setActiveSection('dashboard')}
-                className="px-2 py-0.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
+                className="px-2.5 py-1 rounded-lg hover:bg-slate-200 text-slate-700 cursor-pointer"
               >
                 Statistiques FMI →
               </button>
@@ -340,20 +553,20 @@ export function DevicesHeitzView() {
               <span className="text-slate-500">Club pupitre :</span>
               <button
                 onClick={() => setSelectedClubGate('carre-de-soie')}
-                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
                   selectedClubGate === 'carre-de-soie'
-                    ? 'bg-[#1E3A5F] text-white'
-                    : 'bg-white border border-slate-300 text-slate-700'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+                    : 'bg-white border border-slate-200 text-slate-700'
                 }`}
               >
                 Carré de Soie (CDS)
               </button>
               <button
                 onClick={() => setSelectedClubGate('beynost')}
-                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
                   selectedClubGate === 'beynost'
-                    ? 'bg-[#1E3A5F] text-white'
-                    : 'bg-white border border-slate-300 text-slate-700'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+                    : 'bg-white border border-slate-200 text-slate-700'
                 }`}
               >
                 Beynost (BEY)
@@ -362,21 +575,21 @@ export function DevicesHeitzView() {
           </div>
 
           {/* Heitz Hardware Function Key Shortcut Bar (F5/F6/F7 Turnstile Relays) */}
-          <div className="bg-[#1E293B] text-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 text-xs">
-            <div className="flex flex-wrap items-center gap-1.5">
+          <div className="bg-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => handleManualGateOpen('Tripode Entrée 1', 'Ouverture F5 Accueil TPV')}
-                className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <span className="px-1 py-0.2 rounded bg-black/30 font-mono text-[10px]">F5</span>
+                <span className="px-1.5 py-0.5 rounded bg-black/20 font-mono text-[10px]">F5</span>
                 <DoorOpen className="w-3.5 h-3.5" />
                 Ouvrir Tripode 1 (500ms)
               </button>
               <button
                 onClick={() => handleManualGateOpen('Tripode Entrée 2', 'Ouverture F6 Accueil TPV')}
-                className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <span className="px-1 py-0.2 rounded bg-black/30 font-mono text-[10px]">F6</span>
+                <span className="px-1.5 py-0.5 rounded bg-black/20 font-mono text-[10px]">F6</span>
                 <DoorOpen className="w-3.5 h-3.5" />
                 Ouvrir Tripode 2 (500ms)
               </button>
@@ -384,30 +597,30 @@ export function DevicesHeitzView() {
                 onClick={() =>
                   handleManualGateOpen('Portillon PMR / Livraison', 'Ouverture F7 Passage PMR')
                 }
-                className="px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <span className="px-1 py-0.2 rounded bg-black/30 font-mono text-[10px]">F7</span>
+                <span className="px-1.5 py-0.5 rounded bg-black/20 font-mono text-[10px]">F7</span>
                 <DoorOpen className="w-3.5 h-3.5" />
                 Déverrouiller Portillon PMR
               </button>
             </div>
 
-            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-300">
-              <Barcode className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-600">
+              <Barcode className="w-4 h-4 text-violet-600" />
               <span>Douchette USB / Lecteur Wiegand 26 bits Prêt (&lt; 50 ms)</span>
             </div>
           </div>
 
           {/* 3-Column Heitz Desktop Workspace */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 p-2">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-50/50">
             {/* LEFT PANE (4 cols): Heitz Member Directory & Barcode Search */}
-            <div className="lg:col-span-4 bg-white border border-slate-300 rounded flex flex-col">
-              <div className="bg-[#1E3A5F] text-white px-3 py-2 text-xs font-bold flex items-center justify-between">
+            <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-2xl overflow-hidden flex flex-col shadow-2xs">
+              <div className="bg-slate-50 border-b border-slate-200 px-3.5 py-2.5 text-xs font-bold text-slate-900 flex items-center justify-between">
                 <span>Fichier Adhérents Heitz ({filteredMembers.length})</span>
-                <span className="font-mono text-[10px] text-sky-200">[F2] Recherche</span>
+                <span className="font-mono text-[10px] text-violet-600">[F2] Recherche</span>
               </div>
 
-              <div className="p-2.5 border-b border-slate-200 space-y-2 bg-slate-50">
+              <div className="p-3 border-b border-slate-200 space-y-2 bg-slate-50">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -415,7 +628,7 @@ export function DevicesHeitzView() {
                     value={memberSearch}
                     onChange={(e) => setMemberSearch(e.target.value)}
                     placeholder="Code badge (HZ-...) ou Nom / Prénom..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded border border-slate-300 bg-white text-xs focus:outline-none focus:border-[#1E3A5F]"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:border-violet-500"
                   />
                 </div>
                 <div className="grid grid-cols-4 gap-1 text-[10px] font-bold">
@@ -428,10 +641,10 @@ export function DevicesHeitzView() {
                     <button
                       key={st.id}
                       onClick={() => setHeitzStatusFilter(st.id as typeof heitzStatusFilter)}
-                      className={`py-1 px-1.5 rounded border cursor-pointer ${
+                      className={`py-1 px-1.5 rounded-lg border cursor-pointer ${
                         heitzStatusFilter === st.id
-                          ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                          ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-transparent'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       {st.label}
@@ -441,7 +654,7 @@ export function DevicesHeitzView() {
               </div>
 
               {/* Dense Heitz Member Table List */}
-              <div className="divide-y divide-slate-200 text-xs max-h-[520px] overflow-y-auto">
+              <div className="divide-y divide-slate-100 text-xs max-h-[520px] overflow-y-auto">
                 {filteredMembers.map((m) => {
                   const isSelected = selectedMember?.id === m.id;
                   const statusDot = !m.activeSubscription
@@ -453,9 +666,9 @@ export function DevicesHeitzView() {
                     <div
                       key={m.id}
                       onClick={() => setSelectedMemberId(m.id)}
-                      className={`p-2.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                      className={`p-3 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-sky-50 border-l-4 border-l-[#1E3A5F]'
+                          ? 'bg-violet-50/70 border-l-4 border-l-violet-600'
                           : 'hover:bg-slate-50'
                       }`}
                     >
@@ -486,9 +699,9 @@ export function DevicesHeitzView() {
                           e.stopPropagation();
                           handleSimulatePassage(m.id, selectedClubGate);
                         }}
-                        className="px-2.5 py-1 rounded bg-[#1E3A5F] hover:bg-[#152C4A] text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
                       >
-                        <QrCode className="w-3 h-3 text-sky-300" />
+                        <QrCode className="w-3 h-3" />
                         Badger
                       </button>
                     </div>
@@ -499,14 +712,14 @@ export function DevicesHeitzView() {
 
             {/* CENTER PANE (5 cols): Authentic Heitz Member Fiche (Dossier Adhérent) */}
             {selectedMember && (
-              <div className="lg:col-span-5 bg-white border border-slate-300 rounded flex flex-col justify-between">
+              <div className="lg:col-span-5 bg-white border border-slate-200/80 rounded-2xl overflow-hidden flex flex-col justify-between shadow-2xs">
                 <div>
-                  <div className="bg-[#1E3A5F] text-white px-3 py-2 text-xs font-bold flex items-center justify-between">
+                  <div className="bg-slate-50 border-b border-slate-200 px-3.5 py-2.5 text-xs font-bold text-slate-900 flex items-center justify-between">
                     <span>
                       FICHE ADHÉRENT HEITZ — {selectedMember.lastName.toUpperCase()}{' '}
                       {selectedMember.firstName}
                     </span>
-                    <span className="font-mono text-[11px] text-sky-200">
+                    <span className="font-mono text-[11px] text-violet-600">
                       Badge RFID : {selectedMember.badgeCode}
                     </span>
                   </div>
@@ -545,11 +758,11 @@ export function DevicesHeitzView() {
                   </div>
 
                   {/* Member Identity Box with Webcam Photo Frame & Barcode */}
-                  <div className="p-3.5 space-y-3 text-xs">
+                  <div className="p-4 space-y-3 text-xs">
                     <div className="flex items-start gap-3.5 pb-3 border-b border-slate-200">
                       {/* Simulated Heitz Webcam Photo ID Box */}
-                      <div className="w-20 h-24 rounded border-2 border-slate-300 bg-slate-100 flex flex-col items-center justify-center shrink-0 text-center p-1">
-                        <div className="w-10 h-10 rounded-full bg-[#1E3A5F] text-white font-black text-sm flex items-center justify-center">
+                      <div className="w-20 h-24 rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center shrink-0 text-center p-1">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white font-black text-sm flex items-center justify-center">
                           {selectedMember.firstName[0]}
                           {selectedMember.lastName[0]}
                         </div>
@@ -562,7 +775,7 @@ export function DevicesHeitzView() {
                         <div className="text-base font-black text-slate-900">
                           {selectedMember.lastName.toUpperCase()} {selectedMember.firstName}
                         </div>
-                        <div className="font-semibold text-[#1E3A5F]">
+                        <div className="font-semibold text-violet-600">
                           {selectedMember.subscriptionName}
                         </div>
                         <div className="text-slate-600 font-mono text-[11px]">
@@ -571,7 +784,7 @@ export function DevicesHeitzView() {
                             {formatClubName(selectedMember.homeClubId)}
                           </span>
                         </div>
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 border border-slate-300 font-mono text-[11px] text-slate-800">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 font-mono text-[11px] text-slate-800">
                           <Barcode className="w-3.5 h-3.5 text-slate-600" />
                           <span>Carte RFID / QR : {selectedMember.badgeCode}</span>
                         </div>
@@ -580,7 +793,7 @@ export function DevicesHeitzView() {
 
                     {/* 4-Box Heitz Technical Grid */}
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div className="text-slate-500 font-semibold">Solde Financier SEPA :</div>
                         <div
                           className={`text-sm font-mono font-black mt-0.5 tabular-nums ${
@@ -591,14 +804,14 @@ export function DevicesHeitzView() {
                         </div>
                       </div>
 
-                      <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div className="text-slate-500 font-semibold">Accès Inter-Club (D9) :</div>
                         <div className="font-bold text-slate-900 mt-0.5">
                           Carré de Soie + Beynost (6h-23h)
                         </div>
                       </div>
 
-                      <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div className="text-slate-500 font-semibold">Assiduité &amp; Rétention :</div>
                         <div className="font-bold text-slate-900 mt-0.5">
                           Dernier passage : il y a {selectedMember.daysSinceLastWorkout}j
@@ -608,7 +821,7 @@ export function DevicesHeitzView() {
                         </div>
                       </div>
 
-                      <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div className="text-slate-500 font-semibold">
                           Bilan Technogym Checkup &amp; Mywellness :
                         </div>
@@ -624,18 +837,30 @@ export function DevicesHeitzView() {
                       </div>
                     </div>
 
-                    {/* Contextual Mywellness Deep-Link Box (Per User Request #3) */}
-                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {/* Contextual Mywellness Deep-Link Box */}
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="text-[11px] font-extrabold text-amber-950 flex items-center gap-1.5">
                           <Dumbbell className="w-3.5 h-3.5 text-amber-600" />
                           <span>Suivi Sportif &amp; Technogym Checkup Intégrés à Mywellness</span>
                         </div>
-                        <div className="text-[10px] text-amber-800 mt-0.5">
-                          Station Technogym Checkup ({formatClubName(selectedMember.homeClubId, true)}) · Balance BIA &amp; 3D · ID :{' '}
-                          <span className="font-mono font-bold">
-                            {selectedMember.mywellnessMemberId || 'mw-cloud'}
+                        <div className="text-[10px] text-amber-800 mt-0.5 flex flex-wrap items-center gap-1">
+                          <span>
+                            Station Technogym Checkup ({formatClubName(selectedMember.homeClubId, true)}) · Balance BIA &amp; 3D · ID :
                           </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleOpenMywellness(
+                                selectedMember.mywellnessMemberId,
+                                `${selectedMember.firstName} ${selectedMember.lastName}`
+                              )
+                            }
+                            className="font-mono font-bold underline text-amber-950 hover:text-violet-700 cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <span>{selectedMember.mywellnessMemberId || 'mw-cloud'}</span>
+                            <span>(Voir dossier sportif →)</span>
+                          </button>
                         </div>
                       </div>
                       <button
@@ -646,23 +871,23 @@ export function DevicesHeitzView() {
                             `${selectedMember.firstName} ${selectedMember.lastName}`
                           )
                         }
-                        className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                        className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Ouvrir la fiche sportive Mywellness</span>
                       </button>
                     </div>
 
-                    {/* Heitz Loyalty, Referral & Birthday Automation Box (heitzsystem.com/solution/) */}
-                    <div className="p-3 rounded-lg bg-sky-50/80 border border-sky-200 space-y-2">
+                    {/* Heitz Loyalty, Referral & Birthday Automation Box */}
+                    <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <div className="text-[11px] font-extrabold text-[#1E3A5F]">
+                          <div className="text-[11px] font-extrabold text-violet-900">
                             Programme Fidélité Durable Heitz (Points, Parrainage &amp; Anniversaire)
                           </div>
                           <div className="text-[10px] text-slate-600 mt-0.5">
                             Solde fidélité :{' '}
-                            <span className="font-mono font-bold text-[#1E3A5F]">
+                            <span className="font-mono font-bold text-violet-700">
                               {selectedMember.loyaltyPoints ?? 120} pts
                             </span>{' '}
                             · Parrainages validés :{' '}
@@ -684,7 +909,7 @@ export function DevicesHeitzView() {
                           onClick={() =>
                             rewardMemberLoyaltyOrReferral(selectedMember.id, 'parrainage')
                           }
-                          className="px-2.5 py-1.5 rounded bg-[#1E3A5F] hover:bg-[#152C4A] text-white font-bold text-[11px] cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                         >
                           +1 Parrainage (+150 pts &amp; 1 mois offert)
                         </button>
@@ -693,7 +918,7 @@ export function DevicesHeitzView() {
                           onClick={() =>
                             rewardMemberLoyaltyOrReferral(selectedMember.id, 'anniversaire')
                           }
-                          className="px-2.5 py-1.5 rounded bg-white hover:bg-sky-100 text-[#1E3A5F] border border-sky-300 font-bold text-[11px] cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-violet-100 text-violet-700 border border-violet-300 font-bold text-[11px] cursor-pointer"
                         >
                           Offre Anniversaire (+100 pts &amp; SMS 07)
                         </button>
@@ -704,16 +929,16 @@ export function DevicesHeitzView() {
                     <div className="pt-1 flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => handleSimulatePassage(selectedMember.id, selectedClubGate)}
-                        className="flex-1 py-2.5 px-3 rounded bg-[#1E3A5F] hover:bg-[#152C4A] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <QrCode className="w-4 h-4 text-sky-300" />
+                        <QrCode className="w-4 h-4" />
                         Simuler Passage RFID/BT Heitz ({selectedClubGate === 'carre-de-soie' ? 'CDS' : 'BEY'})
                       </button>
 
                       {selectedMember.finBalanceEur < 0 && (
                         <button
                           onClick={() => regularizeMemberSepa(selectedMember.id)}
-                          className="py-2.5 px-3 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <CreditCard className="w-4 h-4" />
                           Régulariser CB/SEPA ({Math.abs(selectedMember.finBalanceEur).toFixed(2)} €)
@@ -722,7 +947,7 @@ export function DevicesHeitzView() {
 
                       <button
                         onClick={() => toggleMemberSubscriptionStatus(selectedMember.id)}
-                        className="py-2.5 px-3 rounded border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                        className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer"
                       >
                         {selectedMember.activeSubscription ? (
                           <>
@@ -743,10 +968,10 @@ export function DevicesHeitzView() {
                 {/* Live Gate Scan Result Footer inside Center Pane */}
                 {lastGateEvent && (
                   <div
-                    className={`m-3 p-3 rounded border-2 text-xs ${
+                    className={`m-3 p-3 rounded-xl border text-xs ${
                       lastGateEvent.granted
-                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950'
-                        : 'bg-rose-50 border-rose-500 text-rose-950'
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                        : 'bg-rose-50 border-rose-400 text-rose-950'
                     }`}
                   >
                     <div className="flex items-center justify-between font-bold">
@@ -766,76 +991,273 @@ export function DevicesHeitzView() {
             )}
 
             {/* RIGHT PANE (3 cols): Tactile POS Caisse TPV Heitz + Live Turnstile Log */}
-            <div className="lg:col-span-3 flex flex-col gap-2">
+            <div className="lg:col-span-3 flex flex-col gap-4">
               {/* Tactile Caisse TPV Comptoir */}
-              <div className="bg-white border border-slate-300 rounded overflow-hidden">
-                <div className="bg-[#1E3A5F] text-white px-3 py-2 text-xs font-bold flex items-center justify-between">
+              <div
+                className={`bg-white border rounded-2xl overflow-hidden shadow-2xs transition-all ${
+                  showTpvDrawer
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+                    : 'border-slate-200/80'
+                }`}
+              >
+                <div
+                  className={`border-b px-3.5 py-2.5 text-xs font-bold flex items-center justify-between ${
+                    showTpvDrawer
+                      ? 'bg-emerald-600 border-emerald-600 text-white'
+                      : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                >
                   <span className="flex items-center gap-1.5">
-                    <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                    <ShoppingBag
+                      className={`w-3.5 h-3.5 ${
+                        showTpvDrawer ? 'text-white' : 'text-violet-600'
+                      }`}
+                    />
                     Pavé Tactile Caisse TPV
                   </span>
-                  <span className="font-mono text-[10px] text-sky-200">[F9] TPV</span>
+                  <span
+                    className={`font-mono text-[10px] ${
+                      showTpvDrawer ? 'text-emerald-100' : 'text-violet-600'
+                    }`}
+                  >
+                    {showTpvDrawer ? 'TIROIR NF525 ACTIF' : '[F9] TPV'}
+                  </span>
                 </div>
-                <div className="p-2.5 grid grid-cols-2 gap-1.5 text-xs">
-                  {[
-                    { label: 'Cadenas Acier', price: 8.0, color: 'bg-amber-50 border-amber-300' },
-                    {
-                      label: 'Serviette C.Fit',
-                      price: 12.0,
-                      color: 'bg-sky-50 border-sky-300',
-                    },
-                    {
-                      label: 'Shaker Whey/BCAA',
-                      price: 3.5,
-                      color: 'bg-emerald-50 border-emerald-300',
-                    },
-                    {
-                      label: 'Séance Jour Invité',
-                      price: 15.0,
-                      color: 'bg-indigo-50 border-indigo-300',
-                    },
-                    {
-                      label: 'Refection Badge',
-                      price: 10.0,
-                      color: 'bg-rose-50 border-rose-300',
-                    },
-                    {
-                      label: 'Bilan Checkup Seul',
-                      price: 20.0,
-                      color: 'bg-purple-50 border-purple-300',
-                    },
-                  ].map((item) => (
+
+                <div className="p-3 space-y-3 text-xs">
+                  <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>Cliquez pour ajouter une prestation :</span>
+                    <span className="font-semibold text-violet-600">
+                      Client :{' '}
+                      {selectedMember
+                        ? `${selectedMember.firstName} ${selectedMember.lastName}`
+                        : 'Comptoir'}
+                    </span>
+                  </div>
+
+                  {/* 6 Prestation Keypad Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Cadenas Acier', price: 8.0, color: 'bg-amber-50 border-amber-200' },
+                      {
+                        label: 'Serviette C.Fit',
+                        price: 12.0,
+                        color: 'bg-sky-50 border-sky-200',
+                      },
+                      {
+                        label: 'Shaker Whey/BCAA',
+                        price: 3.5,
+                        color: 'bg-emerald-50 border-emerald-200',
+                      },
+                      {
+                        label: 'Séance Jour Invité',
+                        price: 15.0,
+                        color: 'bg-violet-50 border-violet-200',
+                      },
+                      {
+                        label: 'Refection Badge',
+                        price: 10.0,
+                        color: 'bg-rose-50 border-rose-200',
+                      },
+                      {
+                        label: 'Bilan Checkup Seul',
+                        price: 20.0,
+                        color: 'bg-indigo-50 border-indigo-200',
+                      },
+                    ].map((item) => {
+                      const inCart = tpvCart.find((c) => c.label === item.label);
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => handleAddTpvItem(item.label, item.price)}
+                          className={`p-2.5 rounded-xl border text-left hover:brightness-95 active:scale-98 transition-all cursor-pointer relative ${item.color}`}
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="font-bold text-slate-900 text-[11px] leading-tight">
+                              + {item.label}
+                            </span>
+                            {inCart && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-mono text-[10px] font-bold shrink-0">
+                                ×{inCart.qty}
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-mono font-black text-xs text-slate-900 mt-1 tabular-nums">
+                            {item.price.toFixed(2)} €
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Prestation Input Form */}
+                  <form
+                    onSubmit={handleAddCustomTpvPrestation}
+                    className="pt-2 border-t border-slate-100 flex items-center gap-1.5"
+                  >
+                    <input
+                      type="text"
+                      value={tpvCustomLabel}
+                      onChange={(e) => setTpvCustomLabel(e.target.value)}
+                      placeholder="Autre prestation / achat..."
+                      className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] bg-slate-50"
+                    />
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      value={tpvCustomPrice}
+                      onChange={(e) => setTpvCustomPrice(e.target.value)}
+                      className="w-16 px-2 py-1.5 rounded-lg border border-slate-200 text-[11px] font-mono bg-slate-50"
+                    />
                     <button
-                      key={item.label}
-                      onClick={() =>
-                        recordQuickTpvSale(
-                          selectedClubGate,
-                          item.label,
-                          item.price,
-                          selectedMember
-                            ? `${selectedMember.firstName} ${selectedMember.lastName}`
-                            : undefined
-                        )
-                      }
-                      className={`p-2 rounded border text-left hover:brightness-95 transition-all cursor-pointer ${item.color}`}
+                      type="submit"
+                      className="px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-[11px] cursor-pointer shrink-0"
                     >
-                      <div className="font-bold text-slate-900 text-[11px] leading-tight">
-                        {item.label}
-                      </div>
-                      <div className="font-mono font-black text-xs text-slate-900 mt-1 tabular-nums">
-                        {item.price.toFixed(2)} €
-                      </div>
+                      + Ajouter
                     </button>
-                  ))}
+                  </form>
+
+                  {/* Immediate TPV Feedback Banner */}
+                  {tpvFeedback && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-[11px] font-bold flex items-center justify-between gap-2">
+                      <span>✅ {tpvFeedback}</span>
+                      <button
+                        type="button"
+                        onClick={() => setTpvFeedback(null)}
+                        className="text-[10px] underline cursor-pointer shrink-0"
+                      >
+                        OK
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Active TPV Shopping Cart (Panier / Ticket en cours) */}
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between font-bold text-[11px] text-slate-800">
+                      <span>Panier / Achats ajoutés ({tpvCart.reduce((s, i) => s + i.qty, 0)})</span>
+                      {tpvCart.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setTpvCart([])}
+                          className="text-[10px] text-rose-600 underline cursor-pointer"
+                        >
+                          Vider
+                        </button>
+                      )}
+                    </div>
+
+                    {tpvCart.length === 0 ? (
+                      <div className="text-[11px] text-slate-400 py-1">
+                        Aucun achat en attente. Cliquez sur un bouton ci-dessus pour ajouter une prestation.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {tpvCart.map((item) => (
+                          <div
+                            key={item.label}
+                            className="flex items-center justify-between gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px]"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-slate-900 truncate">{item.label}</div>
+                              <div className="font-mono text-[10px] text-slate-500">
+                                {item.price.toFixed(2)} € × {item.qty} ={' '}
+                                <strong className="text-slate-900">
+                                  {(item.price * item.qty).toFixed(2)} €
+                                </strong>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateTpvQty(item.label, -1)}
+                                className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 cursor-pointer"
+                              >
+                                -
+                              </button>
+                              <span className="font-mono font-bold w-4 text-center">
+                                {item.qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateTpvQty(item.label, 1)}
+                                className="w-6 h-6 rounded bg-violet-100 hover:bg-violet-200 font-bold text-violet-700 cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="pt-2 border-t border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between font-black text-xs text-slate-900">
+                            <span>Total TTC à encaisser :</span>
+                            <span className="font-mono text-sm text-emerald-700">
+                              {tpvTotalEur.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-1 text-[10px] font-bold">
+                            {(['CB TPV', 'Espèces', 'SEPA'] as const).map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setTpvPaymentMethod(m)}
+                                className={`py-1 rounded border cursor-pointer ${
+                                  tpvPaymentMethod === m
+                                    ? 'bg-violet-600 text-white border-violet-600'
+                                    : 'bg-white text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {m}
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleCheckoutTpvCart}
+                            className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            <span>
+                              Encaisser le Ticket NF525 ({tpvTotalEur.toFixed(2)} €)
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent Validated TPV Tickets */}
+                  <div className="pt-2 border-t border-slate-100 space-y-1">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Derniers achats encaissés (NF525) :
+                    </div>
+                    {heitzKpiTickets.slice(0, 3).map((tk) => (
+                      <div
+                        key={tk.id}
+                        className="flex items-center justify-between text-[10px] py-1 border-b border-slate-100 last:border-b-0"
+                      >
+                        <span className="truncate font-semibold text-slate-700">
+                          {tk.articleName.replace(/^0\d - /, '')} ({tk.clientName})
+                        </span>
+                        <span className="font-mono font-bold text-emerald-700 shrink-0 ml-1">
+                          {tk.amountTtcEur.toFixed(2)} €
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Fil d'eau des passages temps réel */}
-              <div className="bg-white border border-slate-300 rounded flex-1 flex flex-col overflow-hidden">
-                <div className="bg-slate-800 text-white px-3 py-2 text-xs font-bold">
+              <div className="bg-white border border-slate-200/80 rounded-2xl flex-1 flex flex-col overflow-hidden shadow-2xs">
+                <div className="bg-slate-50 border-b border-slate-200 text-slate-900 px-3.5 py-2.5 text-xs font-bold">
                   Fil d&apos;Eau Passages Tourniquets ({accessEvents.length})
                 </div>
-                <div className="p-2 divide-y divide-slate-100 text-[11px] max-h-64 overflow-y-auto">
+                <div className="p-2.5 divide-y divide-slate-100 text-[11px] max-h-64 overflow-y-auto">
                   {accessEvents.slice(0, 8).map((ev) => (
                     <div key={ev.id} className="py-1.5 flex items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -861,26 +1283,26 @@ export function DevicesHeitzView() {
           </div>
 
           {/* Official heitzsystem.com/solution/ 6-Pillar Compatibility & Feature Parity Matrix */}
-          <div className="m-2 p-4 bg-white border border-slate-300 rounded space-y-3">
+          <div className="m-4 p-5 bg-white border border-slate-200/80 rounded-2xl space-y-3 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-200">
               <div>
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A5F]">
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-violet-600">
                   Audit Officiel Constructeur · https://heitzsystem.com/solution/ (+2 000 établissements · 32 ans d&apos;innovation)
                 </div>
                 <h3 className="text-sm font-black text-slate-900">
                   Matrice de Compatibilité Intégrale des 6 Piliers HEITZ System avec C.Fitness OS (Carré de Soie &amp; Beynost)
                 </h3>
               </div>
-              <span className="px-2.5 py-1 rounded bg-emerald-100 border border-emerald-300 text-emerald-900 text-[11px] font-bold shrink-0">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold shrink-0">
                 6 / 6 Piliers Heitz 100 % Compatibles &amp; Actifs
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">1. Contrôle d&apos;Accès Sécurisé</span>
+                    <span className="font-extrabold text-violet-700">1. Contrôle d&apos;Accès Sécurisé</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -895,16 +1317,16 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => handleScanBadge(selectedMember.id)}
-                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Tester le passage portillon ({selectedMember.firstName}) →
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">2. Plannings &amp; Anti-Surbooking</span>
+                    <span className="font-extrabold text-violet-700">2. Plannings &amp; Anti-Surbooking</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -919,16 +1341,16 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => setActiveSection('planning-hr')}
-                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Ouvrir 03 · L&apos;Espace Planning Unifié →
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">3. Caisse NF525, SEPA &amp; EBICS</span>
+                    <span className="font-extrabold text-violet-700">3. Caisse NF525, SEPA &amp; EBICS</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -943,16 +1365,16 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => setShowTpvDrawer(true)}
-                  className="w-full py-1.5 px-2 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Ouvrir Caisse TPV NF525 [F9] →
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">4. Automatisation &amp; Fidélisation</span>
+                    <span className="font-extrabold text-violet-700">4. Automatisation &amp; Fidélisation</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -967,16 +1389,16 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => rewardMemberLoyaltyOrReferral(selectedMember.id, 'parrainage')}
-                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Créditer +150 pts Parrainage ({selectedMember.firstName}) →
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">5. Statistiques, FMI &amp; KPI</span>
+                    <span className="font-extrabold text-violet-700">5. Statistiques, FMI &amp; KPI</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -991,16 +1413,16 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => setActiveSection('dashboard')}
-                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Voir Tableau de Bord FMI &amp; KPI →
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-[#1E3A5F]">6. API Ouvertes &amp; Badge Mobile</span>
+                    <span className="font-extrabold text-violet-700">6. API Ouvertes &amp; Badge Mobile</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold">
                       100 % OK
                     </span>
@@ -1015,7 +1437,7 @@ export function DevicesHeitzView() {
                 <button
                   type="button"
                   onClick={() => setActiveSection('crm')}
-                  className="w-full py-1.5 px-2 rounded bg-[#1E3A5F] hover:bg-[#162c49] text-white font-bold text-[11px] cursor-pointer"
+                  className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-[11px] cursor-pointer"
                 >
                   Générer un QR Code d&apos;essai dans le CRM →
                 </button>
@@ -1030,12 +1452,12 @@ export function DevicesHeitzView() {
       {/* ===================================================================== */}
       {activeSoftwareTab === 'INBODY_LB120' && (
         <div className="space-y-4">
-          <div className="bg-slate-900 border border-amber-400/30 text-white rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-violet-600 font-bold">
                 2× Stations Technogym Checkup (Carré de Soie &amp; Beynost) · Balance BIA Multi-Fréquence &amp; Caméra 3D · Intégrées Nativement à Mywellness
               </div>
-              <h2 className="text-lg font-black tracking-tight mt-0.5">
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight mt-0.5">
                 Bilans Physiques Technogym Checkup (Wellness Age™, Composition Corporelle BIA, Mobilité, Équilibre &amp; Force)
               </h2>
             </div>
@@ -1043,7 +1465,7 @@ export function DevicesHeitzView() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => handleOpenMywellness()}
-                className="px-3.5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Dumbbell className="w-4 h-4" />
                 <span>Ouvrir Technogym Mywellness Cloud</span>
@@ -1052,7 +1474,7 @@ export function DevicesHeitzView() {
               {canViewHealthData && (
                 <button
                   onClick={() => setShowNewScanForm(!showNewScanForm)}
-                  className="px-3.5 py-2 rounded-lg bg-white text-slate-900 hover:bg-amber-50 text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   {showNewScanForm ? 'Fermer la saisie' : 'Nouveau Bilan Technogym Checkup'}
@@ -1062,7 +1484,7 @@ export function DevicesHeitzView() {
           </div>
 
           {!canViewHealthData ? (
-            <div className="p-6 rounded-xl bg-white border border-slate-200 flex items-center gap-3 text-xs text-slate-700">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 flex items-center gap-3 text-xs text-slate-700">
               <Lock className="w-5 h-5 text-amber-600 shrink-0" />
               <div>
                 <div className="font-bold text-slate-900">
@@ -1078,7 +1500,7 @@ export function DevicesHeitzView() {
               {showNewScanForm && (
                 <form
                   onSubmit={handleCreateInBodyScan}
-                  className="p-4 rounded-xl bg-white border-2 border-slate-900 space-y-3 text-xs"
+                  className="p-5 rounded-2xl bg-white border border-violet-300 space-y-3 text-xs shadow-xs"
                 >
                   <div className="font-bold text-slate-900">
                     Synchroniser un Bilan Technogym Checkup (Balance Révolutionnaire — Carré de Soie ou Beynost)
@@ -1200,7 +1622,7 @@ export function DevicesHeitzView() {
                     />
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold cursor-pointer"
                     >
                       Synchroniser Bilan Technogym Checkup
                     </button>
@@ -1217,20 +1639,20 @@ export function DevicesHeitzView() {
                   return (
                     <div
                       key={scan.id}
-                      className="bg-white rounded-xl border-2 border-slate-300 shadow-sm overflow-hidden text-xs"
+                      className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden text-xs"
                     >
                       {/* Technogym Checkup & Mywellness Header */}
-                      <div className="border-b-4 border-amber-400 bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+                      <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-5 py-3.5 flex items-center justify-between">
                         <div>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-black tracking-tight text-amber-400">
+                            <span className="text-lg font-black tracking-tight text-white">
                               TECHNOGYM CHECKUP™
                             </span>
-                            <span className="font-mono font-bold text-[11px] text-slate-300">
+                            <span className="font-mono font-bold text-[11px] text-violet-100">
                               [{scan.deviceModel}]
                             </span>
                           </div>
-                          <div className="text-[11px] font-mono text-slate-300 mt-1">
+                          <div className="text-[11px] font-mono text-violet-100 mt-1">
                             ID : <strong className="text-white">{scan.personName}</strong> (
                             {scan.personType}) | Date : {scan.date} | Club :{' '}
                             {formatClubName(scan.clubId, true)}
@@ -1239,22 +1661,22 @@ export function DevicesHeitzView() {
 
                         {/* Top-Right Wellness Age & Score Box */}
                         <div className="flex items-center gap-2">
-                          <div className="border border-amber-400/60 rounded-lg px-3 py-1.5 bg-slate-800 text-right">
-                            <div className="text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                          <div className="border border-white/25 rounded-xl px-3 py-1.5 bg-white/15 text-right">
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-amber-200">
                               Wellness Age™
                             </div>
                             <div className="font-mono text-lg font-black text-white tabular-nums">
                               {scan.wellnessAgeYears || 31}{' '}
-                              <span className="text-[10px] font-normal text-slate-300">ans</span>
+                              <span className="text-[10px] font-normal text-violet-100">ans</span>
                             </div>
                           </div>
-                          <div className="border border-slate-600 rounded-lg px-3 py-1.5 bg-slate-800 text-right">
-                            <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                          <div className="border border-white/25 rounded-xl px-3 py-1.5 bg-white/15 text-right">
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-200">
                               Score Checkup
                             </div>
                             <div className="font-mono text-lg font-black text-white tabular-nums">
                               {metrics.inBodyScore}
-                              <span className="text-[10px] font-normal text-slate-400"> /100</span>
+                              <span className="text-[10px] font-normal text-violet-100"> /100</span>
                             </div>
                           </div>
                         </div>
@@ -1262,10 +1684,10 @@ export function DevicesHeitzView() {
 
                       <div className="p-5 space-y-4">
                         {/* Block 1: Analyse Muscle-Graisse with Official InBody Ruler (70% - 160%) */}
-                        <div className="border border-slate-300 rounded overflow-hidden">
-                          <div className="bg-slate-800 text-white px-3 py-1.5 font-bold text-[11px] flex items-center justify-between">
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                          <div className="bg-slate-50 border-b border-slate-200 text-slate-900 px-3.5 py-2 font-bold text-[11px] flex items-center justify-between">
                             <span>Analyse Muscle-Graisse</span>
-                            <span className="font-mono text-[10px] text-slate-300">
+                            <span className="font-mono text-[10px] text-slate-500">
                               Sous (70-85%) | Normal (85-115%) | Sur (115-160%)
                             </span>
                           </div>
@@ -1291,9 +1713,9 @@ export function DevicesHeitzView() {
                                   {scan.weightKg} kg
                                 </span>
                               </div>
-                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-xs relative overflow-hidden border border-slate-200">
+                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-full relative overflow-hidden border border-slate-200">
                                 <div
-                                  className="h-full bg-slate-800"
+                                  className="h-full bg-indigo-500 rounded-full"
                                   style={{ width: `${metrics.weightBarPct}%` }}
                                 />
                               </div>
@@ -1307,9 +1729,9 @@ export function DevicesHeitzView() {
                                   {scan.skeletalMuscleMassKg} kg
                                 </span>
                               </div>
-                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-xs relative overflow-hidden border border-slate-200">
+                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-full relative overflow-hidden border border-slate-200">
                                 <div
-                                  className="h-full bg-[#A6192E]"
+                                  className="h-full bg-violet-600 rounded-full"
                                   style={{ width: `${metrics.smmBarPct}%` }}
                                 />
                               </div>
@@ -1323,9 +1745,9 @@ export function DevicesHeitzView() {
                                   {fatMassKg} kg
                                 </span>
                               </div>
-                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-xs relative overflow-hidden border border-slate-200">
+                              <div className="col-span-8 h-3.5 bg-slate-100 rounded-full relative overflow-hidden border border-slate-200">
                                 <div
-                                  className="h-full bg-slate-600"
+                                  className="h-full bg-amber-500 rounded-full"
                                   style={{ width: `${metrics.pbfBarPct}%` }}
                                 />
                               </div>
@@ -1335,36 +1757,36 @@ export function DevicesHeitzView() {
 
                         {/* Block 2: Analyse de l'Obésité (PGC %) & Masse Maigre Segmentaire (5 zones) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="border border-slate-300 rounded overflow-hidden">
-                            <div className="bg-slate-800 text-white px-3 py-1.5 font-bold text-[11px]">
+                          <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <div className="bg-slate-50 border-b border-slate-200 text-slate-900 px-3.5 py-2 font-bold text-[11px]">
                               Masse Maigre Segmentaire (5 zones)
                             </div>
                             <div className="p-2.5 grid grid-cols-2 gap-1.5 font-mono text-[11px] tabular-nums">
-                              <div className="p-1.5 rounded bg-slate-50 border border-slate-200 flex justify-between">
+                              <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">
                                 <span className="text-slate-500">Bras G. :</span>
                                 <span className="font-bold">
                                   {metrics.segmentalLean.leftArmKg} kg
                                 </span>
                               </div>
-                              <div className="p-1.5 rounded bg-slate-50 border border-slate-200 flex justify-between">
+                              <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">
                                 <span className="text-slate-500">Bras D. :</span>
                                 <span className="font-bold">
                                   {metrics.segmentalLean.rightArmKg} kg
                                 </span>
                               </div>
-                              <div className="col-span-2 p-1.5 rounded bg-slate-100 border border-slate-300 flex justify-between">
+                              <div className="col-span-2 p-1.5 rounded-lg bg-slate-100 border border-slate-200 flex justify-between">
                                 <span className="text-slate-700 font-bold">Tronc Central :</span>
                                 <span className="font-black text-slate-900">
                                   {metrics.segmentalLean.trunkKg} kg ({metrics.segmentalLean.balanceStatus})
                                 </span>
                               </div>
-                              <div className="p-1.5 rounded bg-slate-50 border border-slate-200 flex justify-between">
+                              <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">
                                 <span className="text-slate-500">Jambe G. :</span>
                                 <span className="font-bold">
                                   {metrics.segmentalLean.leftLegKg} kg
                                 </span>
                               </div>
-                              <div className="p-1.5 rounded bg-slate-50 border border-slate-200 flex justify-between">
+                              <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 flex justify-between">
                                 <span className="text-slate-500">Jambe D. :</span>
                                 <span className="font-bold">
                                   {metrics.segmentalLean.rightLegKg} kg
@@ -1373,8 +1795,8 @@ export function DevicesHeitzView() {
                             </div>
                           </div>
 
-                          <div className="border border-slate-300 rounded overflow-hidden">
-                            <div className="bg-slate-800 text-white px-3 py-1.5 font-bold text-[11px]">
+                          <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <div className="bg-slate-50 border-b border-slate-200 text-slate-900 px-3.5 py-2 font-bold text-[11px]">
                               Paramètres BIA &amp; Mobilité Technogym Checkup
                             </div>
                             <div className="p-2.5 space-y-1.5 text-[11px]">
@@ -1404,9 +1826,9 @@ export function DevicesHeitzView() {
                           </div>
                         </div>
 
-                        <div className="p-2.5 rounded bg-rose-50/70 border border-rose-200 text-[11px] text-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-[11px] text-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                           <div>
-                            <span className="font-bold text-[#A6192E]">
+                            <span className="font-bold text-violet-800">
                               Prescription Coach &amp; Mywellness :
                             </span>{' '}
                             {scan.coachNote}
@@ -1414,7 +1836,7 @@ export function DevicesHeitzView() {
                           <button
                             type="button"
                             onClick={() => handleOpenMywellness(scan.id, scan.personName)}
-                            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center gap-1.5 shrink-0 cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center gap-1.5 shrink-0 cursor-pointer"
                           >
                             <Dumbbell className="w-3.5 h-3.5" />
                             <span>Ouvrir fiche Mywellness</span>

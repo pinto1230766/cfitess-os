@@ -60,7 +60,7 @@ function getJobBoardBadgeStyle(channel: string): string {
     return 'bg-[#FFCD00] text-slate-950 font-black';
   if (lower.includes('linkedin')) return 'bg-[#0A66C2] text-white';
   if (lower.includes('france travail')) return 'bg-[#1E3A8A] text-white';
-  return 'bg-orange-600 text-white';
+  return 'bg-violet-600 text-white';
 }
 
 export function AtsView() {
@@ -74,9 +74,21 @@ export function AtsView() {
     ingestEmailCandidate,
     createJobOffer,
     runCandidateOnboarding,
+    navSubTarget,
   } = useCfos();
 
-  const [atsMode, setAtsMode] = useState<'FLATCHR_KANBAN' | 'YOUSIGN_PARAPHEUR'>('FLATCHR_KANBAN');
+  const [atsMode, setAtsMode] = useState<'FLATCHR_KANBAN' | 'YOUSIGN_PARAPHEUR'>(
+    navSubTarget === 'ats' ? 'FLATCHR_KANBAN' : 'YOUSIGN_PARAPHEUR'
+  );
+
+  React.useEffect(() => {
+    if (navSubTarget === 'documents') {
+      setAtsMode('YOUSIGN_PARAPHEUR');
+    } else if (navSubTarget === 'ats') {
+      setAtsMode('FLATCHR_KANBAN');
+    }
+  }, [navSubTarget]);
+
   const [otpInputByDoc, setOtpInputByDoc] = useState<Record<string, string>>({});
   const [simulateRollback, setSimulateRollback] = useState(false);
   const [transactionBanner, setTransactionBanner] = useState<{
@@ -207,47 +219,52 @@ export function AtsView() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white">
+      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs bg-white">
         {/* Clean Unified C.Fitness OS Header */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div className="bg-white border-b border-slate-200/80 px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div>
-              <div className="text-xs font-semibold text-orange-400">
-                07. Recrutement &amp; Contrats RH
+            <div className="flex items-center gap-3.5 pr-4 xl:border-r border-slate-200/80">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <FileSignature className="w-5 h-5" />
               </div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5">
-                Candidatures, Embauche 1-Clic &amp; Signature Électronique (0 €)
-              </h1>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
+                  Documents · Contrats RH, Signatures Électroniques &amp; Recrutement ATS
+                </div>
+                <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 mt-0.5">
+                  Documents, Contrats à Valider (2 en attente) &amp; Signatures SHA-256 (0 €)
+                </h1>
+              </div>
             </div>
 
             {/* Mode Switcher */}
-            <div className="flex items-center gap-1.5 bg-slate-800 p-1 rounded-xl text-xs border border-slate-700">
-              <button
-                onClick={() => setAtsMode('FLATCHR_KANBAN')}
-                className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
-                  atsMode === 'FLATCHR_KANBAN'
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Briefcase className="w-4 h-4" />
-                <span>1. Suivi des Candidats ({filteredCandidates.length})</span>
-              </button>
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs border border-slate-200/80">
               <button
                 onClick={() => setAtsMode('YOUSIGN_PARAPHEUR')}
-                className={`px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 cursor-pointer transition-colors ${
                   atsMode === 'YOUSIGN_PARAPHEUR'
-                    ? 'bg-orange-600 text-white'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
               >
                 <FileSignature className="w-4 h-4" />
-                <span>2. Contrats à Signer ({contractDocs.length})</span>
+                <span>1. Documents &amp; Contrats à Signer ({contractDocs.length})</span>
+              </button>
+              <button
+                onClick={() => setAtsMode('FLATCHR_KANBAN')}
+                className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                  atsMode === 'FLATCHR_KANBAN'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>2. Recrutement ATS &amp; Candidats ({filteredCandidates.length})</span>
               </button>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-300 cursor-pointer shrink-0">
+          <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold cursor-pointer shrink-0">
             <input
               type="checkbox"
               checked={simulateRollback}
@@ -340,7 +357,7 @@ export function AtsView() {
                   </select>
                   <button
                     type="submit"
-                    className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Publier l&apos;offre</span>
@@ -530,7 +547,7 @@ export function AtsView() {
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
                   <Mail className="w-4 h-4 text-[#1E3A8A]" />
                   Connecteur Email Automatique Flatchr :{' '}
-                  <span className="font-mono text-orange-600">recrutement@c.fitness</span>
+                  <span className="font-mono text-violet-600">recrutement@c.fitness</span>
                 </div>
                 <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded">
                   Parsing CV PDF + Réponse RGPD auto
@@ -571,7 +588,7 @@ export function AtsView() {
                 <div className="lg:col-span-3">
                   <button
                     type="submit"
-                    className="w-full py-2 px-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     Simuler Réception CV

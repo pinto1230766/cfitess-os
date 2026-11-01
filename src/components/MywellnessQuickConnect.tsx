@@ -33,7 +33,10 @@ export function MywellnessQuickConnect({
     serverPowerStatus,
     openMywellnessLink,
     setActiveSection,
+    themeMode,
   } = useCfos();
+
+  const isDark = themeMode === 'dark';
 
   const effectiveClub: ClubId =
     defaultClubId || (clubFilter === 'beynost' ? 'beynost' : 'carre-de-soie');
@@ -90,6 +93,7 @@ export function MywellnessQuickConnect({
       timestamp: new Date().toLocaleTimeString('fr-FR'),
     });
     setCopiedUrl(false);
+    setActiveSection('devices', 'checkup');
   };
 
   const handleCopyUrl = async (url: string) => {
@@ -114,12 +118,16 @@ export function MywellnessQuickConnect({
     setTimeout(() => setSyncPulse(false), 500);
   };
 
-  // 1. AdminShell Left Sidebar Variant (cohesive with AdminShell dark slate sidebar)
+  // 1. AdminShell Left Sidebar Variant
   if (variant === 'sidebar') {
     return (
       <div
         data-testid="mywellness-quick-connect-sidebar"
-        className="mx-3 mb-2 p-3 rounded-xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 text-xs"
+        className={`mx-3 mb-2 p-3 rounded-2xl border space-y-2.5 text-xs ${
+          isDark
+            ? 'bg-[#151B2B] border-slate-800 text-slate-200'
+            : 'bg-slate-50 border-slate-200/80 text-slate-700'
+        }`}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -127,11 +135,11 @@ export function MywellnessQuickConnect({
               aria-hidden="true"
               className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                 isCheckupConnected
-                  ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]'
-                  : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
+                  ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                  : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'
               }`}
             />
-            <span className="font-bold text-white text-[11px] tracking-tight truncate">
+            <span className={`font-bold text-[11px] tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Technogym Checkup
             </span>
           </div>
@@ -141,45 +149,43 @@ export function MywellnessQuickConnect({
             title="Basculer l'indicateur de statut Vert (Connecté) / Rouge (Hors ligne)"
             className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold cursor-pointer border transition-colors whitespace-nowrap shrink-0 ${
               isCheckupConnected
-                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-                : 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
+                ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
+                : 'bg-rose-500/20 text-rose-500 border-rose-500/40 hover:bg-rose-500/30'
             }`}
           >
             {isCheckupConnected ? 'Connecté' : 'Hors ligne'}
           </button>
         </div>
 
-        <div className="text-[11px] text-slate-300 font-mono tabular-nums flex items-center justify-between pt-1 border-t border-slate-700/70">
+        <div className={`text-[11px] font-mono tabular-nums flex items-center justify-between pt-1 border-t ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200/70 text-slate-500'}`}>
           <span>CDS {isCheckupConnected ? `${checkupLatencyMs.cds} ms` : 'ERR'}</span>
-          <span aria-hidden="true" className="text-slate-500">·</span>
+          <span aria-hidden="true">·</span>
           <span>BEY {isCheckupConnected ? `${checkupLatencyMs.bey} ms` : 'ERR'}</span>
-          <span aria-hidden="true" className="text-slate-500">·</span>
+          <span aria-hidden="true">·</span>
           <span
             className={`font-semibold ${
-              isCheckupConnected ? 'text-emerald-400' : 'text-rose-400'
+              isCheckupConnected ? 'text-emerald-500' : 'text-rose-500'
             }`}
           >
             {isCheckupConnected ? 'Sync OK' : 'Alerte'}
           </span>
         </div>
 
-        <a
-          href={previewLink.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           onClick={handleSingleClickLaunch}
           data-testid="mywellness-sidebar-launch-link"
-          className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+          className="w-full min-h-[38px] py-2 px-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
         >
           <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-          <span>Accéder à Mywellness</span>
+          <span>Mywellness Cloud</span>
           <ExternalLink className="w-3 h-3 shrink-0" />
-        </a>
+        </button>
       </div>
     );
   }
 
-  // 2. AdminShell Sticky Top Header Variant (cohesive with AdminShell white header bar)
+  // 2. AdminShell Sticky Top Header Variant
   if (variant === 'header') {
     return (
       <div
@@ -193,7 +199,11 @@ export function MywellnessQuickConnect({
           data-testid="mywellness-header-status-pill"
           className={`hidden 2xl:flex min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold items-center gap-2 border cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
             isCheckupConnected
-              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+              ? isDark
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+              : isDark
+              ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
               : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200'
           }`}
         >
@@ -204,30 +214,31 @@ export function MywellnessQuickConnect({
             }`}
           />
           {isCheckupConnected ? (
-            <Wifi className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <Wifi className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           ) : (
-            <WifiOff className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <WifiOff className="w-3.5 h-3.5 text-rose-500 shrink-0" />
           )}
           <span className="font-mono tabular-nums text-[11px]">
             {isCheckupConnected
-              ? `Technogym Checkup : Connecté (${checkupLatencyMs.cds} ms)`
-              : 'Technogym Checkup : Hors ligne'}
+              ? `Checkup : Connecté (${checkupLatencyMs.cds} ms)`
+              : 'Checkup : Hors ligne'}
           </span>
         </button>
 
-        <a
-          href={previewLink.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           onClick={handleSingleClickLaunch}
           data-testid="mywellness-header-launch-link"
-          title={`Accéder au portail web Technogym Mywellness dans un nouvel onglet (${previewLink.url})`}
-          className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs whitespace-nowrap shrink-0"
+          title="Ouvrir le module intégré Technogym Checkup & Mywellness dans C.Fitness OS"
+          className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all whitespace-nowrap shrink-0 ${
+            isDark
+              ? 'bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border-violet-500/30'
+              : 'bg-violet-50 hover:bg-violet-100 text-violet-700 border-violet-200/80'
+          }`}
         >
           <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-          <span>Accéder à Mywellness</span>
-          <ExternalLink className="w-3 h-3 shrink-0" />
-        </a>
+          <span>Mywellness</span>
+        </button>
       </div>
     );
   }
@@ -237,19 +248,19 @@ export function MywellnessQuickConnect({
     return (
       <section
         data-testid="mywellness-quick-connect-compact"
-        className="bg-slate-900 text-white rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between border border-slate-800"
+        className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between"
       >
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center shrink-0">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
                 <Dumbbell className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xs sm:text-sm font-bold text-white truncate">
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
                   Technogym Checkup &amp; Mywellness
                 </h2>
-                <div className="text-[11px] text-slate-400 truncate">
+                <div className="text-[11px] text-slate-500 truncate">
                   Bilans corporels &amp; suivi sportif
                 </div>
               </div>
@@ -261,87 +272,84 @@ export function MywellnessQuickConnect({
               title="Basculer le statut Vert (Connecté) / Rouge (Hors ligne)"
               className={`px-2 py-1 rounded-lg font-mono text-[10px] font-bold border flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                 isCheckupConnected
-                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
               <span
                 aria-hidden="true"
                 className={`w-2 h-2 rounded-full ${
-                  isCheckupConnected ? 'bg-emerald-400' : 'bg-rose-500'
+                  isCheckupConnected ? 'bg-emerald-500' : 'bg-rose-500'
                 }`}
               />
               <span>{isCheckupConnected ? 'Connecté' : 'Hors ligne'}</span>
             </button>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Stations <strong>Technogym Checkup</strong> (Carré de Soie &amp; Beynost) synchronisées avec Mywellness Cloud.
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Stations <strong>Technogym Checkup</strong> (C.Fitness Center &amp; Place) synchronisées avec Mywellness Cloud.
           </p>
 
-          <div className="divide-y divide-slate-800 text-xs font-mono tabular-nums">
+          <div className="divide-y divide-slate-100 text-xs font-mono tabular-nums">
             <div className="py-1.5 flex items-center justify-between">
-              <span className="font-sans text-slate-300">Carré de Soie (#1)</span>
-              <span className={isCheckupConnected ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+              <span className="font-sans text-slate-600">C.Fitness Center (#1)</span>
+              <span className={isCheckupConnected ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
                 {isCheckupConnected ? `Connecté · ${checkupLatencyMs.cds} ms` : 'Hors ligne'}
               </span>
             </div>
             <div className="py-1.5 flex items-center justify-between">
-              <span className="font-sans text-slate-300">Beynost (#2)</span>
-              <span className={isCheckupConnected ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+              <span className="font-sans text-slate-600">C.Fitness Place (#2)</span>
+              <span className={isCheckupConnected ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
                 {isCheckupConnected ? `Connecté · ${checkupLatencyMs.bey} ms` : 'Hors ligne'}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-slate-800">
-          <a
-            href={previewLink.url}
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="pt-2 border-t border-slate-100">
+          <button
+            type="button"
             onClick={handleSingleClickLaunch}
-            className="w-full min-h-[44px] py-2.5 px-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs whitespace-nowrap"
+            className="w-full min-h-[42px] py-2.5 px-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-2xs whitespace-nowrap"
           >
             <Dumbbell className="w-4 h-4 shrink-0" />
-            <span>Accéder à Mywellness</span>
-            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-          </a>
+            <span>Ouvrir Bilans Mywellness &amp; Checkup</span>
+          </button>
         </div>
       </section>
     );
   }
 
-  // 4. Default Card Variant (matches AdminShell white & dark slate design language)
+  // 4. Default Card Variant (C.Fitness OS unified card)
   return (
     <section
       data-testid="mywellness-quick-connect"
-      className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden"
+      className="bg-white border border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden"
     >
-      {/* Top Dark Slate Bar matching AdminShell Sidebar & Header Contrast */}
-      <div className="bg-slate-900 text-white p-5 space-y-4 border-b border-slate-800">
+      {/* Top C.Fitness OS Header */}
+      <div className="p-5 space-y-4 border-b border-slate-100">
         <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
             <Dumbbell className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300">
-              <span className="font-semibold text-orange-400">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+              <span className="font-semibold text-violet-600">
                 Technogym Checkup &amp; Mywellness Cloud
               </span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
+              <span aria-hidden="true">·</span>
               <span>Suivi sportif 100 % unifié</span>
-              <span aria-hidden="true" className="text-slate-500">·</span>
-              <span>Carré de Soie &amp; Beynost</span>
+              <span aria-hidden="true">·</span>
+              <span>C.Fitness Center &amp; Place</span>
             </div>
-            <h2 className="text-base sm:text-lg font-bold text-white leading-snug">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
               Passerelle Rapide Mywellness &amp; Statut Technogym Checkup
             </h2>
           </div>
         </div>
 
-        {/* Action Bar: Live Green/Red Connection Indicator + Refresh + Single-Click New Tab Button */}
-        <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+        {/* Action Bar: Live Green/Red Connection Indicator + Refresh + Single-Click Internal Module Button */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -350,22 +358,22 @@ export function MywellnessQuickConnect({
               title="Cliquer pour tester le statut Vert (Connecté) ou Rouge (Déconnecté)"
               className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border cursor-pointer transition-colors text-left ${
                 isCheckupConnected
-                  ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30'
-                  : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
               }`}
             >
               <span
                 aria-hidden="true"
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                   isCheckupConnected
-                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                    : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+                    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                    : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
                 }`}
               />
               {isCheckupConnected ? (
-                <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <Wifi className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               ) : (
-                <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <WifiOff className="w-3.5 h-3.5 text-rose-600 shrink-0" />
               )}
               <span className="font-mono tabular-nums">
                 {isCheckupConnected
@@ -379,28 +387,26 @@ export function MywellnessQuickConnect({
               onClick={handleRefreshCheckupStatus}
               title="Actualiser la télémétrie Technogym Checkup"
               aria-label="Actualiser la connexion Technogym Checkup"
-              className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+              className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 flex items-center justify-center cursor-pointer transition-colors shrink-0"
             >
               <RefreshCw
-                className={`w-4 h-4 ${syncPulse ? 'animate-spin text-orange-400' : ''}`}
+                className={`w-4 h-4 ${syncPulse ? 'animate-spin text-violet-600' : ''}`}
               />
             </button>
           </div>
 
-          <a
-            href={previewLink.url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             data-testid="mywellness-launch-btn"
             onClick={handleSingleClickLaunch}
-            className="min-h-[40px] px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
+            className="min-h-[40px] px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all"
           >
             <Dumbbell className="w-4 h-4 shrink-0" />
-            <span>Accéder à Mywellness</span>
-            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-          </a>
+            <span>Ouvrir Bilans Mywellness &amp; Checkup</span>
+          </button>
         </div>
       </div>
+
 
       {/* Body: Two-Club Technogym Checkup Units + Contextual Member Deep-Link */}
       <div className="p-5 space-y-4">
@@ -504,7 +510,7 @@ export function MywellnessQuickConnect({
               aria-label="Sélectionner la cible Mywellness"
               value={targetMemberId}
               onChange={(e) => setTargetMemberId(e.target.value)}
-              className="w-full sm:flex-1 min-h-[38px] px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-xs font-semibold focus:outline-none focus:border-orange-500 cursor-pointer"
+              className="w-full sm:flex-1 min-h-[38px] px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-xs font-semibold focus:outline-none focus:border-violet-500 cursor-pointer"
             >
               <option value="">
                 Portail Général Club ({formatClubName(effectiveClub, false)})
@@ -522,7 +528,7 @@ export function MywellnessQuickConnect({
               <div className="flex flex-wrap items-center gap-1.5 font-mono tabular-nums">
                 <span>{selectedMember.technogymMoves30d} MOVEs</span>
                 <span aria-hidden="true">·</span>
-                <span className="font-semibold text-orange-600">
+                <span className="font-semibold text-violet-600">
                   Wellness Age™ {selectedMember.technogymCheckupWellnessAge || 31} ans
                 </span>
               </div>
@@ -530,7 +536,7 @@ export function MywellnessQuickConnect({
 
             {latestScan && (
               <div className="flex flex-wrap items-center gap-2 text-slate-600">
-                <Activity className="w-4 h-4 text-orange-600 shrink-0" />
+                <Activity className="w-4 h-4 text-violet-600 shrink-0" />
                 <span>
                   Dernier bilan Checkup :{' '}
                   <strong className="text-slate-900">{latestScan.personName}</strong>
@@ -548,19 +554,19 @@ export function MywellnessQuickConnect({
         {lastLaunchedPortal && (
           <div
             data-testid="mywellness-portal-launched-banner"
-            className="p-3.5 rounded-xl bg-slate-900 text-white text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
           >
             <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5 sm:mt-0" />
               <div className="min-w-0">
-                <div className="font-bold text-white flex flex-wrap items-center gap-2">
+                <div className="font-bold text-slate-900 flex flex-wrap items-center gap-2">
                   <span>{lastLaunchedPortal.label}</span>
-                  <span aria-hidden="true" className="text-slate-500">·</span>
-                  <span className="font-mono tabular-nums text-[11px] text-orange-400 shrink-0">
+                  <span aria-hidden="true" className="text-slate-400">·</span>
+                  <span className="font-mono tabular-nums text-[11px] text-violet-600 shrink-0">
                     {lastLaunchedPortal.timestamp}
                   </span>
                 </div>
-                <div className="font-mono text-[11px] text-slate-400 break-all">
+                <div className="font-mono text-[11px] text-slate-500 break-all">
                   {lastLaunchedPortal.url}
                 </div>
               </div>
@@ -570,15 +576,15 @@ export function MywellnessQuickConnect({
               <button
                 type="button"
                 onClick={() => handleCopyUrl(lastLaunchedPortal.url)}
-                className="min-h-[36px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="min-h-[36px] px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
-                <Copy className="w-3.5 h-3.5 text-orange-400" />
+                <Copy className="w-3.5 h-3.5 text-violet-600" />
                 <span>{copiedUrl ? 'Lien copié' : 'Copier l’URL'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveSection('devices')}
-                className="min-h-[36px] px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="min-h-[36px] px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
                 <Activity className="w-3.5 h-3.5" />
                 <span>Détails Checkup</span>
@@ -592,3 +598,4 @@ export function MywellnessQuickConnect({
 }
 
 export default MywellnessQuickConnect;
+

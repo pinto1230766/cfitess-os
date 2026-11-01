@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCfos } from '../../context/CfosContext';
 import {
   FileText,
@@ -26,6 +26,7 @@ import {
   ExternalLink,
   Layers,
   Send,
+  Calendar,
 } from 'lucide-react';
 import {
   ClubId,
@@ -133,6 +134,7 @@ export function PlanningHrView() {
     deleteExternalPlanningEvent,
     openMywellnessLink,
     setActiveSection,
+    navSubTarget,
   } = useCfos();
 
   const [subTab, setSubTab] = useState<
@@ -168,6 +170,18 @@ export function PlanningHrView() {
   const [shiftClub, setShiftClub] = useState<ClubId>('carre-de-soie');
   const [roleLabel, setRoleLabel] = useState('Accueil & Vente');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    if (navSubTarget === 'cours-collectifs') {
+      setSubTab('PLANNING');
+      setRoleFilter('coach');
+      setSourceFilter('heitz_api');
+    } else if (navSubTarget === 'planning') {
+      setSubTab('PLANNING');
+      setRoleFilter('ALL');
+      setSourceFilter('ALL');
+    }
+  }, [navSubTarget]);
 
   // Skello Badgeuse Simulator state
   const [kioskEmpId, setKioskEmpId] = useState<string>('emp-maxime');
@@ -316,30 +330,43 @@ export function PlanningHrView() {
     URL.revokeObjectURL(url);
   };
 
+  const isCoursCollectifsView = navSubTarget === 'cours-collectifs' || roleFilter === 'coach';
+
   return (
     <div className="space-y-4">
       {/* ===================================================================== */}
-      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — PLANNING, POINTEUSE & PAIE              */}
+      {/* EN-TÊTE UNIFIÉ C.FITNESS OS — PLANNING / COURS COLLECTIFS / PAIE      */}
       {/* ===================================================================== */}
-      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-white">
-        <div className="bg-slate-900 text-white px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs bg-white">
+        <div className="bg-white border-b border-slate-200/80 px-5 py-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="pr-4 border-r border-slate-800">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
-                03 · L’Espace Planning &amp; RH
+            <div className="flex items-center gap-3.5 pr-4 xl:border-r border-slate-200/80">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Calendar className="w-5 h-5" />
               </div>
-              <h2 className="font-black text-lg tracking-tight text-white">
-                Planning Équipes, Pointeuse &amp; Export Paie
-              </h2>
-              <div className="text-xs text-slate-400">
-                Convention Collective Nationale du Sport (IDCC 2511) · SAS C.FITNESS
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600">
+                  {isCoursCollectifsView
+                    ? 'Cours collectifs · Salles, Coachs & Top 5 Remplissage Bi-Club'
+                    : 'Planning · Planning Général des Équipes, Pointeuse & Export Paie'}
+                </div>
+                <h2 className="font-extrabold text-lg tracking-tight text-slate-900">
+                  {isCoursCollectifsView
+                    ? 'Cours collectifs — 28 cours/sem Center · 32 cours/sem Place'
+                    : 'Planning Équipes, Pointeuse & Export Paie Silae'}
+                </h2>
+                <div className="text-xs text-slate-500">
+                  {isCoursCollectifsView
+                    ? 'Top 5 : BodyPump (92 %), Yoga (88 %), HIIT (86 %), Pilates (81 %), Cycling (78 %) · Synchronisé Heitz & Mywellness'
+                    : 'Convention Collective Nationale du Sport (IDCC 2511) · SAS C.FITNESS'}
+                </div>
               </div>
             </div>
 
             {/* Onglets principaux */}
-            <nav className="flex flex-wrap items-center gap-1.5">
+            <nav className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
               {[
-                { id: 'PLANNING', label: '1. Planning Semaine' },
+                { id: 'PLANNING', label: '1. Planning & Cours' },
                 { id: 'POINTAGES', label: `2. La Pointeuse (${timeEntries.length})` },
                 {
                   id: 'CONGES',
@@ -353,8 +380,8 @@ export function PlanningHrView() {
                   onClick={() => setSubTab(t.id as typeof subTab)}
                   className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
                     subTab === t.id
-                      ? 'bg-orange-600 text-white shadow-2xs'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
                   }`}
                 >
                   <span>{t.label}</span>
@@ -371,20 +398,127 @@ export function PlanningHrView() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setActiveSection('ats')}
-              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              onClick={() => {
+                if (roleFilter === 'coach') {
+                  setRoleFilter('ALL');
+                  setSourceFilter('ALL');
+                } else {
+                  setRoleFilter('coach');
+                  setSourceFilter('heitz_api');
+                }
+              }}
+              className={`px-3.5 py-2 rounded-xl border font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                isCoursCollectifsView
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
+              }`}
             >
-              <FileSignature className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Contrats &amp; Signatures →</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>
+                {isCoursCollectifsView
+                  ? 'Afficher tout le Planning RH'
+                  : 'Filtrer Cours Collectifs & Coachs'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('ats', 'documents')}
+              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <FileSignature className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Contrats &amp; Documents →</span>
             </button>
           </div>
         </div>
+
+        {/* Dedicated Group Classes Banner when Cours collectifs is active */}
+        {isCoursCollectifsView && (
+          <div className="p-4 bg-gradient-to-r from-rose-50/60 via-violet-50/50 to-sky-50/60 border-b border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-mono uppercase font-bold text-rose-600">
+                  Planning des Cours Collectifs · C.Fitness Center (28 cours/sem) &amp; C.Fitness Place (32 cours/sem)
+                </span>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Séances du jour &amp; Top 5 de fréquentation des cours collectifs
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUnifiedEventModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer self-start"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Programmer un cours collectif</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+              {[
+                {
+                  name: '1. BodyPump',
+                  time: '08:00 & 18:00',
+                  room: 'Salle 1 · Center & Place',
+                  booked: '28 / 30 participants',
+                  pct: '92 %',
+                  badge: 'bg-rose-100 text-rose-800 border-rose-200',
+                },
+                {
+                  name: '2. Yoga Flow',
+                  time: '12:30 & 18:00',
+                  room: 'Studio Zen · Place',
+                  booked: '28 / 30 participants',
+                  pct: '88 %',
+                  badge: 'bg-amber-100 text-amber-800 border-amber-200',
+                },
+                {
+                  name: '3. HIIT / GRIT',
+                  time: '17:00',
+                  room: 'Zone Athletic · Center',
+                  booked: '16 / 20 participants',
+                  pct: '86 %',
+                  badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                },
+                {
+                  name: '4. Pilates & BodyBalance',
+                  time: '09:00',
+                  room: 'Salle 1 · Center',
+                  booked: '28 / 30 participants',
+                  pct: '81 %',
+                  badge: 'bg-violet-100 text-violet-800 border-violet-200',
+                },
+                {
+                  name: '5. Cycling / RPM',
+                  time: '10:00 & 19:00',
+                  room: 'Salle 2 Bike · Place',
+                  booked: '24 / 30 participants',
+                  pct: '78 %',
+                  badge: 'bg-sky-100 text-sky-800 border-sky-200',
+                },
+              ].map((c) => (
+                <div
+                  key={c.name}
+                  className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold text-slate-900">{c.name}</span>
+                    <span className={`px-1.5 py-0.5 rounded border font-bold text-[10px] ${c.badge}`}>
+                      {c.pct}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-medium">{c.time} · {c.room}</div>
+                  <div className="text-[10px] text-emerald-700 font-semibold">{c.booked}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Skello Sub-Toolbar: Week Date Picker + Role Filters + Legend */}
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             {/* Skello Week Selector */}
-            <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-2xs">
+            <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-2xs">
               <button
                 type="button"
                 onClick={() =>
@@ -409,7 +543,7 @@ export function PlanningHrView() {
             </div>
 
             {/* Filter by Role (Skello Position Filter) */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
               {[
                 { id: 'ALL', label: 'Toutes les équipes' },
                 { id: 'commercial', label: 'Accueil & Vente' },
@@ -420,9 +554,9 @@ export function PlanningHrView() {
                 <button
                   key={rf.id}
                   onClick={() => setRoleFilter(rf.id)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer ${
                     roleFilter === rf.id
-                      ? 'bg-[#1B2559] text-white'
+                      ? 'bg-violet-600 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
@@ -436,7 +570,7 @@ export function PlanningHrView() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="hidden sm:flex items-center gap-2 text-[11px] mr-2">
               <span className="inline-flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-xs bg-orange-500 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-xs bg-violet-500 inline-block" />
                 Accueil/Vente CDS
               </span>
               <span className="inline-flex items-center gap-1">
@@ -460,7 +594,7 @@ export function PlanningHrView() {
                   setShowShiftCreator(!showShiftCreator);
                   setShowUnifiedEventModal(false);
                 }}
-                className="px-3.5 py-1.5 rounded-lg bg-[#4318FF] hover:bg-[#3611d4] text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-2xs"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {showShiftCreator ? 'Fermer l’éditeur' : '+ Planifier un créneau'}
@@ -471,9 +605,9 @@ export function PlanningHrView() {
 
         {/* Multi-Source Layer Filter Bar (RH + Mywellness + Heitz + Interne without duplication) */}
         {subTab === 'PLANNING' && (
-          <div className="bg-indigo-950/95 text-white px-4 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="bg-white px-4 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-sky-300 mr-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-violet-600 font-bold mr-1">
                 Calques Planning Centralisé (Sans Duplication) :
               </span>
               {[
@@ -502,17 +636,17 @@ export function PlanningHrView() {
                   key={layer.id}
                   type="button"
                   onClick={() => setSourceFilter(layer.id as typeof sourceFilter)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                     sourceFilter === layer.id
-                      ? 'bg-[#00C48C] text-slate-950'
-                      : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                      ? 'bg-violet-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   {layer.label}
                 </button>
               ))}
             </div>
-            <span className="text-[10px] text-slate-300 font-mono">
+            <span className="text-[10px] text-slate-500 font-mono">
               Remplacement Skello · Synchronisation bidirectionnelle API Heitz &amp; Technogym Mywellness
             </span>
           </div>
